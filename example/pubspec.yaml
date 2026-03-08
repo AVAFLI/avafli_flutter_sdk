@@ -1,0 +1,40 @@
+name: winr_example
+description: Example app demonstrating WINR Flutter SDK integration
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # WINR Flutter SDK - using local path for development
+  winr_flutter_sdk:
+    path: ../
+  
+  # UI and styling
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Example assets (if needed)
+  # assets:
+  #   - images/
+  #   - fonts/
+
+  # Example fonts (if needed)
+  # fonts:
+  #   - family: WINRFont
+  #     fonts:
+  #       - asset: fonts/WINRFont-Regular.ttf
+  #       - asset: fonts/WINRFont-Bold.ttf
+  #         weight: 700

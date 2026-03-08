@@ -1,0 +1,30 @@
+name: winr_flutter_sdk
+description: >
+  WINR Flutter SDK — A sweepstakes and engagement SDK for Flutter apps.
+  Add daily streaks, rewarded video entries, and sweepstakes campaigns
+  to your app with a few lines of code.
+version: 1.0.0
+homepage: https://avafli-website.web.app/sdk
+repository: https://github.com/AVAFLI/winr_flutter_sdk
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.2
+  firebase_messaging: ^14.7.9
+  device_info_plus: ^10.1.0
+  package_info_plus: ^4.2.0
+  connectivity_plus: ^5.0.2
+  geolocator: ^10.1.0
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
