@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../domain/sdk_copy.dart';
+import '../domain/sdk_media.dart';
 import '../winr_branding.dart';
 
 /// Bonus entries view — matches iOS BonusEntriesView.swift.
@@ -9,6 +10,7 @@ class BonusEntriesView extends StatelessWidget {
   final WINRBranding branding;
   final int entries;
   final SdkCopy? sdkCopy;
+  final SdkMedia? sdkMedia;
   final VoidCallback onClaim;
   final VoidCallback onSkip;
 
@@ -17,6 +19,7 @@ class BonusEntriesView extends StatelessWidget {
     required this.branding,
     required this.entries,
     this.sdkCopy,
+    this.sdkMedia,
     required this.onClaim,
     required this.onSkip,
   });

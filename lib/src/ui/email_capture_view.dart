@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/sdk_copy.dart';
+import '../domain/sdk_media.dart';
 import '../winr_branding.dart';
 
 /// Email capture view — matches iOS EmailCaptureView.swift.
@@ -15,6 +16,7 @@ class EmailCaptureView extends StatefulWidget {
   final String? prefillEmail;
   final double? prizeValue;
   final SdkCopy? sdkCopy;
+  final SdkMedia? sdkMedia;
   final void Function(String url)? onOpenUrl;
 
   const EmailCaptureView({
@@ -26,6 +28,7 @@ class EmailCaptureView extends StatefulWidget {
     this.prefillEmail,
     this.prizeValue,
     this.sdkCopy,
+    this.sdkMedia,
     this.onOpenUrl,
   });
 
@@ -63,6 +66,23 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
     return 'WIN \$${value.toInt()} CASH!';
   }
 
+  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+    if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
+      // Use Lottie if available, or fallback
+      return defaultWidget; // TODO: Remote Lottie needs lottie package with network support
+    }
+    if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
+      return Image.network(
+        media.imageUrl!,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    return defaultWidget;
+  }
+
   @override
   Widget build(BuildContext context) {
     final b = widget.branding;
@@ -72,13 +92,17 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
         padding: const EdgeInsets.only(top: 2),
         child: Column(
           children: [
-            // Logo
-            if (b.logo != null)
-              SizedBox(
-                width: b.primaryLogoSize.width,
-                height: b.primaryLogoSize.height,
-                child: b.logo!,
-              ),
+            // Logo / Hero Media
+            _buildHeroMedia(
+              widget.sdkMedia?.emailCapture,
+              b.logo != null
+                  ? SizedBox(
+                      width: b.primaryLogoSize.width,
+                      height: b.primaryLogoSize.height,
+                      child: b.logo!,
+                    )
+                  : const SizedBox.shrink(),
+            ),
             const SizedBox(height: 40),
 
             // Title + subtitle
@@ -87,7 +111,8 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
               child: Column(
                 children: [
                   Text(
-                    widget.sdkCopy?.emailCapture?.title ??
+                    widget.sdkCopy?.emailCapture?.prizeHeadline ??
+                        widget.sdkCopy?.emailCapture?.title ??
                         widget.sdkCopy?.welcomeTitle ??
                         (widget.prizeValue != null
                             ? _formatPrize(widget.prizeValue!)

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../domain/campaign.dart';
 import '../domain/daily_entry_grant.dart';
 import '../domain/sdk_copy.dart';
+import '../domain/sdk_media.dart';
 import '../domain/streak_engine.dart';
 import '../domain/streak_state.dart';
 import '../network/network_client.dart';
@@ -48,6 +49,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final bool? cachedClaimedToday;
   final Map<String, dynamic>? sdkConfig;
   final SdkCopy? sdkCopy;
+  final SdkMedia? sdkMedia;
 
   const WINRExperienceScreen({
     super.key,
@@ -63,6 +65,7 @@ class WINRExperienceScreen extends StatefulWidget {
     this.cachedClaimedToday,
     this.sdkConfig,
     this.sdkCopy,
+    this.sdkMedia,
   });
 
   @override
@@ -198,6 +201,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           prefillEmail: widget.user.email,
           prizeValue: _campaign?.prizeValue,
           sdkCopy: widget.sdkCopy,
+          sdkMedia: widget.sdkMedia,
           onSubmit: _submitEmail,
           onSkip: _skipEmailCapture,
         );
@@ -211,6 +215,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           claimedToday: _claimedToday,
           campaign: _campaign,
           sdkCopy: widget.sdkCopy,
+          sdkMedia: widget.sdkMedia,
           onClaim: _claimDailyEntries,
           onClose: () => Navigator.of(context).pop(),
         );
@@ -220,6 +225,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           branding: _branding,
           entries: _lastGrant?.baseEntries ?? _entriesToday,
           sdkCopy: widget.sdkCopy,
+          sdkMedia: widget.sdkMedia,
           onClaim: _claimBonus,
           onSkip: _skipBonus,
         );

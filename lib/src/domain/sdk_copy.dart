@@ -93,6 +93,7 @@ class EmailCaptureCopy {
   final String? rulesPrefix;
   final String? rulesLinkText;
   final String? emailConsentText;
+  final String? prizeHeadline;
 
   const EmailCaptureCopy({
     this.title,
@@ -104,6 +105,7 @@ class EmailCaptureCopy {
     this.rulesPrefix,
     this.rulesLinkText,
     this.emailConsentText,
+    this.prizeHeadline,
   });
 
   factory EmailCaptureCopy.fromJson(Map<String, dynamic> json) {
@@ -117,6 +119,7 @@ class EmailCaptureCopy {
       rulesPrefix: json['rulesPrefix'] as String?,
       rulesLinkText: json['rulesLinkText'] as String?,
       emailConsentText: json['emailConsentText'] as String?,
+      prizeHeadline: json['prizeHeadline'] as String?,
     );
   }
 }
@@ -136,6 +139,7 @@ class StreakDashboardCopy {
   final String? alreadyClaimedTitle;
   final String? alreadyClaimedSubtitle;
   final String? doneButton;
+  final String? prizeHeadline;
 
   const StreakDashboardCopy({
     this.streakMessage,
@@ -151,6 +155,7 @@ class StreakDashboardCopy {
     this.alreadyClaimedTitle,
     this.alreadyClaimedSubtitle,
     this.doneButton,
+    this.prizeHeadline,
   });
 
   factory StreakDashboardCopy.fromJson(Map<String, dynamic> json) {
@@ -168,6 +173,7 @@ class StreakDashboardCopy {
       alreadyClaimedTitle: json['alreadyClaimedTitle'] as String?,
       alreadyClaimedSubtitle: json['alreadyClaimedSubtitle'] as String?,
       doneButton: json['doneButton'] as String?,
+      prizeHeadline: json['prizeHeadline'] as String?,
     );
   }
 }

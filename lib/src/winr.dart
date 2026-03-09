@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'domain/campaign.dart';
 import 'domain/daily_entry_grant.dart';
 import 'domain/sdk_copy.dart';
+import 'domain/sdk_media.dart';
 import 'domain/streak_engine.dart';
 import 'domain/streak_state.dart';
 import 'network/network_client.dart';
@@ -58,6 +59,7 @@ class WINR {
   static StreakState? _cachedStreakState;
   static Map<String, dynamic>? _cachedSdkConfig;
   static SdkCopy? _cachedSdkCopy;
+  static SdkMedia? _cachedSdkMedia;
   static bool? _cachedClaimedToday;
 
   // Registration state
@@ -183,6 +185,7 @@ class WINR {
             cachedClaimedToday: _cachedClaimedToday,
             sdkConfig: _cachedSdkConfig,
             sdkCopy: _cachedSdkCopy,
+            sdkMedia: _cachedSdkMedia,
           ),
           fullscreenDialog: true,
         ),
@@ -260,6 +263,7 @@ class WINR {
       _cachedStreakState = null;
       _cachedSdkConfig = null;
       _cachedSdkCopy = null;
+      _cachedSdkMedia = null;
       _cachedClaimedToday = null;
       _currentUser = null;
 
@@ -329,6 +333,7 @@ class WINR {
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
+      _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
 
       // Cache streak state
       if (response.campaign != null) {
@@ -357,6 +362,7 @@ class WINR {
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
+      _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
 
       // Update cached data
       if (response.campaign != null) {
@@ -398,6 +404,25 @@ class WINR {
         return SdkCopy.fromJson(copyJson);
       } catch (e) {
         Logger.instance.error('Failed to parse SDK copy config', e);
+        return null;
+      }
+    }
+    
+    return null;
+  }
+
+  /// Parses SDK config media into typed model.
+  static SdkMedia? _parseSdkMedia(Map<String, dynamic>? sdkConfig) {
+    if (sdkConfig == null) return null;
+    
+    final mediaJson = sdkConfig['media'];
+    if (mediaJson == null) return null;
+    
+    if (mediaJson is Map<String, dynamic>) {
+      try {
+        return SdkMedia.fromJson(mediaJson);
+      } catch (e) {
+        Logger.instance.error('Failed to parse SDK media config', e);
         return null;
       }
     }
@@ -499,6 +524,7 @@ class WINR {
     _cachedStreakState = null;
     _cachedSdkConfig = null;
     _cachedSdkCopy = null;
+    _cachedSdkMedia = null;
     _cachedClaimedToday = null;
     _isRegistering = false;
     _registrationCompleter = null;

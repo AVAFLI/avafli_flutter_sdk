@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/campaign.dart';
 import '../domain/sdk_copy.dart';
+import '../domain/sdk_media.dart';
 import '../domain/streak_state.dart';
 import '../winr_branding.dart';
 import 'streak_day_tile.dart';
@@ -19,6 +20,7 @@ class StreakDashboardView extends StatelessWidget {
   final VoidCallback onClaim;
   final VoidCallback onClose;
   final SdkCopy? sdkCopy;
+  final SdkMedia? sdkMedia;
 
   const StreakDashboardView({
     super.key,
@@ -31,6 +33,7 @@ class StreakDashboardView extends StatelessWidget {
     required this.onClose,
     this.campaign,
     this.sdkCopy,
+    this.sdkMedia,
   });
 
   static String formatPrize(double value) {
@@ -38,6 +41,23 @@ class StreakDashboardView extends StatelessWidget {
     final formatted = intVal.toString().replaceAllMapped(
         RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
     return '\$$formatted CASH';
+  }
+
+  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+    if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
+      // Use Lottie if available, or fallback
+      return defaultWidget; // TODO: Remote Lottie needs lottie package with network support
+    }
+    if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
+      return Image.network(
+        media.imageUrl!,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    return defaultWidget;
   }
 
   @override
@@ -95,37 +115,40 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildHeroLogo(BoxConstraints constraints) {
     final heroLogo = branding.logoTwo ?? branding.logo;
-    if (heroLogo == null) return const SizedBox.shrink();
-
     final heroWidth = constraints.maxWidth * 0.75;
     final heroHeight = constraints.maxHeight * 0.22;
 
-    return Container(
-      constraints: BoxConstraints(
-        maxWidth: constraints.maxWidth * 0.85,
-        maxHeight: constraints.maxHeight * 0.24,
-      ),
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: branding.accentGlowColor.withValues(alpha: 0.5),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: heroWidth,
-        height: heroHeight,
-        child: heroLogo,
-      ),
-    );
+    final defaultWidget = heroLogo != null
+        ? Container(
+            constraints: BoxConstraints(
+              maxWidth: constraints.maxWidth * 0.85,
+              maxHeight: constraints.maxHeight * 0.24,
+            ),
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: branding.accentGlowColor.withValues(alpha: 0.5),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: heroWidth,
+              height: heroHeight,
+              child: heroLogo,
+            ),
+          )
+        : const SizedBox.shrink();
+
+    return _buildHeroMedia(sdkMedia?.streakDashboard, defaultWidget);
   }
 
   Widget _buildPrizeBanner() {
-    final prizeText = campaign?.prizeValue != null
-        ? 'WIN ${formatPrize(campaign!.prizeValue!)}!'
-        : 'WIN PRIZES!';
+    final prizeText = sdkCopy?.streakDashboard?.prizeHeadline ??
+        (campaign?.prizeValue != null
+            ? 'WIN ${formatPrize(campaign!.prizeValue!)}!'
+            : 'WIN PRIZES!');
 
     return Column(
       children: [
