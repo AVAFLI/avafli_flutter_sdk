@@ -179,6 +179,7 @@ class WINR {
             cachedCampaign: _cachedCampaign,
             cachedStreakState: _cachedStreakState,
             cachedClaimedToday: _cachedClaimedToday,
+            sdkConfig: _cachedSdkConfig,
           ),
           fullscreenDialog: true,
         ),

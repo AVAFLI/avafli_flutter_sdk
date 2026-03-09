@@ -45,6 +45,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final Campaign? cachedCampaign;
   final StreakState? cachedStreakState;
   final bool? cachedClaimedToday;
+  final Map<String, dynamic>? sdkConfig;
 
   const WINRExperienceScreen({
     super.key,
@@ -58,6 +59,7 @@ class WINRExperienceScreen extends StatefulWidget {
     this.cachedCampaign,
     this.cachedStreakState,
     this.cachedClaimedToday,
+    this.sdkConfig,
   });
 
   @override
@@ -82,7 +84,21 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   bool? _backendClaimedToday;
   int? _backendStreakDay;
 
-  WINRBranding get _branding => widget.configuration.branding;
+  /// Branding with server-driven overrides merged in.
+  late final WINRBranding _branding = widget.configuration.branding
+      .applyingServerBranding(_serverBranding);
+
+  /// Server branding map from sdkConfig (nullable).
+  Map<String, dynamic>? get _serverBranding {
+    final branding = widget.sdkConfig?['branding'];
+    return branding is Map<String, dynamic> ? branding : null;
+  }
+
+  /// Server copy map from sdkConfig (nullable).
+  Map<String, dynamic>? get _serverCopy {
+    final copy = widget.sdkConfig?['copy'];
+    return copy is Map<String, dynamic> ? copy : null;
+  }
 
   @override
   void initState() {
@@ -182,6 +198,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           rulesUrl: null, // campaign rulesUrl if available
           prefillEmail: widget.user.email,
           prizeValue: _campaign?.prizeValue,
+          welcomeTitle: _serverCopy?['welcomeTitle'] as String?,
+          welcomeSubtitle: _serverCopy?['welcomeSubtitle'] as String?,
+          ageGateText: _serverCopy?['ageGateText'] as String?,
+          rulesLinkText: _serverCopy?['rulesLinkText'] as String?,
           onSubmit: _submitEmail,
           onSkip: _skipEmailCapture,
         );
@@ -194,6 +214,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           ladder: _ladder,
           claimedToday: _claimedToday,
           campaign: _campaign,
+          streakMessage: _serverCopy?['streakMessage'] as String?,
+          dailyClaimButton: _serverCopy?['dailyClaimButton'] as String?,
           onClaim: _claimDailyEntries,
           onClose: () => Navigator.of(context).pop(),
         );
