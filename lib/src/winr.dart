@@ -232,7 +232,7 @@ class WINR {
       return;
     }
 
-    await PushNotificationManager.instance.register();
+    Logger.instance.debug('Push reminders enabled — call PushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
   }
 
   /// Deletes all user data (GDPR compliance).
