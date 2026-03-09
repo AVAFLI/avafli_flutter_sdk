@@ -2,474 +2,488 @@ import 'package:flutter/material.dart';
 
 import '../domain/campaign.dart';
 import '../domain/streak_state.dart';
-import '../rewards/rewarded_video_provider.dart';
 import '../winr_branding.dart';
-import 'bonus_entries_view.dart';
 import 'streak_day_tile.dart';
 
-/// Streak dashboard view showing the user's streak progress with day tiles.
+/// Streak dashboard view — matches iOS StreakDashboardView.swift.
 ///
-/// Displays the current streak with individual day tiles, bonus multipliers,
-/// and available actions like claiming daily entries or bonus videos.
-class StreakDashboardView extends StatefulWidget {
-  /// The active campaign
-  final Campaign campaign;
-
-  /// Current streak state
+/// Hero logo + prize banner → horizontal streak tiles → bonus progress → sticky footer.
+class StreakDashboardView extends StatelessWidget {
+  final WINRBranding branding;
   final StreakState streakState;
-
-  /// Whether today's entry has been claimed
+  final int entriesToday;
+  final List<int> ladder;
   final bool claimedToday;
-
-  /// Callback when daily entries are claimed
-  final VoidCallback onClaimDaily;
-
-  /// Callback when bonus entries are claimed
-  final VoidCallback onClaimBonus;
-
-  /// Optional rewarded video provider
-  final RewardedVideoProvider? rewardedVideoProvider;
+  final Campaign? campaign;
+  final VoidCallback onClaim;
+  final VoidCallback onClose;
+  final String? streakMessage;
+  final String? dailyClaimButton;
 
   const StreakDashboardView({
     super.key,
-    required this.campaign,
+    required this.branding,
     required this.streakState,
+    required this.entriesToday,
+    required this.ladder,
     required this.claimedToday,
-    required this.onClaimDaily,
-    required this.onClaimBonus,
-    this.rewardedVideoProvider,
+    required this.onClaim,
+    required this.onClose,
+    this.campaign,
+    this.streakMessage,
+    this.dailyClaimButton,
   });
 
-  @override
-  State<StreakDashboardView> createState() => _StreakDashboardViewState();
-}
-
-class _StreakDashboardViewState extends State<StreakDashboardView>
-    with TickerProviderStateMixin {
-  late AnimationController _slideController;
-  late AnimationController _progressController;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _progressAnimation;
-
-  final PageController _pageController = PageController();
-  // ignore: unused_field
-  bool _showBonusEntries = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: widget.streakState.currentDay / 30.0, // Assuming 30-day cycle
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Start animations
-    _slideController.forward();
-    _progressController.forward();
-  }
-
-  @override
-  void dispose() {
-    _slideController.dispose();
-    _progressController.dispose();
-    _pageController.dispose();
-    super.dispose();
+  static String formatPrize(double value) {
+    final intVal = value.toInt();
+    final formatted = intVal.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '\$$formatted CASH';
   }
 
   @override
   Widget build(BuildContext context) {
-    return SlideTransition(
-      position: _slideAnimation,
-      child: Column(
-        children: [
-          _buildStreakHeader(),
-          const SizedBox(height: 24),
-          _buildProgressIndicator(),
-          const SizedBox(height: 32),
-          _buildDayTiles(),
-          const SizedBox(height: 24),
-          _buildStreakInfo(),
-          if (widget.rewardedVideoProvider != null) ...[
-            const SizedBox(height: 16),
-            _buildBonusSection(),
-          ],
-        ],
-      ),
-    );
-  }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
+        final safeBottom = bottomPadding == 0 ? 16.0 : bottomPadding;
 
-  Widget _buildStreakHeader() {
-    final branding = _getBranding();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            branding.primaryColor.withValues(alpha: 0.2),
-            branding.cardBackgroundColor.withValues(alpha: 0.9),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(branding.cornerRadius),
-        border: Border.all(
-          color: branding.primaryColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.local_fire_department,
-                color: branding.accentGlowColor,
-                size: 28,
+        return Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Main scrollable content
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                left: 14,
+                right: 14,
+                bottom: 120,
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Day ${widget.streakState.currentDay} Streak',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: branding.primaryColor,
+              child: ConstrainedBox(
+                constraints:
+                    BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Headroom for animations
+                    const SizedBox(height: 20),
+
+                    // Hero logo
+                    _buildHeroLogo(constraints),
+                    const SizedBox(height: 14),
+
+                    // Prize banner
+                    _buildPrizeBanner(),
+                    const SizedBox(height: 14),
+
+                    // Streak tiles carousel
+                    _buildStreakTiles(),
+                    const SizedBox(height: 14),
+
+                    // Bonus progress
+                    if (campaign != null) _buildBonusProgress(),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${widget.streakState.totalEntriesEarned} total entries earned',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: branding.secondaryTextColor,
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildPrizeInfo(),
-        ],
-      ),
+
+            // Sticky footer
+            _buildStickyFooter(safeBottom),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildPrizeInfo() {
-    final branding = _getBranding();
+  Widget _buildHeroLogo(BoxConstraints constraints) {
+    final heroLogo = branding.logoTwo ?? branding.logo;
+    if (heroLogo == null) return const SizedBox.shrink();
+
+    final heroWidth = constraints.maxWidth * 0.75;
+    final heroHeight = constraints.maxHeight * 0.22;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: branding.primaryButtonColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: branding.primaryButtonColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
+      constraints: BoxConstraints(
+        maxWidth: constraints.maxWidth * 0.85,
+        maxHeight: constraints.maxHeight * 0.24,
       ),
-      child: Text(
-        'Win ${_formatPrize(widget.campaign.prizeValue ?? 0)}',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: branding.primaryButtonColor,
-        ),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: branding.accentGlowColor.withValues(alpha: 0.5),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: heroWidth,
+        height: heroHeight,
+        child: heroLogo,
       ),
     );
   }
 
-  Widget _buildProgressIndicator() {
-    final branding = _getBranding();
+  Widget _buildPrizeBanner() {
+    final prizeText = campaign?.prizeValue != null
+        ? 'WIN ${formatPrize(campaign!.prizeValue!)}!'
+        : 'WIN PRIZES!';
 
     return Column(
       children: [
         Text(
-          'Streak Progress',
+          prizeText,
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: branding.secondaryTextColor,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            shadows: [
+              Shadow(
+                color: branding.accentGlowColor.withValues(alpha: 0.8),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        Container(
-          height: 8,
-          decoration: BoxDecoration(
-            color: branding.cardBackgroundColor.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(4),
+        const SizedBox(height: 4),
+        Text(
+          streakMessage ??
+              'Keep your daily streak alive to unlock more entries.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: branding.mutedTextColor,
           ),
-          child: AnimatedBuilder(
-            animation: _progressAnimation,
-            builder: (context, child) {
-              return FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: _progressAnimation.value.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        branding.primaryButtonColor,
-                        branding.accentGlowColor,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: branding.accentGlowColor.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStreakTiles() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: Text(
+            'Upcoming rewards',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: branding.secondaryTextColor,
+            ),
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          '${widget.streakState.currentDay} / 30 days',
-          style: TextStyle(
-            fontSize: 12,
-            color: branding.mutedTextColor,
+        SizedBox(
+          height: 155,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Row(
+              children: List.generate(ladder.length, (index) {
+                final day = index + 1;
+                final entries = ladder[index];
+                final isClaimed = day < streakState.currentDay ||
+                    (day == streakState.currentDay && claimedToday);
+                final isToday =
+                    day == streakState.currentDay && !claimedToday;
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                      right: index < ladder.length - 1 ? 10 : 0),
+                  child: CompactStreakTile(
+                    dayNumber: day,
+                    entries: entries,
+                    isClaimed: isClaimed,
+                    isToday: isToday,
+                    branding: branding,
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDayTiles() {
-    final branding = _getBranding();
-    final visibleDays = _getVisibleDays();
+  Widget _buildBonusProgress() {
+    final config = campaign!.streakConfig;
 
-    return SizedBox(
-      height: 180,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: visibleDays.map((dayData) {
-            final day = dayData['day'] ?? 0;
-            final entries = dayData['entries'] ?? 0;
-            final isToday =
-                day == widget.streakState.currentDay && !widget.claimedToday;
-            final isClaimed = day < widget.streakState.currentDay ||
-                (day == widget.streakState.currentDay && widget.claimedToday);
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: StreakDayTile(
-                dayNumber: day,
-                entries: entries,
-                isClaimed: isClaimed,
-                isToday: isToday,
-                branding: branding,
-                onTap: isToday ? widget.onClaimDaily : null,
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStreakInfo() {
-    final branding = _getBranding();
-    final multiplier = _calculateMultiplier();
-
-    if (multiplier <= 1.0) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            branding.accentGlowColor.withValues(alpha: 0.1),
-            branding.primaryButtonColor.withValues(alpha: 0.1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(branding.cornerRadius),
-        border: Border.all(
-          color: branding.accentGlowColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.trending_up,
-            color: branding.accentGlowColor,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Streak Bonus',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: branding.primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${multiplier.toStringAsFixed(1)}x multiplier active',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: branding.secondaryTextColor,
-                  ),
-                ),
-              ],
+          Text(
+            'Bonus Progress',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: branding.secondaryTextColor,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: branding.accentGlowColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              '${multiplier.toStringAsFixed(1)}x',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: branding.accentGlowColor,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _BonusProgressPill(
+                  label: 'Week',
+                  current: streakState.weeklyCurrent,
+                  target: config.weeklyBonusThreshold,
+                  bonus: config.weeklyBonusEntries,
+                  branding: branding,
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _BonusProgressPill(
+                  label: 'Month',
+                  current: streakState.monthlyCurrent,
+                  target: config.monthlyBonusThreshold,
+                  bonus: config.monthlyBonusEntries,
+                  branding: branding,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBonusSection() {
-    final branding = _getBranding();
-
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () {
-          setState(() {
-            _showBonusEntries = true;
-          });
-          _showBonusEntriesModal();
-        },
-        icon: Icon(
-          Icons.play_circle_fill,
-          color: branding.primaryButtonColor,
+  Widget _buildStickyFooter(double safeBottom) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 14,
+        right: 14,
+        bottom: safeBottom,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            branding.backgroundColor.withValues(alpha: 0.0),
+            branding.backgroundColor.withValues(alpha: 0.96),
+          ],
         ),
-        label: Text(
-          'Watch Video for Bonus Entries',
+      ),
+      child: claimedToday ? _buildClaimedFooter() : _buildClaimFooter(),
+    );
+  }
+
+  Widget _buildClaimedFooter() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.check_circle,
+          size: 28,
+          color: branding.accentGlowColor,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Today's entries claimed!",
           style: TextStyle(
-            color: branding.primaryButtonColor,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
+            color: branding.secondaryTextColor,
           ),
         ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          side: BorderSide(
-            color: branding.primaryButtonColor,
-            width: 2,
+        const SizedBox(height: 6),
+        Text(
+          'Come back tomorrow to continue your streak.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: branding.mutedTextColor,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(branding.cornerRadius),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: GestureDetector(
+            onTap: onClose,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: branding.cardBackgroundColor.withValues(alpha: 0.8),
+                borderRadius:
+                    BorderRadius.circular(branding.cornerRadius),
+                border: Border.all(
+                  color:
+                      branding.accentGlowColor.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Done',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: branding.secondaryTextColor,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
-  void _showBonusEntriesModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => BonusEntriesView(
-        branding: _getBranding(),
-        rewardedVideoProvider: widget.rewardedVideoProvider!,
-        onComplete: () {
-          widget.onClaimBonus();
-          Navigator.of(context).pop();
-        },
-      ),
+  Widget _buildClaimFooter() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Day ${streakState.currentDay} reward',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: branding.secondaryTextColor,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Claim $entriesToday entries for today\'s visit to keep your streak alive.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: branding.mutedTextColor,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: GestureDetector(
+            onTap: onClaim,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: branding.primaryButtonColor,
+                borderRadius:
+                    BorderRadius.circular(branding.cornerRadius),
+                boxShadow: [
+                  BoxShadow(
+                    color: branding.accentGlowColor
+                        .withValues(alpha: 0.6),
+                    blurRadius: 14,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  dailyClaimButton ?? 'Claim $entriesToday Entries',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: branding.primaryButtonTextColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
 
-  // MARK: - Helper Methods
+/// Bonus progress pill — matches iOS BonusProgressPill.
+class _BonusProgressPill extends StatelessWidget {
+  final String label;
+  final int current;
+  final int target;
+  final int bonus;
+  final WINRBranding branding;
 
-  WINRBranding _getBranding() {
-    // In a real implementation, this would come from the widget
-    // For now, using a default branding
-    return WINRBranding.defaultBranding();
-  }
+  const _BonusProgressPill({
+    required this.label,
+    required this.current,
+    required this.target,
+    required this.bonus,
+    required this.branding,
+  });
 
-  List<Map<String, int>> _getVisibleDays() {
-    final days = <Map<String, int>>[];
-    final currentDay = widget.streakState.currentDay;
-
-    // Show current day and next few days
-    for (int i = 1; i <= (currentDay + 2).clamp(1, 30); i++) {
-      days.add({
-        'day': i,
-        'entries': _calculateEntriesForDay(i),
-      });
-    }
-
-    return days;
-  }
-
-  int _calculateEntriesForDay(int day) {
-    // Base entries calculation - matches StreakEngine logic
-    const baseEntries = 10;
-    final weeklyBonus = ((day - 1) ~/ 7) * 10; // Every 7 days
-    final monthlyBonus = ((day - 1) ~/ 30) * 50; // Every 30 days
-
-    return baseEntries + weeklyBonus + monthlyBonus;
-  }
-
-  double _calculateMultiplier() {
-    final day = widget.streakState.currentDay;
-
-    if (day >= 30) return 3.0;
-    if (day >= 21) return 2.5;
-    if (day >= 14) return 2.0;
-    if (day >= 7) return 1.5;
-
-    return 1.0;
-  }
-
-  String _formatPrize(double value) {
-    if (value >= 1000000) {
-      return '\$${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      return '\$${(value / 1000).toStringAsFixed(1)}K';
-    } else {
-      return '\$${value.toStringAsFixed(0)}';
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: branding.cardBackgroundColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(branding.cornerRadius),
+        border: Border.all(
+          color: branding.accentGlowColor.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: branding.mutedTextColor,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$current/$target days',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: branding.secondaryTextColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: (current / target).clamp(0.0, 1.0),
+              backgroundColor: branding.cardBorderColor,
+              color: branding.accentGlowColor,
+              minHeight: 4.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (current >= target)
+            Text(
+              '✓ Bonus earned!',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: branding.accentGlowColor,
+              ),
+            )
+          else
+            Text(
+              '+$bonus entries',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: branding.mutedTextColor,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

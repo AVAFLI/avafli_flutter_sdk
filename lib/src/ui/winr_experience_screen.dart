@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
 
 import '../domain/campaign.dart';
+import '../domain/daily_entry_grant.dart';
 import '../domain/streak_engine.dart';
 import '../domain/streak_state.dart';
 import '../network/network_client.dart';
 import '../network/winr_api.dart';
 import '../rewards/rewarded_video_provider.dart';
-import '../services/analytics/analytics_adapter.dart';
 import '../services/logger.dart';
 import '../storage/preferences_storage.dart';
 import '../storage/secure_storage.dart';
+import '../winr_branding.dart';
 import '../winr_configuration.dart';
 import '../winr_user.dart';
+import 'bonus_entries_view.dart';
 import 'email_capture_view.dart';
+import 'how_it_works_view.dart';
 import 'streak_dashboard_view.dart';
 import 'winr_experience_header.dart';
-import 'winr_theme.dart';
 
-/// Main experience screen for the WINR SDK.
+/// Experience state — mirrors iOS WINRExperienceViewModel.State.
+enum _ExperiencePhase {
+  loading,
+  emailCapture,
+  streak,
+  bonus,
+  completed,
+  howItWorks,
+  error,
+}
+
+/// Main experience screen — matches iOS WINRExperienceView.swift.
 ///
-/// This is the primary UI that users interact with to claim their daily entries,
-/// view their streak progress, and engage with the sweepstakes experience.
+/// ZStack: background gradient + radial glow → content (padded top 50) → header overlay.
+/// State machine: loading → emailCapture → streak → bonus → completed.
 class WINRExperienceScreen extends StatefulWidget {
   final WINRConfiguration configuration;
   final WINRUser user;
@@ -51,388 +64,226 @@ class WINRExperienceScreen extends StatefulWidget {
   State<WINRExperienceScreen> createState() => _WINRExperienceScreenState();
 }
 
-class _WINRExperienceScreenState extends State<WINRExperienceScreen>
-    with TickerProviderStateMixin {
-  // State
+class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
+  // State machine
+  _ExperiencePhase _phase = _ExperiencePhase.loading;
+  _ExperiencePhase? _lastPrimaryPhase;
+
+  // Data
   Campaign? _campaign;
   StreakState? _streakState;
+  int _entriesToday = 0;
+  List<int> _ladder = [];
   bool _claimedToday = false;
-  bool _isLoading = false;
-  String? _error;
+  DailyEntryGrant? _lastGrant;
+  String? _errorMessage;
 
-  // Animation controllers
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  // Backend cache
+  bool? _backendClaimedToday;
+  int? _backendStreakDay;
 
-  // Page controller for different views
-  late PageController _pageController;
-  // ignore: unused_field
-  int _currentPage = 0;
+  WINRBranding get _branding => widget.configuration.branding;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize animations
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
-
-    // Initialize page controller
-    _pageController = PageController();
-
-    // Initialize state
     _campaign = widget.cachedCampaign;
     _streakState = widget.cachedStreakState;
     _claimedToday = widget.cachedClaimedToday ?? false;
-
-    // Start animations
-    _fadeController.forward();
-    _slideController.forward();
-
-    // Load data
-    _loadExperienceData();
+    _loadExperience();
   }
 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
+  // ---------------------------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    final theme = WINRTheme.create(widget.configuration.branding);
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // Background layer
+          _buildBackground(),
 
-    return Theme(
-      data: theme,
-      child: Scaffold(
-        backgroundColor: widget.configuration.branding.backgroundColor,
-        body: Container(
-          decoration:
-              WINRTheme.createGradientBackground(widget.configuration.branding),
-          child: SafeArea(
-            child: AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _fadeAnimation.value,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: _buildContent(),
-                  ),
-                );
-              },
+          // Main content (padded top 50 for header clearance)
+          Padding(
+            padding: const EdgeInsets.only(top: 50),
+            child: _buildContent(),
+          ),
+
+          // Header overlay
+          Positioned(
+            top: 15,
+            left: 15,
+            right: 15,
+            child: SafeArea(
+              bottom: false,
+              child: WINRExperienceHeader(
+                branding: _branding,
+                showsBack: _phase == _ExperiencePhase.howItWorks,
+                showsInfo: (_phase == _ExperiencePhase.streak ||
+                        _phase == _ExperiencePhase.emailCapture) &&
+                    _phase != _ExperiencePhase.howItWorks,
+                onBack: _hideHowItWorks,
+                onInfo: _showHowItWorks,
+                onClose: () => Navigator.of(context).pop(),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildContent() {
-    if (_isLoading) {
-      return _buildLoadingState();
-    }
-
-    if (_error != null) {
-      return _buildErrorState();
-    }
-
-    return PageView(
-      controller: _pageController,
-      onPageChanged: (page) {
-        setState(() {
-          _currentPage = page;
-        });
-      },
+  Widget _buildBackground() {
+    return Stack(
       children: [
-        _buildMainExperience(),
-        if (widget.user.email == null) _buildEmailCapture(),
-      ],
-    );
-  }
-
-  Widget _buildMainExperience() {
-    return Column(
-      children: [
-        // Header with branding and close button
-        WINRExperienceHeader(
-          branding: widget.configuration.branding,
-          title: _campaign?.title ?? 'Daily Entries',
-          onClose: () => Navigator.of(context).pop(),
-        ),
-
-        // Main content
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Streak dashboard
-                if (_campaign != null && _streakState != null)
-                  StreakDashboardView(
-                    campaign: _campaign!,
-                    streakState: _streakState!,
-                    claimedToday: _claimedToday,
-                    onClaimDaily: _handleDailyClaim,
-                    onClaimBonus: _handleBonusClaim,
-                    rewardedVideoProvider: widget.rewardedVideoProvider,
-                  ),
-
-                const SizedBox(height: 32),
-
-                // Action buttons
-                if (!_claimedToday) _buildClaimButton(),
-                if (_claimedToday) _buildClaimedState(),
-
-                const SizedBox(height: 16),
-
-                // Secondary actions
-                _buildSecondaryActions(),
+        // Linear gradient
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _branding.backgroundColor,
+                _branding.backgroundColor.withValues(alpha: 0.94),
               ],
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildClaimButton() {
-    final entries = _calculateDailyEntries();
-
-    return Container(
-      width: double.infinity,
-      decoration: WINRTheme.createCardDecoration(
-        widget.configuration.branding,
-        withGlow: true,
-      ),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleDailyClaim,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(
-                widget.configuration.branding.cornerRadius),
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              'Claim $entries Entries',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Day ${_streakState?.currentDay ?? 1} of your streak',
-              style: TextStyle(
-                fontSize: 14,
-                color: widget.configuration.branding.primaryButtonTextColor
-                    .withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClaimedState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: WINRTheme.createCardDecoration(widget.configuration.branding),
-      child: Column(
-        children: [
-          Icon(
-            Icons.check_circle,
-            color: widget.configuration.branding.accentGlowColor,
-            size: 48,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Entries Claimed!',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: widget.configuration.branding.primaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Come back tomorrow to continue your streak',
-            style: TextStyle(
-              fontSize: 14,
-              color: widget.configuration.branding.secondaryTextColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecondaryActions() {
-    return Column(
-      children: [
-        // Rewarded video button
-        if (widget.rewardedVideoProvider != null && _claimedToday)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _handleBonusClaim,
-                icon: const Icon(Icons.play_circle_fill),
-                label: const Text('Watch Video for Bonus Entries'),
+        // Radial accent glow
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.topCenter,
+                radius: 1.0,
+                colors: [
+                  _branding.accentGlowColor.withValues(alpha: 0.35),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
-
-        // Email capture prompt
-        if (widget.user.email == null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () => _pageController.nextPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                ),
-                icon: const Icon(Icons.email),
-                label: const Text('Enter Email for More Chances'),
-              ),
-            ),
-          ),
-
-        // Close button
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
         ),
       ],
     );
   }
 
-  Widget _buildEmailCapture() {
-    return EmailCaptureView(
-      branding: widget.configuration.branding,
-      onEmailSubmitted: (email, age) async {
-        try {
-          await widget.networkClient.send(SubmitEmailRequest(
-            email: email,
-            age: age,
-          ));
+  Widget _buildContent() {
+    switch (_phase) {
+      case _ExperiencePhase.loading:
+        return _buildLoading();
 
-          // Update user and go back to main experience
-          widget.configuration.options.analyticsAdapter?.track(
-            WINRAnalyticsEvents.emailCaptureCompleted,
-            {'email_domain': email.split('@').last},
-          );
-
-          _pageController.previousPage(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        } catch (e) {
-          widget.configuration.options.analyticsAdapter?.track(
-            WINRAnalyticsEvents.emailCaptureFailed,
-            {'error': e.toString()},
-          );
-          _showError('Failed to submit email. Please try again.');
-        }
-      },
-      onSkip: () {
-        _pageController.previousPage(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+      case _ExperiencePhase.emailCapture:
+        return EmailCaptureView(
+          branding: _branding,
+          rulesUrl: null, // campaign rulesUrl if available
+          prefillEmail: widget.user.email,
+          prizeValue: _campaign?.prizeValue,
+          onSubmit: _submitEmail,
+          onSkip: _skipEmailCapture,
         );
-      },
-    );
+
+      case _ExperiencePhase.streak:
+        return StreakDashboardView(
+          branding: _branding,
+          streakState: _streakState!,
+          entriesToday: _entriesToday,
+          ladder: _ladder,
+          claimedToday: _claimedToday,
+          campaign: _campaign,
+          onClaim: _claimDailyEntries,
+          onClose: () => Navigator.of(context).pop(),
+        );
+
+      case _ExperiencePhase.bonus:
+        return BonusEntriesView(
+          branding: _branding,
+          entries: _lastGrant?.baseEntries ?? _entriesToday,
+          onClaim: _claimBonus,
+          onSkip: _skipBonus,
+        );
+
+      case _ExperiencePhase.howItWorks:
+        return HowItWorksView(
+          branding: _branding,
+          onPrimary: _hideHowItWorks,
+        );
+
+      case _ExperiencePhase.completed:
+        return _buildCompleted();
+
+      case _ExperiencePhase.error:
+        return _buildError();
+    }
   }
 
-  Widget _buildLoadingState() {
+  // ---------------------------------------------------------------------------
+  // STATIC SCREENS
+  // ---------------------------------------------------------------------------
+
+  Widget _buildLoading() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: widget.configuration.branding.primaryButtonColor,
-          ),
-          const SizedBox(height: 24),
+          CircularProgressIndicator(color: _branding.accentGlowColor),
+          const SizedBox(height: 16),
           Text(
-            'Loading your streak...',
-            style: TextStyle(
-              color: widget.configuration.branding.secondaryTextColor,
-              fontSize: 16,
-            ),
+            'Loading today\'s reward…',
+            style: TextStyle(color: _branding.primaryColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildCompleted() {
+    final grant = _lastGrant;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline,
-              color: widget.configuration.branding.primaryColor,
-              size: 64,
-            ),
-            const SizedBox(height: 24),
             Text(
-              'Oops! Something went wrong',
+              'Entries Claimed!',
               style: TextStyle(
-                color: widget.configuration.branding.primaryColor,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: _branding.primaryColor,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _error ?? 'Please try again',
-              style: TextStyle(
-                color: widget.configuration.branding.secondaryTextColor,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => _loadExperienceData(),
-              child: const Text('Try Again'),
             ),
             const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+            Text(
+              '+${grant?.total ?? _entriesToday} entries added to this month\'s drawing.',
+              style: TextStyle(color: _branding.mutedTextColor),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _branding.primaryButtonColor,
+                  borderRadius:
+                      BorderRadius.circular(_branding.cornerRadius),
+                ),
+                child: Center(
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: _branding.primaryButtonTextColor,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -440,196 +291,322 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
     );
   }
 
-  // MARK: - Data Loading
-
-  Future<void> _loadExperienceData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      // Load cached data first
-      await _loadCachedData();
-
-      // Refresh from network
-      await _refreshFromNetwork();
-    } catch (e) {
-      Logger.instance.error('Failed to load experience data', e);
-      setState(() {
-        _error = 'Unable to load data. Please check your connection.';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadCachedData() async {
-    // Load cached streak state
-    final cachedStreak = await widget.preferencesStorage.getStreakState();
-    if (cachedStreak != null) {
-      setState(() {
-        _streakState = cachedStreak;
-      });
-    }
-
-    // Load cached campaign
-    final cachedCampaign = await widget.preferencesStorage.getCachedCampaign();
-    if (cachedCampaign != null) {
-      setState(() {
-        _campaign = cachedCampaign;
-      });
-    }
-  }
-
-  Future<void> _refreshFromNetwork() async {
-    try {
-      final response =
-          await widget.networkClient.send(GetActiveCampaignRequest());
-
-      setState(() {
-        _campaign = response.campaign;
-        _claimedToday = response.claimedToday;
-      });
-
-      // Cache the data
-      if (response.campaign != null) {
-        await widget.preferencesStorage.cacheCampaign(response.campaign!);
-      }
-    } catch (e) {
-      // Use cached data and log error
-      Logger.instance.error('Failed to refresh campaign data', e);
-    }
-  }
-
-  // MARK: - Actions
-
-  Future<void> _handleDailyClaim() async {
-    if (_isLoading || _claimedToday) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Calculate new streak state
-      final currentState = _streakState;
-      final now = DateTime.now();
-
-      final result = widget.streakEngine.nextState(currentState, now);
-      if (result.isError) {
-        throw Exception(result.error.message);
-      }
-
-      // Claim entries from backend
-      final response =
-          await widget.networkClient.send(ClaimDailyEntriesRequest());
-
-      // Update local state
-      final newStreakState = result.value.copyWith(
-        totalEntriesEarned: (currentState?.totalEntriesEarned ?? 0) +
-            response.baseEntries +
-            response.bonusEntries,
-      );
-
-      setState(() {
-        _streakState = newStreakState;
-        _claimedToday = true;
-      });
-
-      // Save state
-      await widget.preferencesStorage.saveStreakState(newStreakState);
-      await widget.preferencesStorage.saveLastClaimedDate(now);
-
-      // Track analytics
-      widget.configuration.options.analyticsAdapter?.track(
-        WINRAnalyticsEvents.dailyEntriesClaimed,
-        {
-          'streak_day': newStreakState.currentDay,
-          'base_entries': response.baseEntries,
-          'bonus_entries': response.bonusEntries,
-          'total_entries': response.baseEntries + response.bonusEntries,
-          'weekly_bonus_earned': response.weeklyBonusEarned,
-          'monthly_bonus_earned': response.monthlyBonusEarned,
-        },
-      );
-
-      // Return result to caller
-      if (mounted) {
-        Navigator.of(context).pop(response.toEntryGrant());
-      }
-    } catch (e) {
-      Logger.instance.error('Daily claim failed', e);
-      widget.configuration.options.analyticsAdapter?.track(
-        WINRAnalyticsEvents.claimFailed,
-        {'error': e.toString()},
-      );
-      _showError('Failed to claim entries. Please try again.');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _handleBonusClaim() async {
-    final provider = widget.rewardedVideoProvider;
-    if (provider == null) return;
-
-    try {
-      widget.configuration.options.analyticsAdapter?.track(
-        WINRAnalyticsEvents.rewardedVideoStarted,
-      );
-
-      final completed = await provider.showAd();
-      if (completed) {
-        // Claim bonus entries from backend
-        final response =
-            await widget.networkClient.send(ClaimBonusEntriesRequest());
-
-        widget.configuration.options.analyticsAdapter?.track(
-          WINRAnalyticsEvents.rewardedVideoCompleted,
-          {'bonus_entries': response.bonusEntries},
-        );
-
-        _showSuccess('You earned ${response.bonusEntries} bonus entries!');
-      }
-    } catch (e) {
-      Logger.instance.error('Bonus claim failed', e);
-      widget.configuration.options.analyticsAdapter?.track(
-        WINRAnalyticsEvents.rewardedVideoFailed,
-        {'error': e.toString()},
-      );
-      _showError('Failed to claim bonus entries. Please try again.');
-    }
-  }
-
-  // MARK: - Helpers
-
-  int _calculateDailyEntries() {
-    if (_campaign == null || _streakState == null) return 10;
-    return widget.streakEngine.baseEntries(_streakState!.currentDay);
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red.shade700,
-        behavior: SnackBarBehavior.floating,
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Something went wrong.',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _branding.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? 'Please try again later.',
+              style: TextStyle(color: _branding.mutedTextColor),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _branding.primaryButtonColor,
+                  borderRadius:
+                      BorderRadius.circular(_branding.cornerRadius),
+                ),
+                child: Center(
+                  child: Text(
+                    'Close',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: _branding.primaryButtonTextColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green.shade700,
-        behavior: SnackBarBehavior.floating,
-      ),
+  // ---------------------------------------------------------------------------
+  // STATE MACHINE ACTIONS
+  // ---------------------------------------------------------------------------
+
+  void _showHowItWorks() {
+    setState(() {
+      _lastPrimaryPhase = _phase;
+      _phase = _ExperiencePhase.howItWorks;
+    });
+  }
+
+  void _hideHowItWorks() {
+    setState(() {
+      _phase = _lastPrimaryPhase ?? _ExperiencePhase.loading;
+      _lastPrimaryPhase = null;
+      if (_phase == _ExperiencePhase.loading) {
+        _loadExperience();
+      }
+    });
+  }
+
+  void _skipEmailCapture() {
+    // Email is mandatory — stay on email capture
+    setState(() => _phase = _ExperiencePhase.emailCapture);
+  }
+
+  // ---------------------------------------------------------------------------
+  // DATA LOADING
+  // ---------------------------------------------------------------------------
+
+  Future<void> _loadExperience() async {
+    setState(() => _phase = _ExperiencePhase.loading);
+    try {
+      // Fetch campaign from backend
+      bool? backendClaimed = widget.cachedClaimedToday;
+      int? backendStreakDay;
+
+      try {
+        final response =
+            await widget.networkClient.send(GetActiveCampaignRequest());
+        _campaign = response.campaign ?? _campaign;
+        backendClaimed = response.claimedToday;
+        backendStreakDay = response.streakDay;
+        if (response.campaign != null) {
+          await widget.preferencesStorage.cacheCampaign(response.campaign!);
+        }
+      } catch (e) {
+        // Offline fallback
+        _campaign ??= await widget.preferencesStorage.getCachedCampaign();
+        Logger.instance.error('Using cached campaign (offline)', e);
+      }
+
+      _backendClaimedToday = backendClaimed;
+      _backendStreakDay = backendStreakDay;
+
+      // Check stored email
+      final storedEmail = await widget.secureStorage.getString('email');
+
+      if (storedEmail == null) {
+        setState(() => _phase = _ExperiencePhase.emailCapture);
+        return;
+      }
+
+      _computeStreakAndShow(
+        backendClaimedToday: backendClaimed,
+        backendStreakDay: backendStreakDay,
+      );
+    } catch (e) {
+      Logger.instance.error('Failed to load experience', e);
+      setState(() {
+        _errorMessage = e.toString();
+        _phase = _ExperiencePhase.error;
+      });
+    }
+  }
+
+  void _computeStreakAndShow({
+    bool? backendClaimedToday,
+    int? backendStreakDay,
+  }) {
+    // Build ladder from engine defaults
+    _ladder = List.generate(
+      6,
+      (i) => widget.streakEngine.baseEntries(i + 1),
+    );
+
+    if (backendClaimedToday != null) {
+      final day = backendStreakDay ?? _streakState?.currentDay ?? 1;
+      final dayIndex = (day - 1).clamp(0, _ladder.length - 1);
+      _entriesToday = _ladder[dayIndex];
+      _streakState = _streakState ??
+          StreakState(
+            currentDay: day,
+            lastClaimedDate: backendClaimedToday ? DateTime.now() : null,
+            weeklyCurrent: 1,
+            monthlyCurrent: 1,
+          );
+      _claimedToday = backendClaimedToday;
+    } else {
+      // Offline fallback
+      final result =
+          widget.streakEngine.nextState(_streakState, DateTime.now());
+      if (result.isError) {
+        // ineligibleToday → already claimed
+        _claimedToday = true;
+        final day = _streakState?.currentDay ?? 1;
+        final dayIndex = (day - 1).clamp(0, _ladder.length - 1);
+        _entriesToday = _ladder[dayIndex];
+      } else {
+        _streakState = result.value;
+        _claimedToday = false;
+        final dayIndex =
+            (result.value.currentDay - 1).clamp(0, _ladder.length - 1);
+        _entriesToday = _ladder[dayIndex];
+      }
+    }
+
+    setState(() => _phase = _ExperiencePhase.streak);
+  }
+
+  // ---------------------------------------------------------------------------
+  // EMAIL
+  // ---------------------------------------------------------------------------
+
+  Future<void> _submitEmail(String email) async {
+    if (email.isEmpty) return;
+
+    await widget.secureStorage.setString('email', email);
+
+    // Fire-and-forget backend submission
+    widget.networkClient
+        .send(SubmitEmailRequest(email: email, age: 18))
+        .then((_) {})
+        .catchError((Object e) {
+      Logger.instance.error('Email backend submit failed', e);
+    });
+
+    _computeStreakAndShow(
+      backendClaimedToday: _backendClaimedToday,
+      backendStreakDay: _backendStreakDay,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // DAILY CLAIM
+  // ---------------------------------------------------------------------------
+
+  Future<void> _claimDailyEntries() async {
+    if (_claimedToday) return;
+
+    try {
+      final response =
+          await widget.networkClient.send(ClaimDailyEntriesRequest());
+
+      final grant = DailyEntryGrant(
+        baseEntries: response.baseEntries + response.bonusEntries,
+      );
+
+      // Update local state
+      _streakState = _streakState?.copyWith(
+        currentDay: response.newStreakDay,
+        lastClaimedDate: DateTime.now(),
+      );
+      _claimedToday = true;
+      _lastGrant = grant;
+
+      await widget.preferencesStorage
+          .saveStreakState(_streakState!);
+
+      // Decide next phase
+      if (widget.rewardedVideoProvider != null &&
+          (_campaign?.doublingEnabled ?? false)) {
+        setState(() => _phase = _ExperiencePhase.bonus);
+      } else {
+        _complete(grant);
+      }
+
+      widget.configuration.options.analyticsAdapter?.track(
+        'winr_daily_entry_claimed',
+        {
+          'day': response.newStreakDay,
+          'entries': response.baseEntries,
+        },
+      );
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Already claimed')) {
+        _claimedToday = true;
+        final grant = DailyEntryGrant(baseEntries: _entriesToday);
+        _lastGrant = grant;
+        _complete(grant);
+        return;
+      }
+
+      // Offline fallback
+      Logger.instance.error('Backend claim failed, using local', e);
+      _streakState = _streakState?.copyWith(lastClaimedDate: DateTime.now());
+      _claimedToday = true;
+      final grant = DailyEntryGrant(baseEntries: _entriesToday);
+      _lastGrant = grant;
+
+      if (widget.rewardedVideoProvider != null) {
+        setState(() => _phase = _ExperiencePhase.bonus);
+      } else {
+        _complete(grant);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // BONUS
+  // ---------------------------------------------------------------------------
+
+  Future<void> _claimBonus() async {
+    final grant = _lastGrant ?? DailyEntryGrant(baseEntries: _entriesToday);
+
+    final provider = widget.rewardedVideoProvider;
+    if (provider == null) {
+      _complete(grant);
+      return;
+    }
+
+    try {
+      final shown = await provider.showAd();
+      if (shown) {
+        try {
+          final response =
+              await widget.networkClient.send(ClaimBonusEntriesRequest());
+          final finalGrant = DailyEntryGrant(
+            baseEntries: grant.baseEntries,
+            bonusEntries: response.bonusEntries,
+          );
+          _complete(finalGrant);
+        } catch (e) {
+          // Offline fallback: assume doubling
+          final finalGrant = DailyEntryGrant(
+            baseEntries: grant.baseEntries,
+            bonusEntries: grant.baseEntries,
+          );
+          _complete(finalGrant);
+        }
+      } else {
+        _complete(grant);
+      }
+    } catch (e) {
+      Logger.instance.error('Rewarded video failed', e);
+      _complete(grant);
+    }
+  }
+
+  void _skipBonus() {
+    final grant = _lastGrant ?? DailyEntryGrant(baseEntries: _entriesToday);
+    _complete(grant);
+  }
+
+  // ---------------------------------------------------------------------------
+  // COMPLETION
+  // ---------------------------------------------------------------------------
+
+  void _complete(DailyEntryGrant grant) {
+    setState(() {
+      _lastGrant = grant;
+      _phase = _ExperiencePhase.completed;
+    });
+    widget.configuration.options.analyticsAdapter?.track(
+      'winr_experience_closed',
+      {'total_entries': grant.total},
     );
   }
 }

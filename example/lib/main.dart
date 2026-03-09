@@ -509,9 +509,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         height: MediaQuery.of(context).size.height * 0.9,
         child: HowItWorksView(
           branding: WINRBranding.defaultBranding(),
-          onClose: () => Navigator.of(context).pop(),
-          campaignTitle: _campaign?.title,
-          prizeValue: _campaign?.prizeValue,
+          onPrimary: () => Navigator.of(context).pop(),
         ),
       ),
     );
