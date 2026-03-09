@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+
 import '../winr_branding.dart';
 
 /// How it works view that explains the WINR sweepstakes system.
-/// 
+///
 /// Provides an educational overlay or bottom sheet that explains how users
 /// can earn entries, build streaks, and increase their chances to win.
 class HowItWorksView extends StatefulWidget {
   /// The branding configuration for styling
   final WINRBranding branding;
-  
+
   /// Callback when the view is closed
   final VoidCallback onClose;
-  
+
   /// Optional campaign-specific information
   final String? campaignTitle;
   final double? prizeValue;
-  
+
   /// Whether to show as a modal overlay (vs embedded)
   final bool isModal;
 
@@ -34,31 +35,30 @@ class HowItWorksView extends StatefulWidget {
 
 class _HowItWorksViewState extends State<HowItWorksView>
     with TickerProviderStateMixin {
-  
   late AnimationController _slideController;
   late AnimationController _fadeController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  
+
   final List<HowItWorksStep> _steps = [];
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1.0),
       end: Offset.zero,
@@ -66,7 +66,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -74,14 +74,14 @@ class _HowItWorksViewState extends State<HowItWorksView>
       parent: _fadeController,
       curve: Curves.easeOut,
     ));
-    
+
     _initializeSteps();
-    
+
     // Start animations
     _slideController.forward();
     _fadeController.forward();
   }
-  
+
   @override
   void dispose() {
     _slideController.dispose();
@@ -98,7 +98,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       return _buildEmbedded();
     }
   }
-  
+
   Widget _buildModal() {
     return SlideTransition(
       position: _slideAnimation,
@@ -127,7 +127,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildEmbedded() {
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -156,7 +156,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -188,7 +188,8 @@ class _HowItWorksViewState extends State<HowItWorksView>
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: widget.branding.accentGlowColor.withValues(alpha: 0.3),
+                      color: widget.branding.accentGlowColor
+                          .withValues(alpha: 0.3),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -239,7 +240,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildContent() {
     return Column(
       children: [
@@ -262,7 +263,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ],
     );
   }
-  
+
   Widget _buildStepPage(HowItWorksStep step) {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -316,7 +317,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildBenefits(List<String> benefits) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -357,7 +358,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildPageIndicator() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -370,7 +371,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
             width: index == _currentPage ? 24 : 8,
             height: 8,
             decoration: BoxDecoration(
-              color: index == _currentPage 
+              color: index == _currentPage
                   ? widget.branding.primaryButtonColor
                   : widget.branding.mutedTextColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
@@ -380,7 +381,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   Widget _buildNavigationButtons() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -397,7 +398,8 @@ class _HowItWorksViewState extends State<HowItWorksView>
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
+                    borderRadius:
+                        BorderRadius.circular(widget.branding.cornerRadius),
                   ),
                 ),
                 child: Text(
@@ -415,19 +417,22 @@ class _HowItWorksViewState extends State<HowItWorksView>
           Expanded(
             flex: _currentPage == 0 ? 1 : 1,
             child: ElevatedButton(
-              onPressed: _currentPage == _steps.length - 1 ? widget.onClose : _nextPage,
+              onPressed: _currentPage == _steps.length - 1
+                  ? widget.onClose
+                  : _nextPage,
               style: ElevatedButton.styleFrom(
                 backgroundColor: widget.branding.primaryButtonColor,
                 foregroundColor: widget.branding.primaryButtonTextColor,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
+                  borderRadius:
+                      BorderRadius.circular(widget.branding.cornerRadius),
                 ),
                 elevation: 0,
               ),
               child: Text(
                 _currentPage == _steps.length - 1 ? 'Get Started' : 'Next',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -438,9 +443,9 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     );
   }
-  
+
   // MARK: - Navigation
-  
+
   void _nextPage() {
     if (_currentPage < _steps.length - 1) {
       _pageController.nextPage(
@@ -449,7 +454,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       );
     }
   }
-  
+
   void _previousPage() {
     if (_currentPage > 0) {
       _pageController.previousPage(
@@ -458,14 +463,15 @@ class _HowItWorksViewState extends State<HowItWorksView>
       );
     }
   }
-  
+
   // MARK: - Data Initialization
-  
+
   void _initializeSteps() {
     _steps.addAll([
       HowItWorksStep(
         title: 'Daily Entries',
-        description: 'Claim free entries every day to enter the sweepstakes. The more consistent you are, the more entries you earn!',
+        description:
+            'Claim free entries every day to enter the sweepstakes. The more consistent you are, the more entries you earn!',
         icon: Icons.calendar_today,
         color: widget.branding.primaryButtonColor,
         benefits: [
@@ -476,7 +482,8 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
       HowItWorksStep(
         title: 'Build Your Streak',
-        description: 'Come back every day to build your streak. Longer streaks unlock bonus multipliers and extra entries.',
+        description:
+            'Come back every day to build your streak. Longer streaks unlock bonus multipliers and extra entries.',
         icon: Icons.local_fire_department,
         color: widget.branding.accentGlowColor,
         benefits: [
@@ -488,7 +495,8 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
       HowItWorksStep(
         title: 'Bonus Entries',
-        description: 'Watch optional video ads to earn bonus entries. More entries means better chances to win!',
+        description:
+            'Watch optional video ads to earn bonus entries. More entries means better chances to win!',
         icon: Icons.play_circle_filled,
         color: widget.branding.primaryColor,
         benefits: [
@@ -499,7 +507,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
       HowItWorksStep(
         title: 'Win Prizes',
-        description: widget.campaignTitle != null 
+        description: widget.campaignTitle != null
             ? 'You\'re entered to win ${_formatPrize(widget.prizeValue ?? 0)} in ${widget.campaignTitle}!'
             : 'You\'re automatically entered to win amazing prizes. Winners are selected randomly.',
         icon: Icons.emoji_events,
@@ -513,7 +521,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
       ),
     ]);
   }
-  
+
   String _formatPrize(double value) {
     if (value >= 1000000) {
       return '\$${(value / 1000000).toStringAsFixed(1)}M';
@@ -532,7 +540,7 @@ class HowItWorksStep {
   final IconData icon;
   final Color color;
   final List<String> benefits;
-  
+
   const HowItWorksStep({
     required this.title,
     required this.description,

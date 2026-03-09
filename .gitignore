@@ -1,1 +1,8 @@
 .dart_tool/\nbuild/\n.flutter-plugins-dependencies\n
+/.history
+/example/.dart_tool
+/example/.dart_tool
+/.dart_tool
+/.dart_tool
+/build/ios
+/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata

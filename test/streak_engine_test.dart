@@ -1,8 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
-import 'package:winr_flutter_sdk/src/domain/streak_engine.dart';
-import 'package:winr_flutter_sdk/src/domain/streak_state.dart';
-import 'package:winr_flutter_sdk/src/winr_error.dart';
 
 void main() {
   late StreakEngine engine;
@@ -68,13 +65,15 @@ void main() {
 
     test('weekly progress increments in same week', () {
       final day1 = engine.nextState(null, DateTime.utc(2026, 3, 2)); // Monday
-      final day2 = engine.nextState(day1.value, DateTime.utc(2026, 3, 3)); // Tuesday
+      final day2 =
+          engine.nextState(day1.value, DateTime.utc(2026, 3, 3)); // Tuesday
       expect(day2.value.weeklyCurrent, 2);
     });
 
     test('weekly progress resets on new week', () {
       final day1 = engine.nextState(null, DateTime.utc(2026, 3, 7)); // Saturday
-      final day2 = engine.nextState(day1.value, DateTime.utc(2026, 3, 8)); // Sunday (new week)
+      final day2 = engine.nextState(
+          day1.value, DateTime.utc(2026, 3, 8)); // Sunday (new week)
       expect(day2.value.weeklyCurrent, 1);
     });
 
@@ -91,7 +90,7 @@ void main() {
     });
 
     test('null lastClaimedDate creates initial state', () {
-      final state = StreakState(
+      const state = StreakState(
         currentDay: 3,
         lastClaimedDate: null,
         totalEntriesEarned: 100,
@@ -103,7 +102,8 @@ void main() {
     });
 
     test('weekly bonus detected at threshold', () {
-      const config = StreakConfig(weeklyBonusThreshold: 5, weeklyBonusEntries: 50);
+      const config =
+          StreakConfig(weeklyBonusThreshold: 5, weeklyBonusEntries: 50);
       final state = StreakState(
         currentDay: 5,
         lastClaimedDate: DateTime.utc(2026, 3, 5),
@@ -113,7 +113,8 @@ void main() {
     });
 
     test('weekly bonus null when below threshold', () {
-      const config = StreakConfig(weeklyBonusThreshold: 5, weeklyBonusEntries: 50);
+      const config =
+          StreakConfig(weeklyBonusThreshold: 5, weeklyBonusEntries: 50);
       final state = StreakState(
         currentDay: 3,
         lastClaimedDate: DateTime.utc(2026, 3, 3),
@@ -123,7 +124,8 @@ void main() {
     });
 
     test('monthly bonus detected at threshold', () {
-      const config = StreakConfig(monthlyBonusThreshold: 20, monthlyBonusEntries: 200);
+      const config =
+          StreakConfig(monthlyBonusThreshold: 20, monthlyBonusEntries: 200);
       final state = StreakState(
         currentDay: 6,
         lastClaimedDate: DateTime.utc(2026, 3, 20),

@@ -1,0 +1,58 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "WINR (development, test key)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--dart-define",
+                "APP_ENV=development",
+                "--dart-define",
+                "UTILS=on",
+            ]
+        },
+        {
+            "name": "WINR (development, production key)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--dart-define",
+                "APP_ENV=development",
+                "--dart-define",
+                "UTILS=on",
+                "--dart-define",
+            ]
+        },
+        {
+            "name": "WINR (profile mode, production key)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define",
+                "APP_ENV=production",
+                "--dart-define",
+                "UTILS=on",
+                "--dart-define",
+            ]
+        },
+        {
+            "name": "WINR (release mode, production key)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define",
+                "APP_ENV=production",
+                "--dart-define",
+                "UTILS=on",
+            ]
+        }
+    ]
+}

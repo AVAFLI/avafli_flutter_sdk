@@ -1,35 +1,36 @@
 import 'package:flutter/material.dart';
-import '../winr_branding.dart';
+
 import '../domain/campaign.dart';
 import '../domain/streak_state.dart';
+import '../winr_branding.dart';
 
 /// Embeddable card widget for inline WINR experience integration.
-/// 
+///
 /// A compact version of the WINR experience that can be embedded within
 /// other app screens. Shows streak status, daily entry counts, and provides
 /// quick access to the full experience.
 class WINRExperienceCard extends StatefulWidget {
   /// The branding configuration for styling
   final WINRBranding branding;
-  
+
   /// Optional campaign data
   final Campaign? campaign;
-  
+
   /// Optional streak state
   final StreakState? streakState;
-  
+
   /// Whether today's entry has been claimed
   final bool claimedToday;
-  
+
   /// Callback when the card is tapped
   final VoidCallback onTap;
-  
+
   /// Optional callback when the claim button is pressed
   final VoidCallback? onQuickClaim;
-  
+
   /// Card size variant
   final WINRCardSize size;
-  
+
   /// Whether to show the quick claim button
   final bool showQuickClaim;
 
@@ -51,28 +52,27 @@ class WINRExperienceCard extends StatefulWidget {
 
 class _WINRExperienceCardState extends State<WINRExperienceCard>
     with TickerProviderStateMixin {
-  
   late AnimationController _pulseController;
   late AnimationController _scaleController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   bool _isPressed = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 150),
       vsync: this,
     );
-    
+
     _pulseAnimation = Tween<double>(
       begin: 1.0,
       end: 1.05,
@@ -80,7 +80,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       parent: _pulseController,
       curve: Curves.easeInOut,
     ));
-    
+
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.98,
@@ -88,17 +88,17 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       parent: _scaleController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Start pulse animation if user hasn't claimed today
     if (!widget.claimedToday) {
       _pulseController.repeat(reverse: true);
     }
   }
-  
+
   @override
   void didUpdateWidget(WINRExperienceCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Update pulse animation based on claim status
     if (widget.claimedToday && !oldWidget.claimedToday) {
       _pulseController.stop();
@@ -107,7 +107,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       _pulseController.repeat(reverse: true);
     }
   }
-  
+
   @override
   void dispose() {
     _pulseController.dispose();
@@ -147,7 +147,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       },
     );
   }
-  
+
   Widget _buildCardContent() {
     switch (widget.size) {
       case WINRCardSize.small:
@@ -158,7 +158,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         return _buildLargeCard();
     }
   }
-  
+
   Widget _buildSmallCard() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -201,7 +201,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   Widget _buildMediumCard() {
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -246,7 +246,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   Widget _buildLargeCard() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -266,7 +266,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -322,7 +322,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ],
     );
   }
-  
+
   Widget _buildStatsRow() {
     return Row(
       children: [
@@ -352,7 +352,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ],
     );
   }
-  
+
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -392,7 +392,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   Widget _buildStatusIcon() {
     if (widget.claimedToday) {
       return Icon(
@@ -401,18 +401,18 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         color: widget.branding.primaryButtonColor,
       );
     }
-    
+
     return Icon(
       Icons.local_fire_department,
       size: widget.size == WINRCardSize.small ? 24 : 32,
       color: widget.branding.accentGlowColor,
     );
   }
-  
+
   Widget _buildProgressBar() {
     final currentDay = widget.streakState?.currentDay ?? 1;
     final progress = (currentDay / 30.0).clamp(0.0, 1.0);
-    
+
     return Column(
       children: [
         Row(
@@ -462,7 +462,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ],
     );
   }
-  
+
   Widget _buildQuickClaimButton() {
     return SizedBox(
       width: double.infinity,
@@ -477,7 +477,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
           ),
           elevation: 0,
         ),
-        child: Text(
+        child: const Text(
           'Claim Now',
           style: TextStyle(
             fontSize: 14,
@@ -487,7 +487,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   Widget _buildViewDetailsButton() {
     return SizedBox(
       width: double.infinity,
@@ -514,9 +514,9 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ),
     );
   }
-  
+
   // MARK: - Helper Methods
-  
+
   BoxDecoration _buildCardDecoration() {
     return BoxDecoration(
       gradient: LinearGradient(
@@ -547,7 +547,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       ],
     );
   }
-  
+
   double _getCardWidth() {
     switch (widget.size) {
       case WINRCardSize.small:
@@ -558,7 +558,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         return double.infinity;
     }
   }
-  
+
   double _getCardHeight() {
     switch (widget.size) {
       case WINRCardSize.small:
@@ -569,7 +569,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         return 200;
     }
   }
-  
+
   String _getStatusText() {
     if (widget.claimedToday) {
       return 'Entries Claimed';
@@ -577,7 +577,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       return 'Claim Your Daily Entries';
     }
   }
-  
+
   String _getSubtitleText() {
     if (widget.claimedToday) {
       return 'Come back tomorrow to continue your streak';
@@ -586,7 +586,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
       return 'Day $day • Tap to claim now';
     }
   }
-  
+
   String _getPrizeText() {
     final prize = widget.campaign?.prizeValue;
     if (prize != null) {
@@ -594,7 +594,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     }
     return 'Win amazing prizes';
   }
-  
+
   String _formatPrize(double value) {
     if (value >= 1000000) {
       return '\$${(value / 1000000).toStringAsFixed(1)}M';
@@ -608,7 +608,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
 
 /// Card size variants
 enum WINRCardSize {
-  small,   // Compact list item style
-  medium,  // Standard card with progress
-  large,   // Full-featured card with stats
+  small, // Compact list item style
+  medium, // Standard card with progress
+  large, // Full-featured card with stats
 }

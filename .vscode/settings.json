@@ -1,0 +1,22 @@
+{
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit",
+        "source.addMissingImports": "explicit",
+        "source.fixAll.dart": "explicit"
+    },
+    "[dart]": {
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit"
+        }
+    },
+    "dart.lineLength": 80,
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "cmake.sourceDirectory": "/Users/ryannapolitano/Desktop/SkapeApps/Skape/linux"
+}

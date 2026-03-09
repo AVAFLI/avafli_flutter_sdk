@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+
 import '../winr_branding.dart';
 
 /// Email capture view with age gate (13+) verification.
-/// 
+///
 /// Provides a form to capture user email and confirm they meet minimum age
 /// requirements. Includes validation and compliance with regulations.
 class EmailCaptureView extends StatefulWidget {
   /// The branding configuration for styling
   final WINRBranding branding;
-  
+
   /// Callback when email is successfully submitted
   final Function(String email, int age) onEmailSubmitted;
-  
+
   /// Callback when user chooses to skip email capture
   final VoidCallback onSkip;
-  
+
   /// Optional URL for official rules
   final String? rulesUrl;
-  
+
   /// Optional pre-filled email
   final String? prefillEmail;
 
@@ -36,40 +37,39 @@ class EmailCaptureView extends StatefulWidget {
 
 class _EmailCaptureViewState extends State<EmailCaptureView>
     with TickerProviderStateMixin {
-  
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _emailFocusNode = FocusNode();
-  
+
   bool _isAgeConfirmed = false;
   bool _isLoading = false;
   String? _emailError;
-  
+
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Pre-fill email if provided
     if (widget.prefillEmail != null) {
       _emailController.text = widget.prefillEmail!;
     }
-    
+
     // Initialize animations
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -77,7 +77,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       parent: _fadeController,
       curve: Curves.easeOut,
     ));
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -85,12 +85,12 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     // Start animations
     _fadeController.forward();
     _slideController.forward();
   }
-  
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -133,7 +133,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ),
     );
   }
-  
+
   Widget _buildLogo() {
     if (widget.branding.logo != null) {
       return SizedBox(
@@ -141,7 +141,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
         child: widget.branding.logo!,
       );
     }
-    
+
     return Container(
       height: 80,
       width: 80,
@@ -156,7 +156,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ),
     );
   }
-  
+
   Widget _buildTitle() {
     return Column(
       children: [
@@ -184,7 +184,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ],
     );
   }
-  
+
   Widget _buildEmailField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +203,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
             color: widget.branding.inputFieldBackgroundColor,
             borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
             border: Border.all(
-              color: _emailError != null 
+              color: _emailError != null
                   ? Colors.red.withValues(alpha: 0.6)
                   : widget.branding.inputFieldBorderColor,
               width: 1,
@@ -267,7 +267,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ],
     );
   }
-  
+
   Widget _buildAgeGate() {
     return GestureDetector(
       onTap: () {
@@ -282,12 +282,12 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: _isAgeConfirmed 
-                  ? widget.branding.primaryButtonColor 
+              color: _isAgeConfirmed
+                  ? widget.branding.primaryButtonColor
                   : Colors.transparent,
               border: Border.all(
-                color: _isAgeConfirmed 
-                    ? widget.branding.primaryButtonColor 
+                color: _isAgeConfirmed
+                    ? widget.branding.primaryButtonColor
                     : widget.branding.mutedTextColor,
                 width: 2,
               ),
@@ -317,19 +317,18 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ),
     );
   }
-  
+
   Widget _buildSubmitButton() {
-    final isEnabled = _isAgeConfirmed && 
-                     _emailController.text.isNotEmpty && 
-                     !_isLoading;
-    
+    final isEnabled =
+        _isAgeConfirmed && _emailController.text.isNotEmpty && !_isLoading;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: isEnabled ? _handleSubmit : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isEnabled 
-              ? widget.branding.primaryButtonColor 
+          backgroundColor: isEnabled
+              ? widget.branding.primaryButtonColor
               : widget.branding.primaryButtonColor.withValues(alpha: 0.4),
           foregroundColor: widget.branding.primaryButtonTextColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -350,7 +349,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
                   ),
                 ),
               )
-            : Text(
+            : const Text(
                 'ENTER NOW',
                 style: TextStyle(
                   fontSize: 17,
@@ -361,7 +360,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ),
     );
   }
-  
+
   Widget _buildSkipButton() {
     return TextButton(
       onPressed: _isLoading ? null : widget.onSkip,
@@ -375,7 +374,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ),
     );
   }
-  
+
   Widget _buildLegalText() {
     return Column(
       children: [
@@ -428,39 +427,40 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       ],
     );
   }
-  
+
   // MARK: - Validation & Actions
-  
+
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Email is required';
     }
-    
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     if (!emailRegex.hasMatch(value)) {
       return 'Please enter a valid email address';
     }
-    
+
     return null;
   }
-  
+
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     if (!_isAgeConfirmed) {
       setState(() {
         _emailError = 'You must be 13+ to enter';
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _emailError = null;
     });
-    
+
     try {
       final email = _emailController.text.trim();
       // Assuming minimum age of 13 for now
@@ -477,7 +477,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
       }
     }
   }
-  
+
   void _openUrl(String url) {
     // In a real implementation, this would use url_launcher
     // For now, just a placeholder

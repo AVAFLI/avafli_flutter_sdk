@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import '../winr_configuration.dart';
-import '../winr_user.dart';
+
 import '../domain/campaign.dart';
-import '../domain/streak_state.dart';
 import '../domain/streak_engine.dart';
+import '../domain/streak_state.dart';
 import '../network/network_client.dart';
 import '../network/winr_api.dart';
-import '../storage/secure_storage.dart';
-import '../storage/preferences_storage.dart';
 import '../rewards/rewarded_video_provider.dart';
-import '../services/logger.dart';
 import '../services/analytics/analytics_adapter.dart';
-import 'winr_theme.dart';
-import 'winr_experience_header.dart';
-import 'streak_dashboard_view.dart';
+import '../services/logger.dart';
+import '../storage/preferences_storage.dart';
+import '../storage/secure_storage.dart';
+import '../winr_configuration.dart';
+import '../winr_user.dart';
 import 'email_capture_view.dart';
+import 'streak_dashboard_view.dart';
+import 'winr_experience_header.dart';
+import 'winr_theme.dart';
 
 /// Main experience screen for the WINR SDK.
-/// 
+///
 /// This is the primary UI that users interact with to claim their daily entries,
 /// view their streak progress, and engage with the sweepstakes experience.
 class WINRExperienceScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final Campaign? cachedCampaign;
   final StreakState? cachedStreakState;
   final bool? cachedClaimedToday;
-  
+
   const WINRExperienceScreen({
     super.key,
     required this.configuration,
@@ -45,36 +46,35 @@ class WINRExperienceScreen extends StatefulWidget {
     this.cachedStreakState,
     this.cachedClaimedToday,
   });
-  
+
   @override
   State<WINRExperienceScreen> createState() => _WINRExperienceScreenState();
 }
 
-class _WINRExperienceScreenState extends State<WINRExperienceScreen> 
+class _WINRExperienceScreenState extends State<WINRExperienceScreen>
     with TickerProviderStateMixin {
-  
   // State
   Campaign? _campaign;
   StreakState? _streakState;
   bool _claimedToday = false;
   bool _isLoading = false;
   String? _error;
-  
+
   // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   // Page controller for different views
   late PageController _pageController;
   // ignore: unused_field
   int _currentPage = 0;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -84,7 +84,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
@@ -92,23 +92,23 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
-    
+
     // Initialize page controller
     _pageController = PageController();
-    
+
     // Initialize state
     _campaign = widget.cachedCampaign;
     _streakState = widget.cachedStreakState;
     _claimedToday = widget.cachedClaimedToday ?? false;
-    
+
     // Start animations
     _fadeController.forward();
     _slideController.forward();
-    
+
     // Load data
     _loadExperienceData();
   }
-  
+
   @override
   void dispose() {
     _fadeController.dispose();
@@ -116,17 +116,18 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
     _pageController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = WINRTheme.create(widget.configuration.branding);
-    
+
     return Theme(
       data: theme,
       child: Scaffold(
         backgroundColor: widget.configuration.branding.backgroundColor,
         body: Container(
-          decoration: WINRTheme.createGradientBackground(widget.configuration.branding),
+          decoration:
+              WINRTheme.createGradientBackground(widget.configuration.branding),
           child: SafeArea(
             child: AnimatedBuilder(
               animation: _fadeAnimation,
@@ -145,16 +146,16 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   Widget _buildContent() {
     if (_isLoading) {
       return _buildLoadingState();
     }
-    
+
     if (_error != null) {
       return _buildErrorState();
     }
-    
+
     return PageView(
       controller: _pageController,
       onPageChanged: (page) {
@@ -168,7 +169,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ],
     );
   }
-  
+
   Widget _buildMainExperience() {
     return Column(
       children: [
@@ -178,7 +179,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
           title: _campaign?.title ?? 'Daily Entries',
           onClose: () => Navigator.of(context).pop(),
         ),
-        
+
         // Main content
         Expanded(
           child: Padding(
@@ -196,15 +197,15 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
                     onClaimBonus: _handleBonusClaim,
                     rewardedVideoProvider: widget.rewardedVideoProvider,
                   ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Action buttons
                 if (!_claimedToday) _buildClaimButton(),
                 if (_claimedToday) _buildClaimedState(),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Secondary actions
                 _buildSecondaryActions(),
               ],
@@ -214,10 +215,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ],
     );
   }
-  
+
   Widget _buildClaimButton() {
     final entries = _calculateDailyEntries();
-    
+
     return Container(
       width: double.infinity,
       decoration: WINRTheme.createCardDecoration(
@@ -229,7 +230,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 20),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(widget.configuration.branding.cornerRadius),
+            borderRadius: BorderRadius.circular(
+                widget.configuration.branding.cornerRadius),
           ),
         ),
         child: Column(
@@ -246,7 +248,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
               'Day ${_streakState?.currentDay ?? 1} of your streak',
               style: TextStyle(
                 fontSize: 14,
-                color: widget.configuration.branding.primaryButtonTextColor.withValues(alpha: 0.8),
+                color: widget.configuration.branding.primaryButtonTextColor
+                    .withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -254,7 +257,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   Widget _buildClaimedState() {
     return Container(
       width: double.infinity,
@@ -289,7 +292,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   Widget _buildSecondaryActions() {
     return Column(
       children: [
@@ -306,7 +309,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
               ),
             ),
           ),
-        
+
         // Email capture prompt
         if (widget.user.email == null)
           Padding(
@@ -323,7 +326,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
               ),
             ),
           ),
-        
+
         // Close button
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -332,7 +335,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ],
     );
   }
-  
+
   Widget _buildEmailCapture() {
     return EmailCaptureView(
       branding: widget.configuration.branding,
@@ -342,13 +345,13 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
             email: email,
             age: age,
           ));
-          
+
           // Update user and go back to main experience
           widget.configuration.options.analyticsAdapter?.track(
             WINRAnalyticsEvents.emailCaptureCompleted,
             {'email_domain': email.split('@').last},
           );
-          
+
           _pageController.previousPage(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -369,7 +372,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       },
     );
   }
-  
+
   Widget _buildLoadingState() {
     return Center(
       child: Column(
@@ -390,7 +393,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   Widget _buildErrorState() {
     return Center(
       child: Padding(
@@ -436,19 +439,19 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   // MARK: - Data Loading
-  
+
   Future<void> _loadExperienceData() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
       // Load cached data first
       await _loadCachedData();
-      
+
       // Refresh from network
       await _refreshFromNetwork();
     } catch (e) {
@@ -462,7 +465,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       });
     }
   }
-  
+
   Future<void> _loadCachedData() async {
     // Load cached streak state
     final cachedStreak = await widget.preferencesStorage.getStreakState();
@@ -471,7 +474,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
         _streakState = cachedStreak;
       });
     }
-    
+
     // Load cached campaign
     final cachedCampaign = await widget.preferencesStorage.getCachedCampaign();
     if (cachedCampaign != null) {
@@ -480,16 +483,17 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       });
     }
   }
-  
+
   Future<void> _refreshFromNetwork() async {
     try {
-      final response = await widget.networkClient.send(GetActiveCampaignRequest());
-      
+      final response =
+          await widget.networkClient.send(GetActiveCampaignRequest());
+
       setState(() {
         _campaign = response.campaign;
         _claimedToday = response.claimedToday;
       });
-      
+
       // Cache the data
       if (response.campaign != null) {
         await widget.preferencesStorage.cacheCampaign(response.campaign!);
@@ -499,43 +503,46 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       Logger.instance.error('Failed to refresh campaign data', e);
     }
   }
-  
+
   // MARK: - Actions
-  
+
   Future<void> _handleDailyClaim() async {
     if (_isLoading || _claimedToday) return;
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // Calculate new streak state
       final currentState = _streakState;
       final now = DateTime.now();
-      
+
       final result = widget.streakEngine.nextState(currentState, now);
       if (result.isError) {
         throw Exception(result.error.message);
       }
-      
+
       // Claim entries from backend
-      final response = await widget.networkClient.send(ClaimDailyEntriesRequest());
-      
+      final response =
+          await widget.networkClient.send(ClaimDailyEntriesRequest());
+
       // Update local state
       final newStreakState = result.value.copyWith(
-        totalEntriesEarned: (currentState?.totalEntriesEarned ?? 0) + response.baseEntries + response.bonusEntries,
+        totalEntriesEarned: (currentState?.totalEntriesEarned ?? 0) +
+            response.baseEntries +
+            response.bonusEntries,
       );
-      
+
       setState(() {
         _streakState = newStreakState;
         _claimedToday = true;
       });
-      
+
       // Save state
       await widget.preferencesStorage.saveStreakState(newStreakState);
       await widget.preferencesStorage.saveLastClaimedDate(now);
-      
+
       // Track analytics
       widget.configuration.options.analyticsAdapter?.track(
         WINRAnalyticsEvents.dailyEntriesClaimed,
@@ -548,9 +555,11 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
           'monthly_bonus_earned': response.monthlyBonusEarned,
         },
       );
-      
+
       // Return result to caller
-      Navigator.of(context).pop(response.toEntryGrant());
+      if (mounted) {
+        Navigator.of(context).pop(response.toEntryGrant());
+      }
     } catch (e) {
       Logger.instance.error('Daily claim failed', e);
       widget.configuration.options.analyticsAdapter?.track(
@@ -564,26 +573,27 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       });
     }
   }
-  
+
   Future<void> _handleBonusClaim() async {
     final provider = widget.rewardedVideoProvider;
     if (provider == null) return;
-    
+
     try {
       widget.configuration.options.analyticsAdapter?.track(
         WINRAnalyticsEvents.rewardedVideoStarted,
       );
-      
+
       final completed = await provider.showAd();
       if (completed) {
         // Claim bonus entries from backend
-        final response = await widget.networkClient.send(ClaimBonusEntriesRequest());
-        
+        final response =
+            await widget.networkClient.send(ClaimBonusEntriesRequest());
+
         widget.configuration.options.analyticsAdapter?.track(
           WINRAnalyticsEvents.rewardedVideoCompleted,
           {'bonus_entries': response.bonusEntries},
         );
-        
+
         _showSuccess('You earned ${response.bonusEntries} bonus entries!');
       }
     } catch (e) {
@@ -595,14 +605,14 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       _showError('Failed to claim bonus entries. Please try again.');
     }
   }
-  
+
   // MARK: - Helpers
-  
+
   int _calculateDailyEntries() {
     if (_campaign == null || _streakState == null) return 10;
     return widget.streakEngine.baseEntries(_streakState!.currentDay);
   }
-  
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -612,7 +622,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
       ),
     );
   }
-  
+
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

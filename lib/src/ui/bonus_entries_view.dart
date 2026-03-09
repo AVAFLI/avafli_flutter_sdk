@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-import '../winr_branding.dart';
+
 import '../rewards/rewarded_video_provider.dart';
+import '../winr_branding.dart';
 
 /// Bonus entries view for rewarded video ads.
-/// 
+///
 /// Provides an interface for users to watch rewarded videos to earn bonus
 /// entries. Handles ad loading, playback, and completion tracking.
 class BonusEntriesView extends StatefulWidget {
   /// The branding configuration for styling
   final WINRBranding branding;
-  
+
   /// The rewarded video provider
   final RewardedVideoProvider rewardedVideoProvider;
-  
+
   /// Callback when video is completed and bonus entries are awarded
   final VoidCallback onComplete;
-  
+
   /// Optional callback when the view is dismissed
   final VoidCallback? onDismiss;
 
@@ -33,32 +34,31 @@ class BonusEntriesView extends StatefulWidget {
 
 class _BonusEntriesViewState extends State<BonusEntriesView>
     with TickerProviderStateMixin {
-  
   late AnimationController _pulseController;
   late AnimationController _slideController;
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   bool _isLoading = false;
   bool _isAdReady = false;
   bool _hasError = false;
   String? _errorMessage;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    
+
     _pulseAnimation = Tween<double>(
       begin: 1.0,
       end: 1.1,
@@ -66,7 +66,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       parent: _pulseController,
       curve: Curves.easeInOut,
     ));
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1.0),
       end: Offset.zero,
@@ -74,15 +74,15 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     // Start animations
     _slideController.forward();
     _pulseController.repeat(reverse: true);
-    
+
     // Check if ad is ready
     _checkAdAvailability();
   }
-  
+
   @override
   void dispose() {
     _pulseController.dispose();
@@ -128,7 +128,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ),
     );
   }
-  
+
   Widget _buildHandle() {
     return Container(
       width: 40,
@@ -139,7 +139,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ),
     );
   }
-  
+
   Widget _buildHeader() {
     return Column(
       children: [
@@ -197,7 +197,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ],
     );
   }
-  
+
   Widget _buildContent() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -238,14 +238,14 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ),
     );
   }
-  
+
   Widget _buildBenefitsList() {
     final benefits = [
       {'icon': Icons.add_circle, 'text': '+10 Bonus Entries'},
       {'icon': Icons.timer, 'text': '30 seconds or less'},
       {'icon': Icons.security, 'text': 'Safe & secure ads'},
     ];
-    
+
     return Column(
       children: benefits.map((benefit) {
         return Padding(
@@ -272,7 +272,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       }).toList(),
     );
   }
-  
+
   Widget _buildLoadingIndicator() {
     return Column(
       children: [
@@ -292,7 +292,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ],
     );
   }
-  
+
   Widget _buildErrorState() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -306,13 +306,13 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ),
       child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.error_outline,
             color: Colors.red,
             size: 48,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Ad Not Available',
             style: TextStyle(
               fontSize: 18,
@@ -322,7 +322,8 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
           ),
           const SizedBox(height: 8),
           Text(
-            _errorMessage ?? 'No rewarded videos are available at the moment. Please try again later.',
+            _errorMessage ??
+                'No rewarded videos are available at the moment. Please try again later.',
             style: TextStyle(
               fontSize: 14,
               color: widget.branding.secondaryTextColor,
@@ -333,7 +334,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ),
     );
   }
-  
+
   Widget _buildActions() {
     return Column(
       children: [
@@ -347,18 +348,19 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
                 foregroundColor: widget.branding.primaryButtonTextColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
+                  borderRadius:
+                      BorderRadius.circular(widget.branding.cornerRadius),
                 ),
                 elevation: 0,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.play_arrow, size: 24),
+                  const Icon(Icons.play_arrow, size: 24),
                   const SizedBox(width: 8),
                   Text(
                     _isLoading ? 'Loading...' : 'Watch Video',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
@@ -386,15 +388,15 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       ],
     );
   }
-  
+
   // MARK: - Ad Management
-  
+
   Future<void> _checkAdAvailability() async {
     setState(() {
       _isLoading = true;
       _hasError = false;
     });
-    
+
     try {
       final isReady = await widget.rewardedVideoProvider.isAdAvailable();
       setState(() {
@@ -402,7 +404,8 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
         _isLoading = false;
         _hasError = !isReady;
         if (!isReady) {
-          _errorMessage = 'No ads are available right now. Please try again later.';
+          _errorMessage =
+              'No ads are available right now. Please try again later.';
         }
       });
     } catch (e) {
@@ -413,17 +416,17 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       });
     }
   }
-  
+
   Future<void> _watchVideo() async {
     if (!_isAdReady || _isLoading) return;
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final success = await widget.rewardedVideoProvider.showAd();
-      
+
       if (success) {
         // Video completed successfully
         widget.onComplete();
@@ -444,7 +447,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       });
     }
   }
-  
+
   void _close() {
     widget.onDismiss?.call();
     Navigator.of(context).pop();

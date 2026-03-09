@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
-import '../winr_branding.dart';
+
 import '../domain/campaign.dart';
 import '../domain/streak_state.dart';
 import '../rewards/rewarded_video_provider.dart';
-import 'streak_day_tile.dart';
+import '../winr_branding.dart';
 import 'bonus_entries_view.dart';
+import 'streak_day_tile.dart';
 
 /// Streak dashboard view showing the user's streak progress with day tiles.
-/// 
+///
 /// Displays the current streak with individual day tiles, bonus multipliers,
 /// and available actions like claiming daily entries or bonus videos.
 class StreakDashboardView extends StatefulWidget {
   /// The active campaign
   final Campaign campaign;
-  
+
   /// Current streak state
   final StreakState streakState;
-  
+
   /// Whether today's entry has been claimed
   final bool claimedToday;
-  
+
   /// Callback when daily entries are claimed
   final VoidCallback onClaimDaily;
-  
+
   /// Callback when bonus entries are claimed
   final VoidCallback onClaimBonus;
-  
+
   /// Optional rewarded video provider
   final RewardedVideoProvider? rewardedVideoProvider;
 
@@ -45,30 +46,29 @@ class StreakDashboardView extends StatefulWidget {
 
 class _StreakDashboardViewState extends State<StreakDashboardView>
     with TickerProviderStateMixin {
-  
   late AnimationController _slideController;
   late AnimationController _progressController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _progressAnimation;
-  
+
   final PageController _pageController = PageController();
   // ignore: unused_field
   bool _showBonusEntries = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _progressController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
@@ -76,7 +76,7 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _progressAnimation = Tween<double>(
       begin: 0.0,
       end: widget.streakState.currentDay / 30.0, // Assuming 30-day cycle
@@ -84,12 +84,12 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       parent: _progressController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Start animations
     _slideController.forward();
     _progressController.forward();
   }
-  
+
   @override
   void dispose() {
     _slideController.dispose();
@@ -119,10 +119,10 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   Widget _buildStreakHeader() {
     final branding = _getBranding();
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -176,10 +176,10 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   Widget _buildPrizeInfo() {
     final branding = _getBranding();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -200,10 +200,10 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   Widget _buildProgressIndicator() {
     final branding = _getBranding();
-    
+
     return Column(
       children: [
         Text(
@@ -259,12 +259,12 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ],
     );
   }
-  
+
   Widget _buildDayTiles() {
     final branding = _getBranding();
     final visibleDays = _getVisibleDays();
-    
-    return Container(
+
+    return SizedBox(
       height: 180,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -273,10 +273,11 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
           children: visibleDays.map((dayData) {
             final day = dayData['day'] ?? 0;
             final entries = dayData['entries'] ?? 0;
-            final isToday = day == widget.streakState.currentDay && !widget.claimedToday;
-            final isClaimed = day < widget.streakState.currentDay || 
-                             (day == widget.streakState.currentDay && widget.claimedToday);
-            
+            final isToday =
+                day == widget.streakState.currentDay && !widget.claimedToday;
+            final isClaimed = day < widget.streakState.currentDay ||
+                (day == widget.streakState.currentDay && widget.claimedToday);
+
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: StreakDayTile(
@@ -293,13 +294,13 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   Widget _buildStreakInfo() {
     final branding = _getBranding();
     final multiplier = _calculateMultiplier();
-    
+
     if (multiplier <= 1.0) return const SizedBox.shrink();
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -365,11 +366,11 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   Widget _buildBonusSection() {
     final branding = _getBranding();
-    
-    return Container(
+
+    return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () {
@@ -402,7 +403,7 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   void _showBonusEntriesModal() {
     showModalBottomSheet(
       context: context,
@@ -418,19 +419,19 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       ),
     );
   }
-  
+
   // MARK: - Helper Methods
-  
+
   WINRBranding _getBranding() {
     // In a real implementation, this would come from the widget
     // For now, using a default branding
     return WINRBranding.defaultBranding();
   }
-  
+
   List<Map<String, int>> _getVisibleDays() {
     final days = <Map<String, int>>[];
     final currentDay = widget.streakState.currentDay;
-    
+
     // Show current day and next few days
     for (int i = 1; i <= (currentDay + 2).clamp(1, 30); i++) {
       days.add({
@@ -438,30 +439,30 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
         'entries': _calculateEntriesForDay(i),
       });
     }
-    
+
     return days;
   }
-  
+
   int _calculateEntriesForDay(int day) {
     // Base entries calculation - matches StreakEngine logic
-    final baseEntries = 10;
+    const baseEntries = 10;
     final weeklyBonus = ((day - 1) ~/ 7) * 10; // Every 7 days
     final monthlyBonus = ((day - 1) ~/ 30) * 50; // Every 30 days
-    
+
     return baseEntries + weeklyBonus + monthlyBonus;
   }
-  
+
   double _calculateMultiplier() {
     final day = widget.streakState.currentDay;
-    
+
     if (day >= 30) return 3.0;
     if (day >= 21) return 2.5;
     if (day >= 14) return 2.0;
     if (day >= 7) return 1.5;
-    
+
     return 1.0;
   }
-  
+
   String _formatPrize(double value) {
     if (value >= 1000000) {
       return '\$${(value / 1000000).toStringAsFixed(1)}M';

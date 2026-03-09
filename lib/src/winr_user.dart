@@ -25,8 +25,8 @@ class WINRUser {
   // ── Internal state managed by the SDK ──
   String? _email;
   // ignore: unused_field
-  bool _isEmailPermissioned = false;
-  bool _isSMSPermissioned = false;
+  final bool _isEmailPermissioned = false;
+  final bool _isSMSPermissioned = false;
 
   /// Internal email getter
   String? get email => _email;

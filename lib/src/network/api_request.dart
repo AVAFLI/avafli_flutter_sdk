@@ -1,23 +1,24 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 /// Base class for all API requests.
-/// 
+///
 /// Defines the structure for requests to the WINR backend and handles
 /// response parsing with proper error handling.
 abstract class ApiRequest<T> {
   /// HTTP method for this request
   String get method;
-  
+
   /// API endpoint path (relative to base URL)
   String get endpoint;
-  
+
   /// Request body data (for POST/PUT requests)
   Map<String, dynamic>? get body;
-  
+
   /// Parses the HTTP response into the expected type.
   T parseResponse(http.Response response);
-  
+
   /// Helper method to parse JSON responses safely.
   Map<String, dynamic> parseJsonResponse(http.Response response) {
     try {
@@ -25,7 +26,7 @@ abstract class ApiRequest<T> {
       if (data is Map<String, dynamic>) {
         return data;
       } else {
-        throw FormatException('Response is not a JSON object');
+        throw const FormatException('Response is not a JSON object');
       }
     } catch (e) {
       throw FormatException('Invalid JSON response: $e');
@@ -37,7 +38,7 @@ abstract class ApiRequest<T> {
 abstract class GetRequest<T> extends ApiRequest<T> {
   @override
   String get method => 'GET';
-  
+
   @override
   Map<String, dynamic>? get body => null;
 }
@@ -58,7 +59,7 @@ abstract class PutRequest<T> extends ApiRequest<T> {
 abstract class DeleteRequest<T> extends ApiRequest<T> {
   @override
   String get method => 'DELETE';
-  
+
   @override
   Map<String, dynamic>? get body => null;
 }
@@ -67,12 +68,12 @@ abstract class DeleteRequest<T> extends ApiRequest<T> {
 class SuccessResponse {
   final bool success;
   final String? message;
-  
+
   const SuccessResponse({
     required this.success,
     this.message,
   });
-  
+
   factory SuccessResponse.fromJson(Map<String, dynamic> json) {
     return SuccessResponse(
       success: json['success'] ?? true,
@@ -85,7 +86,7 @@ class SuccessResponse {
 class MetadataResponse<T> {
   final T data;
   final Map<String, dynamic>? metadata;
-  
+
   const MetadataResponse({
     required this.data,
     this.metadata,

@@ -52,21 +52,21 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
       await WINR.configure(WINROptions(
         apiKey: 'demo-api-key-12345',
         environment: WINREnvironment.production,
-        branding: WINRBranding(
-          primaryColor: const Color(0xFF6366F1),
-          primaryButtonColor: const Color(0xFF8B5CF6),
-          accentGlowColor: const Color(0xFFEC4899),
-          backgroundColor: const Color(0xFF0F172A),
-          cardBackgroundColor: const Color(0xFF1E293B),
-          cardBorderColor: const Color(0xFF334155),
+        branding: const WINRBranding(
+          primaryColor: Color(0xFF6366F1),
+          primaryButtonColor: Color(0xFF8B5CF6),
+          accentGlowColor: Color(0xFFEC4899),
+          backgroundColor: Color(0xFF0F172A),
+          cardBackgroundColor: Color(0xFF1E293B),
+          cardBorderColor: Color(0xFF334155),
           primaryButtonTextColor: Colors.white,
-          secondaryButtonColor: const Color(0xFF334155),
-          secondaryButtonTextColor: const Color(0xFFCBD5E1),
-          secondaryTextColor: const Color(0xFFCBD5E1),
-          mutedTextColor: const Color(0xFF64748B),
-          inputFieldBackgroundColor: const Color(0xFF334155),
-          inputFieldBorderColor: const Color(0xFF475569),
-          inputFieldPlaceholderColor: const Color(0xFF94A3B8),
+          secondaryButtonColor: Color(0xFF334155),
+          secondaryButtonTextColor: Color(0xFFCBD5E1),
+          secondaryTextColor: Color(0xFFCBD5E1),
+          mutedTextColor: Color(0xFF64748B),
+          inputFieldBackgroundColor: Color(0xFF334155),
+          inputFieldBorderColor: Color(0xFF475569),
+          inputFieldPlaceholderColor: Color(0xFF94A3B8),
           cornerRadius: 16.0,
         ),
         analyticsAdapter: DemoAnalyticsAdapter(),
@@ -93,13 +93,13 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   Future<void> _loadData() async {
     // In a real app, this data comes from the WINR backend automatically.
     // For demo purposes, we create mock data to show the UI components.
-    _campaign = Campaign(
+    _campaign = const Campaign(
       id: 'demo_campaign',
       title: 'Win \$10,000 Cash',
       period: CampaignPeriod.monthly,
       maxDailyBaseEntries: 300,
       doublingEnabled: true,
-      streakConfig: const StreakConfig(),
+      streakConfig: StreakConfig(),
       prizeDescription: 'Enter daily for your chance to win big!',
       prizeValue: 10000.0,
     );
@@ -367,7 +367,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         ),
         const SizedBox(height: 16),
-
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -379,9 +378,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -393,9 +390,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -424,7 +419,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         ),
         const SizedBox(height: 16),
-
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
