@@ -163,6 +163,59 @@ class WINRBranding {
     );
   }
   
+  /// Returns a new [WINRBranding] with server-driven overrides applied.
+  ///
+  /// Server values from `sdkConfig.branding` override code-level defaults.
+  /// Missing or null server fields fall back to the current values.
+  ///
+  /// Field mapping:
+  /// - `primaryColor`   → [primaryColor], [primaryButtonColor]
+  /// - `secondaryColor` → [secondaryButtonColor], [accentGlowColor]
+  /// - `backgroundColor`→ [backgroundColor]
+  /// - `logoUrl`        → reserved for future network-image logo support
+  WINRBranding applyingServerBranding(Map<String, dynamic>? serverBranding) {
+    if (serverBranding == null || serverBranding.isEmpty) return this;
+
+    final serverPrimary = _parseColor(serverBranding['primaryColor']);
+    final serverSecondary = _parseColor(serverBranding['secondaryColor']);
+    final serverBg = _parseColor(serverBranding['backgroundColor']);
+    // logoUrl reserved for future use
+    // final serverLogoUrl = serverBranding['logoUrl'] as String?;
+
+    return WINRBranding(
+      primaryColor: serverPrimary ?? primaryColor,
+      secondaryTextColor: secondaryTextColor,
+      mutedTextColor: mutedTextColor,
+      backgroundColor: serverBg ?? backgroundColor,
+      cardBackgroundColor: cardBackgroundColor,
+      cardBorderColor: cardBorderColor,
+      primaryButtonColor: serverPrimary ?? primaryButtonColor,
+      primaryButtonTextColor: primaryButtonTextColor,
+      secondaryButtonColor: serverSecondary ?? secondaryButtonColor,
+      secondaryButtonTextColor: secondaryButtonTextColor,
+      inputFieldBackgroundColor: inputFieldBackgroundColor,
+      inputFieldBorderColor: inputFieldBorderColor,
+      inputFieldPlaceholderColor: inputFieldPlaceholderColor,
+      accentGlowColor: serverSecondary ?? accentGlowColor,
+      cornerRadius: cornerRadius,
+      logo: logo,
+      logoTwo: logoTwo,
+      primaryLogoSize: primaryLogoSize,
+      secondaryLogoSize: secondaryLogoSize,
+    );
+  }
+
+  /// Parses a hex color string (e.g. `"#0284FF"` or `"0284FF"`) into a [Color].
+  ///
+  /// Returns `null` if the value is null, not a string, empty, or unparseable.
+  static Color? _parseColor(dynamic hex) {
+    if (hex == null || hex is! String || hex.isEmpty) return null;
+    final h = hex.replaceAll('#', '');
+    final value = int.tryParse(h, radix: 16);
+    if (value == null) return null;
+    return Color(value | 0xFF000000);
+  }
+
   /// Creates a cosmic purple and pink themed branding.
   factory WINRBranding.cosmicPurplePink({Widget? logo, Widget? logoTwo}) {
     return WINRBranding(
