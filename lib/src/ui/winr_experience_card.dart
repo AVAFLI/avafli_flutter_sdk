@@ -206,6 +206,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -251,13 +252,14 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildStatsRow(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildProgressBar(),
-          const Spacer(),
+          const SizedBox(height: 16),
           if (widget.showQuickClaim && !widget.claimedToday)
             _buildQuickClaimButton()
           else
