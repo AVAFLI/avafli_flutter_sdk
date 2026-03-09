@@ -20,15 +20,23 @@ abstract class ApiRequest<T> {
   T parseResponse(http.Response response);
 
   /// Helper method to parse JSON responses safely.
+  ///
+  /// Firebase callable functions return responses wrapped in {"result": ...}.
+  /// This method unwraps that envelope automatically.
   Map<String, dynamic> parseJsonResponse(http.Response response) {
     try {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
+        // Unwrap Firebase callable response envelope
+        if (data.containsKey('result') && data['result'] is Map<String, dynamic>) {
+          return data['result'] as Map<String, dynamic>;
+        }
         return data;
       } else {
         throw const FormatException('Response is not a JSON object');
       }
     } catch (e) {
+      if (e is FormatException) rethrow;
       throw FormatException('Invalid JSON response: $e');
     }
   }
