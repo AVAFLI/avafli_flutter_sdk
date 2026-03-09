@@ -131,13 +131,18 @@ class NetworkClientImpl implements NetworkClient {
           response = await client.get(url, headers: headers).timeout(timeout);
           break;
         case 'POST':
-          final body = request.body != null ? jsonEncode(request.body) : null;
+          // Firebase callable functions expect body wrapped in {"data": ...}
+          final body = request.body != null
+              ? jsonEncode({'data': request.body})
+              : null;
           response = await client
               .post(url, headers: headers, body: body)
               .timeout(timeout);
           break;
         case 'PUT':
-          final body = request.body != null ? jsonEncode(request.body) : null;
+          final body = request.body != null
+              ? jsonEncode({'data': request.body})
+              : null;
           response = await client
               .put(url, headers: headers, body: body)
               .timeout(timeout);
