@@ -204,13 +204,13 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
             borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
             border: Border.all(
               color: _emailError != null 
-                  ? Colors.red.withOpacity(0.6)
+                  ? Colors.red.withValues(alpha: 0.6)
                   : widget.branding.inputFieldBorderColor,
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -260,7 +260,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Colors.red.withOpacity(0.9),
+              color: Colors.red.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -330,7 +330,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
         style: ElevatedButton.styleFrom(
           backgroundColor: isEnabled 
               ? widget.branding.primaryButtonColor 
-              : widget.branding.primaryButtonColor.withOpacity(0.4),
+              : widget.branding.primaryButtonColor.withValues(alpha: 0.4),
           foregroundColor: widget.branding.primaryButtonTextColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -383,7 +383,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
           'By entering, you agree to the',
           style: TextStyle(
             fontSize: 12,
-            color: widget.branding.mutedTextColor.withOpacity(0.7),
+            color: widget.branding.mutedTextColor.withValues(alpha: 0.7),
           ),
         ),
         const SizedBox(height: 4),
@@ -407,7 +407,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView>
                 ' & ',
                 style: TextStyle(
                   fontSize: 12,
-                  color: widget.branding.mutedTextColor.withOpacity(0.7),
+                  color: widget.branding.mutedTextColor.withValues(alpha: 0.7),
                 ),
               ),
             ],

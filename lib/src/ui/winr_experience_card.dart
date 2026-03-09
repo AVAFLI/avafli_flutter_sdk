@@ -283,7 +283,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: widget.branding.accentGlowColor.withOpacity(0.3),
+                color: widget.branding.accentGlowColor.withValues(alpha: 0.3),
                 blurRadius: 8,
                 spreadRadius: 2,
               ),
@@ -357,10 +357,10 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: widget.branding.cardBackgroundColor.withOpacity(0.5),
+        color: widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
         border: Border.all(
-          color: widget.branding.primaryColor.withOpacity(0.2),
+          color: widget.branding.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -440,7 +440,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         Container(
           height: 6,
           decoration: BoxDecoration(
-            color: widget.branding.cardBackgroundColor.withOpacity(0.5),
+            color: widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(3),
           ),
           child: FractionallySizedBox(
@@ -523,24 +523,24 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          widget.branding.cardBackgroundColor.withOpacity(0.9),
-          widget.branding.cardBackgroundColor.withOpacity(0.7),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.9),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.7),
         ],
       ),
       borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
       border: Border.all(
-        color: widget.branding.primaryColor.withOpacity(0.2),
+        color: widget.branding.primaryColor.withValues(alpha: 0.2),
         width: 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withValues(alpha: 0.1),
           blurRadius: 8,
           offset: const Offset(0, 4),
         ),
         if (!widget.claimedToday)
           BoxShadow(
-            color: widget.branding.accentGlowColor.withOpacity(0.2),
+            color: widget.branding.accentGlowColor.withValues(alpha: 0.2),
             blurRadius: 16,
             spreadRadius: 2,
           ),

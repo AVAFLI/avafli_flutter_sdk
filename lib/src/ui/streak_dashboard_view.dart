@@ -130,13 +130,13 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            branding.primaryColor.withOpacity(0.2),
-            branding.cardBackgroundColor.withOpacity(0.9),
+            branding.primaryColor.withValues(alpha: 0.2),
+            branding.cardBackgroundColor.withValues(alpha: 0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(branding.cornerRadius),
         border: Border.all(
-          color: branding.primaryColor.withOpacity(0.3),
+          color: branding.primaryColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -183,10 +183,10 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: branding.primaryButtonColor.withOpacity(0.1),
+        color: branding.primaryButtonColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: branding.primaryButtonColor.withOpacity(0.3),
+          color: branding.primaryButtonColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -218,7 +218,7 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
         Container(
           height: 8,
           decoration: BoxDecoration(
-            color: branding.cardBackgroundColor.withOpacity(0.5),
+            color: branding.cardBackgroundColor.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(4),
           ),
           child: AnimatedBuilder(
@@ -238,7 +238,7 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
                     borderRadius: BorderRadius.circular(4),
                     boxShadow: [
                       BoxShadow(
-                        color: branding.accentGlowColor.withOpacity(0.5),
+                        color: branding.accentGlowColor.withValues(alpha: 0.5),
                         blurRadius: 8,
                       ),
                     ],
@@ -305,13 +305,13 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            branding.accentGlowColor.withOpacity(0.1),
-            branding.primaryButtonColor.withOpacity(0.1),
+            branding.accentGlowColor.withValues(alpha: 0.1),
+            branding.primaryButtonColor.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(branding.cornerRadius),
         border: Border.all(
-          color: branding.accentGlowColor.withOpacity(0.3),
+          color: branding.accentGlowColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -349,7 +349,7 @@ class _StreakDashboardViewState extends State<StreakDashboardView>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: branding.accentGlowColor.withOpacity(0.2),
+              color: branding.accentGlowColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(

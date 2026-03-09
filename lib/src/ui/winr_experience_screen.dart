@@ -246,7 +246,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen>
               'Day ${_streakState?.currentDay ?? 1} of your streak',
               style: TextStyle(
                 fontSize: 14,
-                color: widget.configuration.branding.primaryButtonTextColor.withOpacity(0.8),
+                color: widget.configuration.branding.primaryButtonTextColor.withValues(alpha: 0.8),
               ),
             ),
           ],

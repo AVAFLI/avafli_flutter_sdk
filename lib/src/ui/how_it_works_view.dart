@@ -108,8 +108,8 @@ class _HowItWorksViewState extends State<HowItWorksView>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              widget.branding.backgroundColor.withOpacity(0.95),
-              widget.branding.cardBackgroundColor.withOpacity(0.98),
+              widget.branding.backgroundColor.withValues(alpha: 0.95),
+              widget.branding.cardBackgroundColor.withValues(alpha: 0.98),
             ],
           ),
           borderRadius: const BorderRadius.vertical(
@@ -137,13 +137,13 @@ class _HowItWorksViewState extends State<HowItWorksView>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              widget.branding.backgroundColor.withOpacity(0.95),
-              widget.branding.cardBackgroundColor.withOpacity(0.98),
+              widget.branding.backgroundColor.withValues(alpha: 0.95),
+              widget.branding.cardBackgroundColor.withValues(alpha: 0.98),
             ],
           ),
           borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
           border: Border.all(
-            color: widget.branding.primaryColor.withOpacity(0.2),
+            color: widget.branding.primaryColor.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -167,7 +167,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: widget.branding.mutedTextColor.withOpacity(0.3),
+                color: widget.branding.mutedTextColor.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -188,7 +188,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: widget.branding.accentGlowColor.withOpacity(0.3),
+                      color: widget.branding.accentGlowColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -274,13 +274,13 @@ class _HowItWorksViewState extends State<HowItWorksView>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  step.color.withOpacity(0.2),
-                  step.color.withOpacity(0.1),
+                  step.color.withValues(alpha: 0.2),
+                  step.color.withValues(alpha: 0.1),
                 ],
               ),
               shape: BoxShape.circle,
               border: Border.all(
-                color: step.color.withOpacity(0.3),
+                color: step.color.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -321,10 +321,10 @@ class _HowItWorksViewState extends State<HowItWorksView>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: widget.branding.cardBackgroundColor.withOpacity(0.5),
+        color: widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
         border: Border.all(
-          color: widget.branding.primaryColor.withOpacity(0.2),
+          color: widget.branding.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -372,7 +372,7 @@ class _HowItWorksViewState extends State<HowItWorksView>
             decoration: BoxDecoration(
               color: index == _currentPage 
                   ? widget.branding.primaryButtonColor
-                  : widget.branding.mutedTextColor.withOpacity(0.3),
+                  : widget.branding.mutedTextColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
           );

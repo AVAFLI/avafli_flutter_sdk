@@ -137,7 +137,7 @@ class _StreakDayTileState extends State<StreakDayTile>
             ) : null,
             boxShadow: widget.isToday ? [
               BoxShadow(
-                color: widget.branding.accentGlowColor.withOpacity(0.5 * _pulseAnimation.value),
+                color: widget.branding.accentGlowColor.withValues(alpha: 0.5 * _pulseAnimation.value),
                 blurRadius: 8 * _pulseAnimation.value,
                 spreadRadius: 2 * _pulseAnimation.value,
               ),
@@ -208,7 +208,7 @@ class _StreakDayTileState extends State<StreakDayTile>
       return Icon(
         Icons.lock,
         size: iconSize,
-        color: widget.branding.mutedTextColor.withOpacity(0.7),
+        color: widget.branding.mutedTextColor.withValues(alpha: 0.7),
       );
     }
   }
@@ -238,7 +238,7 @@ class _StreakDayTileState extends State<StreakDayTile>
         end: Alignment.bottomRight,
         colors: [
           widget.branding.primaryButtonColor,
-          widget.branding.cardBackgroundColor.withOpacity(0.9),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.9),
         ],
       );
     } else if (widget.isClaimed) {
@@ -246,8 +246,8 @@ class _StreakDayTileState extends State<StreakDayTile>
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          widget.branding.primaryColor.withOpacity(0.25),
-          widget.branding.cardBackgroundColor.withOpacity(0.95),
+          widget.branding.primaryColor.withValues(alpha: 0.25),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.95),
         ],
       );
     } else {
@@ -255,8 +255,8 @@ class _StreakDayTileState extends State<StreakDayTile>
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          widget.branding.cardBackgroundColor.withOpacity(0.5),
-          widget.branding.cardBackgroundColor.withOpacity(0.35),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
+          widget.branding.cardBackgroundColor.withValues(alpha: 0.35),
         ],
       );
     }
@@ -264,14 +264,14 @@ class _StreakDayTileState extends State<StreakDayTile>
   
   Color _getTileBorderColor() {
     if (widget.isToday) return widget.branding.accentGlowColor;
-    if (widget.isClaimed) return widget.branding.primaryColor.withOpacity(0.7);
-    return Colors.white.withOpacity(0.18);
+    if (widget.isClaimed) return widget.branding.primaryColor.withValues(alpha: 0.7);
+    return Colors.white.withValues(alpha: 0.18);
   }
   
   Color _getShadowColor() {
-    if (widget.isToday) return widget.branding.accentGlowColor.withOpacity(0.7);
-    if (widget.isClaimed) return widget.branding.primaryColor.withOpacity(0.4);
-    return Colors.black.withOpacity(0.35);
+    if (widget.isToday) return widget.branding.accentGlowColor.withValues(alpha: 0.7);
+    if (widget.isClaimed) return widget.branding.primaryColor.withValues(alpha: 0.4);
+    return Colors.black.withValues(alpha: 0.35);
   }
   
   double _getShadowRadius() {
@@ -282,11 +282,11 @@ class _StreakDayTileState extends State<StreakDayTile>
   
   Color _getPillBackgroundColor() {
     if (widget.isToday) {
-      return widget.branding.cardBackgroundColor.withOpacity(0.95);
+      return widget.branding.cardBackgroundColor.withValues(alpha: 0.95);
     } else if (widget.isClaimed) {
-      return widget.branding.primaryColor.withOpacity(0.4);
+      return widget.branding.primaryColor.withValues(alpha: 0.4);
     } else {
-      return widget.branding.cardBackgroundColor.withOpacity(0.9);
+      return widget.branding.cardBackgroundColor.withValues(alpha: 0.9);
     }
   }
   
@@ -301,12 +301,12 @@ class _StreakDayTileState extends State<StreakDayTile>
   Color _getEntriesTextColor() {
     if (widget.isToday) return Colors.white;
     if (widget.isClaimed) return widget.branding.primaryColor;
-    return widget.branding.mutedTextColor.withOpacity(0.9);
+    return widget.branding.mutedTextColor.withValues(alpha: 0.9);
   }
   
   Color _getEntriesLabelColor() {
-    if (widget.isToday) return Colors.white.withOpacity(0.9);
-    if (widget.isClaimed) return widget.branding.primaryColor.withOpacity(0.85);
-    return widget.branding.mutedTextColor.withOpacity(0.7);
+    if (widget.isToday) return Colors.white.withValues(alpha: 0.9);
+    if (widget.isClaimed) return widget.branding.primaryColor.withValues(alpha: 0.85);
+    return widget.branding.mutedTextColor.withValues(alpha: 0.7);
   }
 }

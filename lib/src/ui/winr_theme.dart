@@ -15,10 +15,9 @@ class WINRTheme {
         onPrimary: branding.primaryButtonTextColor,
         secondary: branding.accentGlowColor,
         onSecondary: branding.primaryColor,
-        surface: branding.cardBackgroundColor,
+        surface: branding.backgroundColor,
         onSurface: branding.primaryColor,
-        background: branding.backgroundColor,
-        onBackground: branding.primaryColor,
+        surfaceContainerHighest: branding.cardBackgroundColor,
         error: const Color(0xFFFF6B6B),
         onError: Colors.white,
         outline: branding.cardBorderColor,
@@ -290,8 +289,8 @@ class WINRTheme {
         end: Alignment.bottomCenter,
         colors: [
           branding.backgroundColor,
-          branding.backgroundColor.withOpacity(0.8),
-          branding.cardBackgroundColor.withOpacity(0.9),
+          branding.backgroundColor.withValues(alpha: 0.8),
+          branding.cardBackgroundColor.withValues(alpha: 0.9),
         ],
       ),
     );
@@ -300,7 +299,7 @@ class WINRTheme {
   /// Creates glow effect for accent elements.
   static BoxShadow createGlowEffect(WINRBranding branding) {
     return BoxShadow(
-      color: branding.accentGlowColor.withOpacity(0.3),
+      color: branding.accentGlowColor.withValues(alpha: 0.3),
       blurRadius: 20,
       spreadRadius: 2,
     );

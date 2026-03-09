@@ -90,12 +90,12 @@ class _WINRExperienceHeaderState extends State<WINRExperienceHeader>
             end: Alignment.bottomCenter,
             colors: [
               widget.branding.backgroundColor,
-              widget.branding.backgroundColor.withOpacity(0.9),
+              widget.branding.backgroundColor.withValues(alpha: 0.9),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -131,7 +131,7 @@ class _WINRExperienceHeaderState extends State<WINRExperienceHeader>
             size: 24,
           ),
           style: IconButton.styleFrom(
-            backgroundColor: widget.branding.cardBackgroundColor.withOpacity(0.5),
+            backgroundColor: widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -173,7 +173,7 @@ class _WINRExperienceHeaderState extends State<WINRExperienceHeader>
         borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
         boxShadow: [
           BoxShadow(
-            color: widget.branding.accentGlowColor.withOpacity(0.3),
+            color: widget.branding.accentGlowColor.withValues(alpha: 0.3),
             blurRadius: 12,
             spreadRadius: 2,
           ),
@@ -281,7 +281,7 @@ class WINRCampaignHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: branding.accentGlowColor.withOpacity(0.3),
+            color: branding.accentGlowColor.withValues(alpha: 0.3),
             blurRadius: 8,
             spreadRadius: 1,
           ),

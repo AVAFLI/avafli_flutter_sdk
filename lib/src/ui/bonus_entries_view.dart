@@ -100,8 +100,8 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              widget.branding.backgroundColor.withOpacity(0.95),
-              widget.branding.cardBackgroundColor.withOpacity(0.98),
+              widget.branding.backgroundColor.withValues(alpha: 0.95),
+              widget.branding.cardBackgroundColor.withValues(alpha: 0.98),
             ],
           ),
           borderRadius: const BorderRadius.vertical(
@@ -134,7 +134,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
       width: 40,
       height: 4,
       decoration: BoxDecoration(
-        color: widget.branding.mutedTextColor.withOpacity(0.3),
+        color: widget.branding.mutedTextColor.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -156,7 +156,7 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
             borderRadius: BorderRadius.circular(40),
             boxShadow: [
               BoxShadow(
-                color: widget.branding.accentGlowColor.withOpacity(0.3),
+                color: widget.branding.accentGlowColor.withValues(alpha: 0.3),
                 blurRadius: 16,
                 spreadRadius: 4,
               ),
@@ -202,10 +202,10 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: widget.branding.cardBackgroundColor.withOpacity(0.5),
+        color: widget.branding.cardBackgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
         border: Border.all(
-          color: widget.branding.primaryColor.withOpacity(0.2),
+          color: widget.branding.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -297,10 +297,10 @@ class _BonusEntriesViewState extends State<BonusEntriesView>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(widget.branding.cornerRadius),
         border: Border.all(
-          color: Colors.red.withOpacity(0.3),
+          color: Colors.red.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
