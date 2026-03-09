@@ -338,17 +338,14 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         const SizedBox(height: 16),
 
         // Large card example
-        SizedBox(
-          height: 200,
-          child: WINRExperienceCard(
-            branding: WINRBranding.defaultBranding(),
-            campaign: _campaign,
-            streakState: _streakState,
-            claimedToday: _claimedToday,
-            size: WINRCardSize.large,
-            onTap: () => _showFullExperience(),
-            onQuickClaim: () => _handleQuickClaim(),
-          ),
+        WINRExperienceCard(
+          branding: WINRBranding.defaultBranding(),
+          campaign: _campaign,
+          streakState: _streakState,
+          claimedToday: _claimedToday,
+          size: WINRCardSize.large,
+          onTap: () => _showFullExperience(),
+          onQuickClaim: () => _handleQuickClaim(),
         ),
       ],
     );

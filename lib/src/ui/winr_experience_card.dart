@@ -138,7 +138,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
             },
             child: Container(
               width: _getCardWidth(),
-              height: _getCardHeight(),
+              constraints: BoxConstraints(minHeight: _getCardMinHeight()),
               decoration: _buildCardDecoration(),
               child: _buildCardContent(),
             ),
@@ -559,7 +559,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     }
   }
 
-  double _getCardHeight() {
+  double _getCardMinHeight() {
     switch (widget.size) {
       case WINRCardSize.small:
         return 72;
