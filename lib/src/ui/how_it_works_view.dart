@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../domain/sdk_copy.dart';
 import '../winr_branding.dart';
 
 /// How It Works view — matches iOS WINRExperienceHowItWorksView.swift.
@@ -6,36 +7,36 @@ import '../winr_branding.dart';
 /// Scrollable view with numbered step rows, pro-tip card, and sticky "Got It!" CTA.
 class HowItWorksView extends StatelessWidget {
   final WINRBranding branding;
+  final SdkCopy? sdkCopy;
   final VoidCallback onPrimary;
 
   const HowItWorksView({
     super.key,
     required this.branding,
+    this.sdkCopy,
     required this.onPrimary,
   });
 
-  static const _steps = [
+  List<({IconData icon, String title, String desc})> get _steps => [
     (
       icon: Icons.calendar_month,
-      title: 'Visit Daily',
-      desc: 'Open the app each day to claim your daily entries.',
+      title: sdkCopy?.howItWorks?.step1Title ?? 'Visit Daily',
+      desc: sdkCopy?.howItWorks?.step1Description ?? 'Open the app each day to claim your daily entries.',
     ),
     (
       icon: Icons.local_fire_department,
-      title: 'Build Your Streak',
-      desc:
-          'Keep your streak alive — the longer it goes, the more entries you earn each day.',
+      title: sdkCopy?.howItWorks?.step2Title ?? 'Build Your Streak',
+      desc: sdkCopy?.howItWorks?.step2Description ?? 'Keep your streak alive — the longer it goes, the more entries you earn each day.',
     ),
     (
       icon: Icons.play_circle_filled,
-      title: 'Watch & Double',
-      desc: 'Watch an optional short video to double your daily entries.',
+      title: sdkCopy?.howItWorks?.step3Title ?? 'Watch & Double',
+      desc: sdkCopy?.howItWorks?.step3Description ?? 'Watch an optional short video to double your daily entries.',
     ),
     (
       icon: Icons.card_giftcard,
-      title: 'Win Prizes',
-      desc:
-          'Your entries go into the monthly prize drawing. More entries = better odds!',
+      title: sdkCopy?.howItWorks?.step4Title ?? 'Win Prizes',
+      desc: sdkCopy?.howItWorks?.step4Description ?? 'Your entries go into the monthly prize drawing. More entries = better odds!',
     ),
   ];
 
@@ -63,7 +64,7 @@ class HowItWorksView extends StatelessWidget {
                   const Text('🎰', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: 10),
                   Text(
-                    'How It Works',
+                    sdkCopy?.howItWorks?.title ?? 'How It Works',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
@@ -72,7 +73,7 @@ class HowItWorksView extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Earn entries every day for a chance to win big.',
+                    sdkCopy?.howItWorks?.subtitle ?? 'Earn entries every day for a chance to win big.',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -123,7 +124,7 @@ class HowItWorksView extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Pro tip: A 5-day streak earns a weekly bonus of extra entries!',
+                            sdkCopy?.howItWorks?.tip ?? 'Pro tip: A 5-day streak earns a weekly bonus of extra entries!',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -179,7 +180,7 @@ class HowItWorksView extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'Got It!',
+                        sdkCopy?.howItWorks?.gotItButton ?? 'Got It!',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,

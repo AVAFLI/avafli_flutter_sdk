@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../domain/sdk_copy.dart';
 import '../winr_branding.dart';
 
 /// Email capture view — matches iOS EmailCaptureView.swift.
@@ -12,11 +13,8 @@ class EmailCaptureView extends StatefulWidget {
   final Function(String email) onSubmit;
   final String? rulesUrl;
   final String? prefillEmail;
-  final String? welcomeTitle;
-  final String? welcomeSubtitle;
-  final String? ageGateText;
-  final String? rulesLinkText;
   final double? prizeValue;
+  final SdkCopy? sdkCopy;
   final void Function(String url)? onOpenUrl;
 
   const EmailCaptureView({
@@ -26,11 +24,8 @@ class EmailCaptureView extends StatefulWidget {
     required this.onSkip,
     this.rulesUrl,
     this.prefillEmail,
-    this.welcomeTitle,
-    this.welcomeSubtitle,
-    this.ageGateText,
-    this.rulesLinkText,
     this.prizeValue,
+    this.sdkCopy,
     this.onOpenUrl,
   });
 
@@ -92,7 +87,8 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
               child: Column(
                 children: [
                   Text(
-                    widget.welcomeTitle ??
+                    widget.sdkCopy?.emailCapture?.title ??
+                        widget.sdkCopy?.welcomeTitle ??
                         (widget.prizeValue != null
                             ? _formatPrize(widget.prizeValue!)
                             : 'WIN PRIZES!'),
@@ -106,7 +102,8 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    widget.welcomeSubtitle ??
+                    widget.sdkCopy?.emailCapture?.subtitle ??
+                        widget.sdkCopy?.welcomeSubtitle ??
                         'Just submit this entry form for your FREE chance to win.',
                     style: TextStyle(
                       fontSize: 15,
@@ -128,7 +125,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Email',
+                    widget.sdkCopy?.emailCapture?.emailLabel ?? 'Email',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -176,7 +173,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                               color: b.primaryColor,
                             ),
                             decoration: InputDecoration(
-                              hintText: 'Ex. johndoe@gmail.com',
+                              hintText: widget.sdkCopy?.emailCapture?.emailPlaceholder ?? 'Ex. johndoe@gmail.com',
                               hintStyle: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
@@ -237,7 +234,8 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        widget.ageGateText ??
+                        widget.sdkCopy?.emailCapture?.ageGateText ??
+                            widget.sdkCopy?.ageGateText ??
                             'I confirm I am 18 years of age or older',
                         style: TextStyle(
                           fontSize: 13,
@@ -276,7 +274,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                   ),
                   child: Center(
                     child: Text(
-                      'ENTER NOW',
+                      widget.sdkCopy?.emailCapture?.submitButton ?? 'ENTER NOW',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
@@ -301,9 +299,10 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                     color: b.mutedTextColor.withValues(alpha: 0.7),
                   ),
                   children: [
-                    const TextSpan(text: 'By entering, you agree to the '),
+                    TextSpan(text: widget.sdkCopy?.emailCapture?.rulesPrefix ?? 'By entering, you agree to the '),
                     TextSpan(
-                      text: widget.rulesLinkText ?? 'Official Rules',
+                      text: widget.sdkCopy?.emailCapture?.rulesLinkText ?? 
+                            widget.sdkCopy?.rulesLinkText ?? 'Official Rules',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: b.primaryButtonColor,

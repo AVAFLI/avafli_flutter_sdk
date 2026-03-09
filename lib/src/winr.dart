@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'domain/campaign.dart';
 import 'domain/daily_entry_grant.dart';
+import 'domain/sdk_copy.dart';
 import 'domain/streak_engine.dart';
 import 'domain/streak_state.dart';
 import 'network/network_client.dart';
@@ -56,6 +57,7 @@ class WINR {
   static Campaign? _cachedCampaign;
   static StreakState? _cachedStreakState;
   static Map<String, dynamic>? _cachedSdkConfig;
+  static SdkCopy? _cachedSdkCopy;
   static bool? _cachedClaimedToday;
 
   // Registration state
@@ -180,6 +182,7 @@ class WINR {
             cachedStreakState: _cachedStreakState,
             cachedClaimedToday: _cachedClaimedToday,
             sdkConfig: _cachedSdkConfig,
+            sdkCopy: _cachedSdkCopy,
           ),
           fullscreenDialog: true,
         ),
@@ -256,6 +259,7 @@ class WINR {
       _cachedCampaign = null;
       _cachedStreakState = null;
       _cachedSdkConfig = null;
+      _cachedSdkCopy = null;
       _cachedClaimedToday = null;
       _currentUser = null;
 
@@ -324,6 +328,7 @@ class WINR {
       _cachedCampaign = response.campaign;
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
+      _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
 
       // Cache streak state
       if (response.campaign != null) {
@@ -351,6 +356,7 @@ class WINR {
       _cachedCampaign = response.campaign;
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
+      _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
 
       // Update cached data
       if (response.campaign != null) {
@@ -378,6 +384,25 @@ class WINR {
       adUnitId: adUnitId,
       testMode: false, // TODO: Add test mode detection
     );
+  }
+
+  /// Parses SDK config copy into typed model.
+  static SdkCopy? _parseSdkCopy(Map<String, dynamic>? sdkConfig) {
+    if (sdkConfig == null) return null;
+    
+    final copyJson = sdkConfig['copy'];
+    if (copyJson == null) return null;
+    
+    if (copyJson is Map<String, dynamic>) {
+      try {
+        return SdkCopy.fromJson(copyJson);
+      } catch (e) {
+        Logger.instance.error('Failed to parse SDK copy config', e);
+        return null;
+      }
+    }
+    
+    return null;
   }
 
   /// Refreshes the authentication token if needed.
@@ -473,6 +498,7 @@ class WINR {
     _cachedCampaign = null;
     _cachedStreakState = null;
     _cachedSdkConfig = null;
+    _cachedSdkCopy = null;
     _cachedClaimedToday = null;
     _isRegistering = false;
     _registrationCompleter = null;

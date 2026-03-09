@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/campaign.dart';
 import '../domain/daily_entry_grant.dart';
+import '../domain/sdk_copy.dart';
 import '../domain/streak_engine.dart';
 import '../domain/streak_state.dart';
 import '../network/network_client.dart';
@@ -46,6 +47,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final StreakState? cachedStreakState;
   final bool? cachedClaimedToday;
   final Map<String, dynamic>? sdkConfig;
+  final SdkCopy? sdkCopy;
 
   const WINRExperienceScreen({
     super.key,
@@ -60,6 +62,7 @@ class WINRExperienceScreen extends StatefulWidget {
     this.cachedStreakState,
     this.cachedClaimedToday,
     this.sdkConfig,
+    this.sdkCopy,
   });
 
   @override
@@ -94,11 +97,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
     return branding is Map<String, dynamic> ? branding : null;
   }
 
-  /// Server copy map from sdkConfig (nullable).
-  Map<String, dynamic>? get _serverCopy {
-    final copy = widget.sdkConfig?['copy'];
-    return copy is Map<String, dynamic> ? copy : null;
-  }
+
 
   @override
   void initState() {
@@ -198,10 +197,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           rulesUrl: null, // campaign rulesUrl if available
           prefillEmail: widget.user.email,
           prizeValue: _campaign?.prizeValue,
-          welcomeTitle: _serverCopy?['welcomeTitle'] as String?,
-          welcomeSubtitle: _serverCopy?['welcomeSubtitle'] as String?,
-          ageGateText: _serverCopy?['ageGateText'] as String?,
-          rulesLinkText: _serverCopy?['rulesLinkText'] as String?,
+          sdkCopy: widget.sdkCopy,
           onSubmit: _submitEmail,
           onSkip: _skipEmailCapture,
         );
@@ -214,8 +210,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           ladder: _ladder,
           claimedToday: _claimedToday,
           campaign: _campaign,
-          streakMessage: _serverCopy?['streakMessage'] as String?,
-          dailyClaimButton: _serverCopy?['dailyClaimButton'] as String?,
+          sdkCopy: widget.sdkCopy,
           onClaim: _claimDailyEntries,
           onClose: () => Navigator.of(context).pop(),
         );
@@ -224,6 +219,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return BonusEntriesView(
           branding: _branding,
           entries: _lastGrant?.baseEntries ?? _entriesToday,
+          sdkCopy: widget.sdkCopy,
           onClaim: _claimBonus,
           onSkip: _skipBonus,
         );
@@ -231,6 +227,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       case _ExperiencePhase.howItWorks:
         return HowItWorksView(
           branding: _branding,
+          sdkCopy: widget.sdkCopy,
           onPrimary: _hideHowItWorks,
         );
 
@@ -247,6 +244,9 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildLoading() {
+    final loadingText = widget.sdkCopy?.loading?.text ?? 
+        'Loading today\'s reward…';
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -254,7 +254,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           CircularProgressIndicator(color: _branding.accentGlowColor),
           const SizedBox(height: 16),
           Text(
-            'Loading today\'s reward…',
+            loadingText,
             style: TextStyle(color: _branding.primaryColor),
           ),
         ],
@@ -264,6 +264,11 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
 
   Widget _buildCompleted() {
     final grant = _lastGrant;
+    final title = widget.sdkCopy?.completed?.title ?? 'Entries Claimed!';
+    final subtitle = widget.sdkCopy?.completed?.subtitle ?? 
+        '+${grant?.total ?? _entriesToday} entries added to this month\'s drawing.';
+    final buttonText = widget.sdkCopy?.completed?.closeButton ?? 'Close';
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -271,7 +276,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Entries Claimed!',
+              title,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
@@ -280,7 +285,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '+${grant?.total ?? _entriesToday} entries added to this month\'s drawing.',
+              subtitle.replaceAll('{total}', '${grant?.total ?? _entriesToday}'),
               style: TextStyle(color: _branding.mutedTextColor),
               textAlign: TextAlign.center,
             ),
@@ -297,7 +302,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    'Close',
+                    buttonText,
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
@@ -314,6 +319,11 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   }
 
   Widget _buildError() {
+    final title = widget.sdkCopy?.error?.title ?? 'Something went wrong.';
+    final subtitle = widget.sdkCopy?.error?.subtitle ?? 
+        _errorMessage ?? 'Please try again later.';
+    final buttonText = widget.sdkCopy?.error?.closeButton ?? 'Close';
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -321,7 +331,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Something went wrong.',
+              title,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -330,7 +340,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              _errorMessage ?? 'Please try again later.',
+              subtitle,
               style: TextStyle(color: _branding.mutedTextColor),
             ),
             const SizedBox(height: 16),
@@ -346,7 +356,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    'Close',
+                    buttonText,
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,

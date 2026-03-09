@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../domain/sdk_copy.dart';
 import '../winr_branding.dart';
 
 /// Bonus entries view — matches iOS BonusEntriesView.swift.
@@ -7,6 +8,7 @@ import '../winr_branding.dart';
 class BonusEntriesView extends StatelessWidget {
   final WINRBranding branding;
   final int entries;
+  final SdkCopy? sdkCopy;
   final VoidCallback onClaim;
   final VoidCallback onSkip;
 
@@ -14,6 +16,7 @@ class BonusEntriesView extends StatelessWidget {
     super.key,
     required this.branding,
     required this.entries,
+    this.sdkCopy,
     required this.onClaim,
     required this.onSkip,
   });
@@ -26,7 +29,7 @@ class BonusEntriesView extends StatelessWidget {
         children: [
           // Title
           Text(
-            'BONUS ENTRIES',
+            sdkCopy?.bonusEntries?.title ?? 'BONUS ENTRIES',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -37,7 +40,8 @@ class BonusEntriesView extends StatelessWidget {
 
           // Description
           Text(
-            'Watch a short video to double today\'s $entries entries.',
+            (sdkCopy?.bonusEntries?.subtitle ?? 'Watch a short video to double today\'s {entries} entries.')
+                .replaceAll('{entries}', '$entries'),
             style: TextStyle(
               fontSize: 16,
               color: branding.primaryColor.withValues(alpha: 0.9),
@@ -58,7 +62,8 @@ class BonusEntriesView extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  'WATCH & CLAIM ${entries * 2} ENTRIES',
+                  (sdkCopy?.bonusEntries?.watchButton ?? 'WATCH & CLAIM {total} ENTRIES')
+                      .replaceAll('{total}', '${entries * 2}'),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -74,7 +79,8 @@ class BonusEntriesView extends StatelessWidget {
           GestureDetector(
             onTap: onSkip,
             child: Text(
-              'No thanks, continue with $entries entries',
+              (sdkCopy?.bonusEntries?.skipText ?? 'No thanks, continue with {entries} entries')
+                  .replaceAll('{entries}', '$entries'),
               style: TextStyle(
                 fontSize: 14,
                 color: branding.primaryColor.withValues(alpha: 0.7),

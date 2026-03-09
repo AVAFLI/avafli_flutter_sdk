@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/campaign.dart';
+import '../domain/sdk_copy.dart';
 import '../domain/streak_state.dart';
 import '../winr_branding.dart';
 import 'streak_day_tile.dart';
@@ -17,8 +18,7 @@ class StreakDashboardView extends StatelessWidget {
   final Campaign? campaign;
   final VoidCallback onClaim;
   final VoidCallback onClose;
-  final String? streakMessage;
-  final String? dailyClaimButton;
+  final SdkCopy? sdkCopy;
 
   const StreakDashboardView({
     super.key,
@@ -30,8 +30,7 @@ class StreakDashboardView extends StatelessWidget {
     required this.onClaim,
     required this.onClose,
     this.campaign,
-    this.streakMessage,
-    this.dailyClaimButton,
+    this.sdkCopy,
   });
 
   static String formatPrize(double value) {
@@ -147,7 +146,8 @@ class StreakDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          streakMessage ??
+          sdkCopy?.streakDashboard?.streakMessage ??
+              sdkCopy?.streakMessage ??
               'Keep your daily streak alive to unlock more entries.',
           style: TextStyle(
             fontSize: 12,
@@ -167,7 +167,7 @@ class StreakDashboardView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(left: 6),
           child: Text(
-            'Upcoming rewards',
+            sdkCopy?.streakDashboard?.upcomingLabel ?? 'Upcoming rewards',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -220,7 +220,7 @@ class StreakDashboardView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Bonus Progress',
+            sdkCopy?.streakDashboard?.bonusProgress ?? 'Bonus Progress',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -232,21 +232,23 @@ class StreakDashboardView extends StatelessWidget {
             children: [
               Expanded(
                 child: _BonusProgressPill(
-                  label: 'Week',
+                  label: sdkCopy?.streakDashboard?.weekLabel ?? 'Week',
                   current: streakState.weeklyCurrent,
                   target: config.weeklyBonusThreshold,
                   bonus: config.weeklyBonusEntries,
                   branding: branding,
+                  sdkCopy: sdkCopy,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _BonusProgressPill(
-                  label: 'Month',
+                  label: sdkCopy?.streakDashboard?.monthLabel ?? 'Month',
                   current: streakState.monthlyCurrent,
                   target: config.monthlyBonusThreshold,
                   bonus: config.monthlyBonusEntries,
                   branding: branding,
+                  sdkCopy: sdkCopy,
                 ),
               ),
             ],
@@ -288,7 +290,7 @@ class StreakDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          "Today's entries claimed!",
+          sdkCopy?.streakDashboard?.alreadyClaimedTitle ?? "Today's entries claimed!",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -297,7 +299,7 @@ class StreakDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Come back tomorrow to continue your streak.',
+          sdkCopy?.streakDashboard?.alreadyClaimedSubtitle ?? 'Come back tomorrow to continue your streak.',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -325,7 +327,7 @@ class StreakDashboardView extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  'Done',
+                  sdkCopy?.streakDashboard?.doneButton ?? 'Done',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -345,7 +347,8 @@ class StreakDashboardView extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Day ${streakState.currentDay} reward',
+          (sdkCopy?.streakDashboard?.dayRewardLabel ?? 'Day {day} reward')
+              .replaceAll('{day}', '${streakState.currentDay}'),
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -354,7 +357,8 @@ class StreakDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Claim $entriesToday entries for today\'s visit to keep your streak alive.',
+          (sdkCopy?.streakDashboard?.claimDescription ?? 'Claim {entries} entries for today\'s visit to keep your streak alive.')
+              .replaceAll('{entries}', '$entriesToday'),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -385,7 +389,8 @@ class StreakDashboardView extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  dailyClaimButton ?? 'Claim $entriesToday Entries',
+                  (sdkCopy?.streakDashboard?.claimButton ?? sdkCopy?.dailyClaimButton ?? 'Claim {entries} Entries')
+                      .replaceAll('{entries}', '$entriesToday'),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -408,6 +413,7 @@ class _BonusProgressPill extends StatelessWidget {
   final int target;
   final int bonus;
   final WINRBranding branding;
+  final SdkCopy? sdkCopy;
 
   const _BonusProgressPill({
     required this.label,
@@ -415,6 +421,7 @@ class _BonusProgressPill extends StatelessWidget {
     required this.target,
     required this.bonus,
     required this.branding,
+    this.sdkCopy,
   });
 
   @override
@@ -466,7 +473,7 @@ class _BonusProgressPill extends StatelessWidget {
           const SizedBox(height: 6),
           if (current >= target)
             Text(
-              '✓ Bonus earned!',
+              sdkCopy?.streakDashboard?.bonusEarned ?? '✓ Bonus earned!',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
@@ -475,7 +482,8 @@ class _BonusProgressPill extends StatelessWidget {
             )
           else
             Text(
-              '+$bonus entries',
+              (sdkCopy?.streakDashboard?.entriesLabel ?? '+{bonus} entries')
+                  .replaceAll('{bonus}', '$bonus'),
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
