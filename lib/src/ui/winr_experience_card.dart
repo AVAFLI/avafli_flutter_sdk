@@ -161,7 +161,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
 
   Widget _buildSmallCard() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           _buildStatusIcon(),
@@ -169,7 +169,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _getStatusText(),
@@ -179,7 +179,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
                     color: widget.branding.primaryColor,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   _getSubtitleText(),
                   style: TextStyle(
