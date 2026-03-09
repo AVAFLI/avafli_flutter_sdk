@@ -22,7 +22,6 @@ dependencies:
   connectivity_plus: ^5.0.2
   geolocator: ^10.1.0
   crypto: ^3.0.3
-  firebase_core: ^4.5.0
 
 dev_dependencies:
   flutter_test:
