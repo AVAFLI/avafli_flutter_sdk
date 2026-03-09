@@ -6,3 +6,5 @@
 /.dart_tool
 /build/ios
 /ios/Runner.xcodeproj/project.xcworkspace/xcshareddata
+/ios/build/ios/XCBuildData
+/.dart_tool/hooks_runner/objective_c
