@@ -138,7 +138,7 @@
     },
     {
       "name": "matcher",
-      "version": "0.12.18",
+      "version": "0.12.19",
       "dependencies": [
         "async",
         "meta",
@@ -149,7 +149,7 @@
     },
     {
       "name": "test_api",
-      "version": "0.7.9",
+      "version": "0.7.10",
       "dependencies": [
         "async",
         "boolean_selector",
@@ -171,11 +171,12 @@
     },
     {
       "name": "geolocator",
-      "version": "10.1.1",
+      "version": "14.0.2",
       "dependencies": [
         "flutter",
         "geolocator_android",
         "geolocator_apple",
+        "geolocator_linux",
         "geolocator_platform_interface",
         "geolocator_web",
         "geolocator_windows"
@@ -183,20 +184,22 @@
     },
     {
       "name": "connectivity_plus",
-      "version": "5.0.2",
+      "version": "7.0.0",
       "dependencies": [
+        "collection",
         "connectivity_plus_platform_interface",
         "flutter",
         "flutter_web_plugins",
-        "js",
         "meta",
-        "nm"
+        "nm",
+        "web"
       ]
     },
     {
       "name": "package_info_plus",
-      "version": "4.2.0",
+      "version": "9.0.0",
       "dependencies": [
+        "clock",
         "ffi",
         "flutter",
         "flutter_web_plugins",
@@ -204,12 +207,13 @@
         "meta",
         "package_info_plus_platform_interface",
         "path",
+        "web",
         "win32"
       ]
     },
     {
       "name": "device_info_plus",
-      "version": "10.1.2",
+      "version": "12.3.0",
       "dependencies": [
         "device_info_plus_platform_interface",
         "ffi",
@@ -237,11 +241,11 @@
     },
     {
       "name": "flutter_secure_storage",
-      "version": "9.2.4",
+      "version": "10.0.0",
       "dependencies": [
         "flutter",
+        "flutter_secure_storage_darwin",
         "flutter_secure_storage_linux",
-        "flutter_secure_storage_macos",
         "flutter_secure_storage_platform_interface",
         "flutter_secure_storage_web",
         "flutter_secure_storage_windows",
@@ -340,6 +344,18 @@
       ]
     },
     {
+      "name": "geolocator_linux",
+      "version": "0.2.4",
+      "dependencies": [
+        "dbus",
+        "flutter",
+        "geoclue",
+        "geolocator_platform_interface",
+        "gsettings",
+        "package_info_plus"
+      ]
+    },
+    {
       "name": "geolocator_windows",
       "version": "0.2.5",
       "dependencies": [
@@ -349,11 +365,12 @@
     },
     {
       "name": "geolocator_web",
-      "version": "2.2.1",
+      "version": "4.1.3",
       "dependencies": [
         "flutter",
         "flutter_web_plugins",
-        "geolocator_platform_interface"
+        "geolocator_platform_interface",
+        "web"
       ]
     },
     {
@@ -366,7 +383,7 @@
     },
     {
       "name": "geolocator_android",
-      "version": "4.6.2",
+      "version": "5.0.2",
       "dependencies": [
         "flutter",
         "geolocator_platform_interface",
@@ -392,15 +409,13 @@
       ]
     },
     {
-      "name": "js",
-      "version": "0.6.7",
-      "dependencies": [
-        "meta"
-      ]
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
     },
     {
       "name": "connectivity_plus_platform_interface",
-      "version": "1.2.4",
+      "version": "2.0.1",
       "dependencies": [
         "flutter",
         "meta",
@@ -423,7 +438,7 @@
     },
     {
       "name": "package_info_plus_platform_interface",
-      "version": "2.0.1",
+      "version": "3.2.1",
       "dependencies": [
         "flutter",
         "meta",
@@ -437,16 +452,12 @@
     },
     {
       "name": "win32_registry",
-      "version": "1.1.5",
+      "version": "2.1.0",
       "dependencies": [
         "ffi",
+        "meta",
         "win32"
       ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "file",
@@ -525,7 +536,7 @@
     },
     {
       "name": "flutter_secure_storage_windows",
-      "version": "3.1.2",
+      "version": "4.1.0",
       "dependencies": [
         "ffi",
         "flutter",
@@ -537,36 +548,36 @@
     },
     {
       "name": "flutter_secure_storage_web",
-      "version": "1.2.1",
+      "version": "2.1.0",
       "dependencies": [
         "flutter",
         "flutter_secure_storage_platform_interface",
         "flutter_web_plugins",
-        "js"
+        "web"
       ]
     },
     {
       "name": "flutter_secure_storage_platform_interface",
-      "version": "1.1.2",
+      "version": "2.0.1",
       "dependencies": [
         "flutter",
         "plugin_platform_interface"
       ]
     },
     {
-      "name": "flutter_secure_storage_macos",
-      "version": "3.1.3",
+      "name": "flutter_secure_storage_linux",
+      "version": "3.0.0",
       "dependencies": [
         "flutter",
         "flutter_secure_storage_platform_interface"
       ]
     },
     {
-      "name": "flutter_secure_storage_linux",
-      "version": "1.2.3",
+      "name": "flutter_secure_storage_darwin",
+      "version": "0.2.0",
       "dependencies": [
         "flutter",
-        "flutter_secure_storage_platform_interface"
+        "plugin_platform_interface"
       ]
     },
     {
@@ -585,6 +596,32 @@
       "dependencies": []
     },
     {
+      "name": "gsettings",
+      "version": "0.2.8",
+      "dependencies": [
+        "dbus",
+        "xdg_directories"
+      ]
+    },
+    {
+      "name": "geoclue",
+      "version": "0.1.1",
+      "dependencies": [
+        "dbus",
+        "meta"
+      ]
+    },
+    {
+      "name": "dbus",
+      "version": "0.7.12",
+      "dependencies": [
+        "args",
+        "ffi",
+        "meta",
+        "xml"
+      ]
+    },
+    {
       "name": "uuid",
       "version": "4.5.3",
       "dependencies": [
@@ -597,16 +634,6 @@
       "version": "2.1.8",
       "dependencies": [
         "meta"
-      ]
-    },
-    {
-      "name": "dbus",
-      "version": "0.7.12",
-      "dependencies": [
-        "args",
-        "ffi",
-        "meta",
-        "xml"
       ]
     },
     {
@@ -652,9 +679,12 @@
       ]
     },
     {
-      "name": "fixnum",
-      "version": "1.1.1",
-      "dependencies": []
+      "name": "xdg_directories",
+      "version": "1.1.0",
+      "dependencies": [
+        "meta",
+        "path"
+      ]
     },
     {
       "name": "xml",
@@ -671,17 +701,14 @@
       "dependencies": []
     },
     {
-      "name": "platform",
-      "version": "3.1.6",
+      "name": "fixnum",
+      "version": "1.1.1",
       "dependencies": []
     },
     {
-      "name": "xdg_directories",
-      "version": "1.1.0",
-      "dependencies": [
-        "meta",
-        "path"
-      ]
+      "name": "platform",
+      "version": "3.1.6",
+      "dependencies": []
     },
     {
       "name": "path_provider_foundation",

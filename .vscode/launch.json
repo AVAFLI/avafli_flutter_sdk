@@ -8,7 +8,7 @@
             "name": "WINR (development, test key)",
             "request": "launch",
             "type": "dart",
-            "program": "lib/main.dart",
+            "program": "example/lib/main.dart",
             "args": [
                 "--dart-define",
                 "APP_ENV=development",
@@ -20,7 +20,7 @@
             "name": "WINR (development, production key)",
             "request": "launch",
             "type": "dart",
-            "program": "lib/main.dart",
+            "program": "example/lib/main.dart",
             "args": [
                 "--dart-define",
                 "APP_ENV=development",
@@ -33,6 +33,7 @@
             "name": "WINR (profile mode, production key)",
             "request": "launch",
             "type": "dart",
+            "program": "example/lib/main.dart",
             "flutterMode": "profile",
             "args": [
                 "--dart-define",
@@ -46,6 +47,7 @@
             "name": "WINR (release mode, production key)",
             "request": "launch",
             "type": "dart",
+            "program": "example/lib/main.dart",
             "flutterMode": "release",
             "args": [
                 "--dart-define",

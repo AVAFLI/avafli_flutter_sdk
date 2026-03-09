@@ -1,20 +1,20 @@
 name: winr_example
 description: Example app demonstrating WINR Flutter SDK integration
 version: 1.0.0+1
-publish_to: 'none'
+publish_to: "none"
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  
+
   # WINR Flutter SDK - using local path for development
   winr_flutter_sdk:
     path: ../
-  
+
   # UI and styling
   cupertino_icons: ^1.0.2
 

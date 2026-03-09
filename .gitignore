@@ -1,10 +1,66 @@
-.dart_tool/\nbuild/\n.flutter-plugins-dependencies\n
-/.history
-/example/.dart_tool
-/example/.dart_tool
-/.dart_tool
-/.dart_tool
-/build/ios
-/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata
-/ios/build/ios/XCBuildData
-/.dart_tool/hooks_runner/objective_c
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+ios/build/XCBuildData/
+ios/build/ios/XCBuildData/
+android/app/build/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+.env
+
+# API Keys
+lib/utils/constants/api_constants.dart
+
+# GOD MODE PIN 
+lib/utils/constants/god_mode_pin.dart
+
+firebase.json
+firestore.rules
+firebase_storage_rules.txt
+
+# Node Modules
+**/node_modules/**
+
+# Firebase
+**/firebase_options.dart
