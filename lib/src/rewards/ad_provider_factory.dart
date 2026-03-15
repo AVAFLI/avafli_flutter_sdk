@@ -5,7 +5,7 @@ import 'rewarded_video_provider.dart';
 /// Handles the creation of different rewarded video providers based on
 /// configuration from the backend or SDK options.
 class AdProviderFactory {
-  /// Creates an ad provider based on the campaign configuration.
+  /// Creates an ad provider based on the giveaway configuration.
   /// 
   /// [adNetwork] - The ad network identifier ('admob', 'unity', 'applovin', etc.)
   /// [adUnitId] - The ad unit ID for the specific network

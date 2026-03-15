@@ -1,6 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'api_request.dart';
-import '../domain/campaign.dart';
+import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
 
 /// Device registration request.
@@ -46,7 +46,7 @@ class RegisterDeviceResponse {
   final String token;
   final String refreshToken;
   final String uuid;
-  final Campaign? campaign;
+  final Giveaway? giveaway;
   final bool claimedToday;
   final int streakDay;
   final Map<String, dynamic>? sdkConfig;
@@ -55,7 +55,7 @@ class RegisterDeviceResponse {
     required this.token,
     required this.refreshToken,
     required this.uuid,
-    this.campaign,
+    this.giveaway,
     this.claimedToday = false,
     this.streakDay = 1,
     this.sdkConfig,
@@ -66,8 +66,8 @@ class RegisterDeviceResponse {
       token: json['token'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       uuid: json['uuid'] ?? '',
-      campaign: json['campaign'] != null
-          ? Campaign.fromJson(json['campaign'])
+      giveaway: json['giveaway'] != null
+          ? Giveaway.fromJson(json['giveaway'])
           : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,
@@ -115,36 +115,36 @@ class RefreshTokenResponse {
   }
 }
 
-/// Get active campaign request.
-class GetActiveCampaignRequest extends GetRequest<GetActiveCampaignResponse> {
+/// Get active giveaway request.
+class GetActiveGiveawayRequest extends GetRequest<GetActiveGiveawayResponse> {
   @override
-  String get endpoint => '/getActiveCampaign';
+  String get endpoint => '/getActiveGiveaway';
   
   @override
-  GetActiveCampaignResponse parseResponse(http.Response response) {
+  GetActiveGiveawayResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
-    return GetActiveCampaignResponse.fromJson(data);
+    return GetActiveGiveawayResponse.fromJson(data);
   }
 }
 
-/// Response from get active campaign.
-class GetActiveCampaignResponse {
-  final Campaign? campaign;
+/// Response from get active giveaway.
+class GetActiveGiveawayResponse {
+  final Giveaway? giveaway;
   final bool claimedToday;
   final int streakDay;
   final Map<String, dynamic>? sdkConfig;
   
-  const GetActiveCampaignResponse({
-    this.campaign,
+  const GetActiveGiveawayResponse({
+    this.giveaway,
     this.claimedToday = false,
     this.streakDay = 1,
     this.sdkConfig,
   });
   
-  factory GetActiveCampaignResponse.fromJson(Map<String, dynamic> json) {
-    return GetActiveCampaignResponse(
-      campaign: json['campaign'] != null
-          ? Campaign.fromJson(json['campaign'])
+  factory GetActiveGiveawayResponse.fromJson(Map<String, dynamic> json) {
+    return GetActiveGiveawayResponse(
+      giveaway: json['giveaway'] != null
+          ? Giveaway.fromJson(json['giveaway'])
           : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,

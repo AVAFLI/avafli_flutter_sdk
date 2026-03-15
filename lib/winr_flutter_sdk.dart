@@ -39,7 +39,7 @@ export 'src/winr_user.dart';
 export 'src/winr_branding.dart';
 
 // Domain Models
-export 'src/domain/campaign.dart';
+export 'src/domain/giveaway.dart';
 export 'src/domain/streak_engine.dart';
 export 'src/domain/streak_state.dart';
 export 'src/domain/daily_entry_grant.dart';

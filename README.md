@@ -1,6 +1,6 @@
 # WINR Flutter SDK
 
-A comprehensive sweepstakes and engagement SDK for Flutter apps. Add daily streaks, rewarded video entries, and sweepstakes campaigns with a few lines of code.
+A comprehensive sweepstakes and engagement SDK for Flutter apps. Add daily streaks, rewarded video entries, and sweepstakes giveaways with a few lines of code.
 
 [![pub package](https://img.shields.io/pub/v/winr_flutter_sdk.svg)](https://pub.dev/packages/winr_flutter_sdk)
 

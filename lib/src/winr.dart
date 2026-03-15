@@ -5,7 +5,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'domain/campaign.dart';
+import 'domain/giveaway.dart';
 import 'domain/daily_entry_grant.dart';
 import 'domain/sdk_copy.dart';
 import 'domain/sdk_media.dart';
@@ -55,7 +55,7 @@ class WINR {
   static RewardedVideoProvider? _rewardedVideoProvider;
 
   // Cached data
-  static Campaign? _cachedCampaign;
+  static Giveaway? _cachedGiveaway;
   static StreakState? _cachedStreakState;
   static Map<String, dynamic>? _cachedSdkConfig;
   static SdkCopy? _cachedSdkCopy;
@@ -180,7 +180,7 @@ class WINR {
             preferencesStorage: _preferencesStorage!,
             streakEngine: _streakEngine!,
             rewardedVideoProvider: _rewardedVideoProvider,
-            cachedCampaign: _cachedCampaign,
+            cachedGiveaway: _cachedGiveaway,
             cachedStreakState: _cachedStreakState,
             cachedClaimedToday: _cachedClaimedToday,
             sdkConfig: _cachedSdkConfig,
@@ -259,7 +259,7 @@ class WINR {
       await _preferencesStorage?.clear();
 
       // Clear cached data
-      _cachedCampaign = null;
+      _cachedGiveaway = null;
       _cachedStreakState = null;
       _cachedSdkConfig = null;
       _cachedSdkCopy = null;
@@ -300,8 +300,8 @@ class WINR {
       final existingUuid = await secureStorage.getUserUuid();
 
       if (existingToken != null && existingUuid != null) {
-        // We have existing auth, just refresh campaign data
-        await _refreshCampaignData();
+        // We have existing auth, just refresh giveaway data
+        await _refreshGiveawayData();
         return;
       }
 
@@ -329,15 +329,15 @@ class WINR {
       _networkClient!.setAuthToken(response.token);
 
       // Cache response data
-      _cachedCampaign = response.campaign;
+      _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
       _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
 
       // Cache streak state
-      if (response.campaign != null) {
-        await preferencesStorage.cacheCampaign(response.campaign!);
+      if (response.giveaway != null) {
+        await preferencesStorage.cacheGiveaway(response.giveaway!);
       }
 
       // Set up rewarded video provider if configured
@@ -353,31 +353,31 @@ class WINR {
     }
   }
 
-  /// Refreshes campaign data from the backend.
-  static Future<void> _refreshCampaignData() async {
+  /// Refreshes giveaway data from the backend.
+  static Future<void> _refreshGiveawayData() async {
     try {
-      final response = await _networkClient!.send(GetActiveCampaignRequest());
+      final response = await _networkClient!.send(GetActiveGiveawayRequest());
 
-      _cachedCampaign = response.campaign;
+      _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
       _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
 
       // Update cached data
-      if (response.campaign != null) {
-        await _preferencesStorage!.cacheCampaign(response.campaign!);
+      if (response.giveaway != null) {
+        await _preferencesStorage!.cacheGiveaway(response.giveaway!);
       }
 
       _setupRewardedVideoProvider();
 
-      Logger.instance.debug('Campaign data refreshed');
+      Logger.instance.debug('Giveaway data refreshed');
     } catch (e) {
-      Logger.instance.error('Failed to refresh campaign data', e);
+      Logger.instance.error('Failed to refresh giveaway data', e);
     }
   }
 
-  /// Sets up the rewarded video provider based on campaign config.
+  /// Sets up the rewarded video provider based on giveaway config.
   static void _setupRewardedVideoProvider() {
     final sdkConfig = _cachedSdkConfig;
     if (sdkConfig == null) return;
@@ -520,7 +520,7 @@ class WINR {
     _preferencesStorage = null;
     _streakEngine = null;
     _rewardedVideoProvider = null;
-    _cachedCampaign = null;
+    _cachedGiveaway = null;
     _cachedStreakState = null;
     _cachedSdkConfig = null;
     _cachedSdkCopy = null;

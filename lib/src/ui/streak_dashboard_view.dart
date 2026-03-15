@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../domain/campaign.dart';
+import '../domain/giveaway.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../domain/streak_state.dart';
@@ -16,7 +16,7 @@ class StreakDashboardView extends StatelessWidget {
   final int entriesToday;
   final List<int> ladder;
   final bool claimedToday;
-  final Campaign? campaign;
+  final Giveaway? giveaway;
   final VoidCallback onClaim;
   final VoidCallback onClose;
   final SdkCopy? sdkCopy;
@@ -31,7 +31,7 @@ class StreakDashboardView extends StatelessWidget {
     required this.claimedToday,
     required this.onClaim,
     required this.onClose,
-    this.campaign,
+    this.giveaway,
     this.sdkCopy,
     this.sdkMedia,
   });
@@ -99,7 +99,7 @@ class StreakDashboardView extends StatelessWidget {
                     const SizedBox(height: 14),
 
                     // Bonus progress
-                    if (campaign != null) _buildBonusProgress(),
+                    if (giveaway != null) _buildBonusProgress(),
                   ],
                 ),
               ),
@@ -146,8 +146,8 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildPrizeBanner() {
     final prizeText = sdkCopy?.streakDashboard?.prizeHeadline ??
-        (campaign?.prizeValue != null
-            ? 'WIN ${formatPrize(campaign!.prizeValue!)}!'
+        (giveaway?.prizeValue != null
+            ? 'WIN ${formatPrize(giveaway!.prizeValue!)}!'
             : 'WIN PRIZES!');
 
     return Column(
@@ -235,7 +235,7 @@ class StreakDashboardView extends StatelessWidget {
   }
 
   Widget _buildBonusProgress() {
-    final config = campaign!.streakConfig;
+    final config = giveaway!.streakConfig;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),

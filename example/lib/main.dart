@@ -36,7 +36,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   bool _isLoading = true;
   String? _error;
 
-  Campaign? _campaign;
+  Giveaway? _giveaway;
   StreakState? _streakState;
   bool _claimedToday = false;
 
@@ -93,10 +93,10 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   Future<void> _loadData() async {
     // In a real app, this data comes from the WINR backend automatically.
     // For demo purposes, we create mock data to show the UI components.
-    _campaign = const Campaign(
-      id: 'demo_campaign',
+    _giveaway = const Giveaway(
+      id: 'demo_giveaway',
       title: 'Win \$10,000 Cash',
-      period: CampaignPeriod.monthly,
+      period: GiveawayPeriod.monthly,
       maxDailyBaseEntries: 300,
       doublingEnabled: true,
       streakConfig: StreakConfig(),
@@ -314,7 +314,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         // Small card example
         WINRExperienceCard(
           branding: WINRBranding.defaultBranding(),
-          campaign: _campaign,
+          giveaway: _giveaway,
           streakState: _streakState,
           claimedToday: _claimedToday,
           size: WINRCardSize.small,
@@ -327,7 +327,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         // Medium card example
         WINRExperienceCard(
           branding: WINRBranding.defaultBranding(),
-          campaign: _campaign,
+          giveaway: _giveaway,
           streakState: _streakState,
           claimedToday: _claimedToday,
           size: WINRCardSize.medium,
@@ -340,7 +340,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         // Large card example
         WINRExperienceCard(
           branding: WINRBranding.defaultBranding(),
-          campaign: _campaign,
+          giveaway: _giveaway,
           streakState: _streakState,
           claimedToday: _claimedToday,
           size: WINRCardSize.large,
@@ -429,9 +429,9 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDataRow('Campaign ID', _campaign?.id ?? 'None'),
+              _buildDataRow('Giveaway ID', _giveaway?.id ?? 'None'),
               _buildDataRow('Prize Value',
-                  '\$${_campaign?.prizeValue?.toStringAsFixed(0) ?? '0'}'),
+                  '\$${_giveaway?.prizeValue?.toStringAsFixed(0) ?? '0'}'),
               _buildDataRow(
                   'Current Streak', '${_streakState?.currentDay ?? 0} days'),
               _buildDataRow(

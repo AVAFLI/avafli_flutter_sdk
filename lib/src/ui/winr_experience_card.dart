@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../domain/campaign.dart';
+import '../domain/giveaway.dart';
 import '../domain/streak_state.dart';
 import '../winr_branding.dart';
 
@@ -13,8 +13,8 @@ class WINRExperienceCard extends StatefulWidget {
   /// The branding configuration for styling
   final WINRBranding branding;
 
-  /// Optional campaign data
-  final Campaign? campaign;
+  /// Optional giveaway data
+  final Giveaway? giveaway;
 
   /// Optional streak state
   final StreakState? streakState;
@@ -38,7 +38,7 @@ class WINRExperienceCard extends StatefulWidget {
     super.key,
     required this.branding,
     required this.onTap,
-    this.campaign,
+    this.giveaway,
     this.streakState,
     this.claimedToday = false,
     this.onQuickClaim,
@@ -303,7 +303,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.campaign?.title ?? 'Daily Entries',
+                widget.giveaway?.title ?? 'Daily Entries',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -590,7 +590,7 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
   }
 
   String _getPrizeText() {
-    final prize = widget.campaign?.prizeValue;
+    final prize = widget.giveaway?.prizeValue;
     if (prize != null) {
       return 'Win ${_formatPrize(prize)}';
     }

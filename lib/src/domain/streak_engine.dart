@@ -1,5 +1,5 @@
 import '../winr_error.dart';
-import 'campaign.dart';
+import 'giveaway.dart';
 import 'streak_state.dart';
 
 /// Protocol for streak calculation logic.
@@ -28,7 +28,7 @@ abstract class StreakEngineProtocol {
 /// Handles daily streak progression (1-6 days), weekly bonus tracking,
 /// and monthly bonus tracking with proper UTC date handling.
 class StreakEngine implements StreakEngineProtocol {
-  /// Default streak ladder values (can be overridden by campaign config).
+  /// Default streak ladder values (can be overridden by giveaway config).
   static const List<int> defaultStreakLadder = [10, 30, 60, 130, 240, 300];
 
   @override

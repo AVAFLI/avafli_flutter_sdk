@@ -1,16 +1,16 @@
-/// Represents a campaign configuration from the backend.
+/// Represents a giveaway configuration from the backend.
 /// 
-/// Contains all the settings and rules for a specific sweepstakes campaign,
+/// Contains all the settings and rules for a specific sweepstakes giveaway,
 /// including streak configuration and entry limits.
-class Campaign {
-  /// Unique campaign identifier
+class Giveaway {
+  /// Unique giveaway identifier
   final String id;
   
-  /// Display title for the campaign
+  /// Display title for the giveaway
   final String title;
   
-  /// Campaign duration type
-  final CampaignPeriod period;
+  /// Giveaway duration type
+  final GiveawayPeriod period;
   
   /// Maximum daily base entries allowed
   final int maxDailyBaseEntries;
@@ -27,8 +27,8 @@ class Campaign {
   /// Streak system configuration
   final StreakConfig streakConfig;
   
-  /// Creates a new campaign instance.
-  const Campaign({
+  /// Creates a new giveaway instance.
+  const Giveaway({
     required this.id,
     required this.title,
     required this.period,
@@ -40,11 +40,11 @@ class Campaign {
   });
   
   /// Creates from JSON data received from the backend.
-  factory Campaign.fromJson(Map<String, dynamic> json) {
-    return Campaign(
+  factory Giveaway.fromJson(Map<String, dynamic> json) {
+    return Giveaway(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
-      period: CampaignPeriod.fromString(json['period'] ?? 'monthly'),
+      period: GiveawayPeriod.fromString(json['period'] ?? 'monthly'),
       maxDailyBaseEntries: json['maxDailyBaseEntries'] ?? 300,
       doublingEnabled: json['doublingEnabled'] ?? false,
       streakConfig: StreakConfig.fromJson(json['streakConfig'] ?? {}),
@@ -66,7 +66,7 @@ class Campaign {
   }
   
   @override
-  String toString() => 'Campaign(id: $id, title: $title)';
+  String toString() => 'Giveaway(id: $id, title: $title)';
 }
 
 /// Configuration for the three-tier streak system.
@@ -126,21 +126,21 @@ class StreakConfig {
   }
 }
 
-/// Available campaign duration types.
-enum CampaignPeriod {
-  /// Monthly campaign
+/// Available giveaway duration types.
+enum GiveawayPeriod {
+  /// Monthly giveaway
   monthly('monthly');
   
-  const CampaignPeriod(this.value);
+  const GiveawayPeriod(this.value);
   final String value;
   
   /// Creates from string value.
-  static CampaignPeriod fromString(String value) {
+  static GiveawayPeriod fromString(String value) {
     switch (value) {
       case 'monthly':
-        return CampaignPeriod.monthly;
+        return GiveawayPeriod.monthly;
       default:
-        return CampaignPeriod.monthly;
+        return GiveawayPeriod.monthly;
     }
   }
 }

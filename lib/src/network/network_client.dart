@@ -212,7 +212,7 @@ class NetworkClientImpl implements NetworkClient {
         }
         throw const WINRException(WINRError.authenticationFailed);
       case 404:
-        throw const WINRException(WINRError.campaignNotAvailable);
+        throw const WINRException(WINRError.giveawayNotAvailable);
       case 429:
         throw const WINRException(WINRError.networkError); // Rate limited
       case 500:

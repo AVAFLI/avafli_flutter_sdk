@@ -2,11 +2,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'storage.dart';
 import '../domain/streak_state.dart';
-import '../domain/campaign.dart';
+import '../domain/giveaway.dart';
 
 /// Preferences storage implementation using SharedPreferences.
 /// 
-/// Used for storing non-sensitive data like streak state, cached campaign data,
+/// Used for storing non-sensitive data like streak state, cached giveaway data,
 /// and SDK configuration that can be stored in plain text.
 class PreferencesStorage implements Storage {
   SharedPreferences? _prefs;
@@ -91,25 +91,25 @@ class PreferencesStorage implements Storage {
     await setString(StorageKeys.streakState, json);
   }
   
-  /// Gets the cached campaign data.
-  Future<Campaign?> getCachedCampaign() async {
-    final data = await getString(StorageKeys.cachedCampaign);
+  /// Gets the cached giveaway data.
+  Future<Giveaway?> getCachedGiveaway() async {
+    final data = await getString(StorageKeys.cachedGiveaway);
     if (data == null) return null;
     
     try {
       final json = jsonDecode(data) as Map<String, dynamic>;
-      return Campaign.fromJson(json);
+      return Giveaway.fromJson(json);
     } catch (e) {
       // Invalid data - remove it
-      await remove(StorageKeys.cachedCampaign);
+      await remove(StorageKeys.cachedGiveaway);
       return null;
     }
   }
   
-  /// Caches the campaign data.
-  Future<void> cacheCampaign(Campaign campaign) async {
-    final json = jsonEncode(campaign.toJson());
-    await setString(StorageKeys.cachedCampaign, json);
+  /// Caches the giveaway data.
+  Future<void> cacheGiveaway(Giveaway giveaway) async {
+    final json = jsonEncode(giveaway.toJson());
+    await setString(StorageKeys.cachedGiveaway, json);
   }
   
   /// Gets the last claimed date as an ISO string.
@@ -163,7 +163,7 @@ class PreferencesStorage implements Storage {
   
   /// Clears all cached data (but preserves user preferences).
   Future<void> clearCache() async {
-    await remove(StorageKeys.cachedCampaign);
+    await remove(StorageKeys.cachedGiveaway);
     await remove(StorageKeys.sdkConfig);
     await remove(StorageKeys.lastClaimedDate);
     await remove(StorageKeys.streakState);

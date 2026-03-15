@@ -41,7 +41,7 @@ class StorageKeys {
   // Preferences storage keys
   static const String streakState = 'winr_streak_state';
   static const String lastClaimedDate = 'winr_last_claimed_date';
-  static const String cachedCampaign = 'winr_cached_campaign';
+  static const String cachedGiveaway = 'winr_cached_giveaway';
   static const String sdkConfig = 'winr_sdk_config';
   static const String pushToken = 'winr_push_token';
   

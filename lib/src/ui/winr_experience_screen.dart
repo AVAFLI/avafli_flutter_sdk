@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../domain/campaign.dart';
+import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
@@ -44,7 +44,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final PreferencesStorage preferencesStorage;
   final StreakEngine streakEngine;
   final RewardedVideoProvider? rewardedVideoProvider;
-  final Campaign? cachedCampaign;
+  final Giveaway? cachedGiveaway;
   final StreakState? cachedStreakState;
   final bool? cachedClaimedToday;
   final Map<String, dynamic>? sdkConfig;
@@ -60,7 +60,7 @@ class WINRExperienceScreen extends StatefulWidget {
     required this.preferencesStorage,
     required this.streakEngine,
     this.rewardedVideoProvider,
-    this.cachedCampaign,
+    this.cachedGiveaway,
     this.cachedStreakState,
     this.cachedClaimedToday,
     this.sdkConfig,
@@ -78,7 +78,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   _ExperiencePhase? _lastPrimaryPhase;
 
   // Data
-  Campaign? _campaign;
+  Giveaway? _giveaway;
   StreakState? _streakState;
   int _entriesToday = 0;
   List<int> _ladder = [];
@@ -105,7 +105,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   @override
   void initState() {
     super.initState();
-    _campaign = widget.cachedCampaign;
+    _giveaway = widget.cachedGiveaway;
     _streakState = widget.cachedStreakState;
     _claimedToday = widget.cachedClaimedToday ?? false;
     _loadExperience();
@@ -197,9 +197,9 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       case _ExperiencePhase.emailCapture:
         return EmailCaptureView(
           branding: _branding,
-          rulesUrl: null, // campaign rulesUrl if available
+          rulesUrl: null, // giveaway rulesUrl if available
           prefillEmail: widget.user.email,
-          prizeValue: _campaign?.prizeValue,
+          prizeValue: _giveaway?.prizeValue,
           sdkCopy: widget.sdkCopy,
           sdkMedia: widget.sdkMedia,
           onSubmit: _submitEmail,
@@ -213,7 +213,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           entriesToday: _entriesToday,
           ladder: _ladder,
           claimedToday: _claimedToday,
-          campaign: _campaign,
+          giveaway: _giveaway,
           sdkCopy: widget.sdkCopy,
           sdkMedia: widget.sdkMedia,
           onClaim: _claimDailyEntries,
@@ -411,23 +411,23 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   Future<void> _loadExperience() async {
     setState(() => _phase = _ExperiencePhase.loading);
     try {
-      // Fetch campaign from backend
+      // Fetch giveaway from backend
       bool? backendClaimed = widget.cachedClaimedToday;
       int? backendStreakDay;
 
       try {
         final response =
-            await widget.networkClient.send(GetActiveCampaignRequest());
-        _campaign = response.campaign ?? _campaign;
+            await widget.networkClient.send(GetActiveGiveawayRequest());
+        _giveaway = response.giveaway ?? _giveaway;
         backendClaimed = response.claimedToday;
         backendStreakDay = response.streakDay;
-        if (response.campaign != null) {
-          await widget.preferencesStorage.cacheCampaign(response.campaign!);
+        if (response.giveaway != null) {
+          await widget.preferencesStorage.cacheGiveaway(response.giveaway!);
         }
       } catch (e) {
         // Offline fallback
-        _campaign ??= await widget.preferencesStorage.getCachedCampaign();
-        Logger.instance.error('Using cached campaign (offline)', e);
+        _giveaway ??= await widget.preferencesStorage.getCachedGiveaway();
+        Logger.instance.error('Using cached giveaway (offline)', e);
       }
 
       _backendClaimedToday = backendClaimed;
@@ -549,7 +549,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
 
       // Decide next phase
       if (widget.rewardedVideoProvider != null &&
-          (_campaign?.doublingEnabled ?? false)) {
+          (_giveaway?.doublingEnabled ?? false)) {
         setState(() => _phase = _ExperiencePhase.bonus);
       } else {
         _complete(grant);

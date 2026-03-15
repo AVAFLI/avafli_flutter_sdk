@@ -27,11 +27,11 @@ enum WINRError {
   /// Invalid email format provided
   invalidEmail('Invalid email format provided.'),
   
-  /// Campaign is not active or available
-  campaignNotAvailable('Campaign is not available at this time.'),
+  /// Giveaway is not active or available
+  giveawayNotAvailable('Giveaway is not available at this time.'),
   
-  /// User location is not allowed for this campaign
-  geographyNotAllowed('Campaign not available in your location.'),
+  /// User location is not allowed for this giveaway
+  geographyNotAllowed('Giveaway not available in your location.'),
   
   /// Internal server error occurred
   serverError('Server error occurred. Please try again later.'),
