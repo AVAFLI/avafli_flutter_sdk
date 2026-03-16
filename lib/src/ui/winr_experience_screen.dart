@@ -547,8 +547,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       await widget.preferencesStorage
           .saveStreakState(_streakState!);
 
-      // Decide next phase
-      if (widget.rewardedVideoProvider != null &&
+      // Decide next phase — feature flag gates the bonus flow
+      final bonusEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
+      if (bonusEnabled &&
+          widget.rewardedVideoProvider != null &&
           (_giveaway?.doublingEnabled ?? false)) {
         setState(() => _phase = _ExperiencePhase.bonus);
       } else {
@@ -579,7 +581,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       final grant = DailyEntryGrant(baseEntries: _entriesToday);
       _lastGrant = grant;
 
-      if (widget.rewardedVideoProvider != null) {
+      final bonusFallbackEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
+      if (bonusFallbackEnabled && widget.rewardedVideoProvider != null) {
         setState(() => _phase = _ExperiencePhase.bonus);
       } else {
         _complete(grant);
