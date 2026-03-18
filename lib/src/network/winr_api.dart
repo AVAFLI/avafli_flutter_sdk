@@ -234,11 +234,13 @@ class ClaimBonusEntriesResponse {
 /// Submit email request.
 class SubmitEmailRequest extends PostRequest<SuccessResponse> {
   final String email;
-  final int age;
+  final bool hasConsent;
+  final String? publisherUserId;
   
   SubmitEmailRequest({
     required this.email,
-    required this.age,
+    required this.hasConsent,
+    this.publisherUserId,
   });
   
   @override
@@ -247,7 +249,8 @@ class SubmitEmailRequest extends PostRequest<SuccessResponse> {
   @override
   Map<String, dynamic> get body => {
     'email': email,
-    'age': age,
+    'marketingConsent': hasConsent,
+    if (publisherUserId != null) 'publisherUserId': publisherUserId,
   };
   
   @override

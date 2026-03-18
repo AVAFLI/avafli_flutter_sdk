@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../domain/sdk_copy.dart';
+import '../domain/sdk_media.dart';
 import '../winr_branding.dart';
 
 /// How It Works view — matches iOS WINRExperienceHowItWorksView.swift.
@@ -8,14 +10,38 @@ import '../winr_branding.dart';
 class HowItWorksView extends StatelessWidget {
   final WINRBranding branding;
   final SdkCopy? sdkCopy;
+  final SdkMedia? sdkMedia;
   final VoidCallback onPrimary;
 
   const HowItWorksView({
     super.key,
     required this.branding,
     this.sdkCopy,
+    this.sdkMedia,
     required this.onPrimary,
   });
+
+  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+    if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
+      return Lottie.network(
+        media.lottieUrl!,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
+      return Image.network(
+        media.imageUrl!,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    return defaultWidget;
+  }
 
   List<({IconData icon, String title, String desc})> get _steps => [
     (
@@ -59,9 +85,18 @@ class HowItWorksView extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  // Hero
+                  // Hero media
                   const SizedBox(height: 4),
-                  const Text('🎰', style: TextStyle(fontSize: 48)),
+                  _buildHeroMedia(
+                    sdkMedia?.howItWorks,
+                    branding.logo != null
+                        ? SizedBox(
+                            width: branding.primaryLogoSize.width,
+                            height: branding.primaryLogoSize.height,
+                            child: branding.logo!,
+                          )
+                        : const Text('🎰', style: TextStyle(fontSize: 48)),
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     sdkCopy?.howItWorks?.title ?? 'How It Works',

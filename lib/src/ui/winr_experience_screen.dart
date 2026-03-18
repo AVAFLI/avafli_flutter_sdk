@@ -234,6 +234,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return HowItWorksView(
           branding: _branding,
           sdkCopy: widget.sdkCopy,
+          sdkMedia: widget.sdkMedia,
           onPrimary: _hideHowItWorks,
         );
 
@@ -502,14 +503,18 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // EMAIL
   // ---------------------------------------------------------------------------
 
-  Future<void> _submitEmail(String email) async {
+  Future<void> _submitEmail(String email, bool marketingConsent) async {
     if (email.isEmpty) return;
 
     await widget.secureStorage.setString('email', email);
 
     // Fire-and-forget backend submission
     widget.networkClient
-        .send(SubmitEmailRequest(email: email, age: 18))
+        .send(SubmitEmailRequest(
+          email: email,
+          hasConsent: marketingConsent,
+          publisherUserId: widget.user.id,
+        ))
         .then((_) {})
         .catchError((Object e) {
       Logger.instance.error('Email backend submit failed', e);

@@ -12,7 +12,7 @@ import '../winr_branding.dart';
 class EmailCaptureView extends StatefulWidget {
   final WINRBranding branding;
   final VoidCallback onSkip;
-  final Function(String email) onSubmit;
+  final Function(String email, bool marketingConsent) onSubmit;
   final String? rulesUrl;
   final String? prefillEmail;
   final double? prizeValue;
@@ -40,6 +40,7 @@ class EmailCaptureView extends StatefulWidget {
 class _EmailCaptureViewState extends State<EmailCaptureView> {
   late TextEditingController _emailController;
   bool _isAgeConfirmed = false;
+  bool _isMarketingConsented = false;
   String? _emailError;
 
   @override
@@ -279,6 +280,41 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ),
               ),
             ),
+            const SizedBox(height: 14),
+
+            // Marketing consent checkbox
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: () => setState(() => _isMarketingConsented = !_isMarketingConsented),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _isMarketingConsented
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      size: 20,
+                      color: _isMarketingConsented
+                          ? b.primaryButtonColor
+                          : b.mutedTextColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.sdkCopy?.emailCapture?.emailConsentText ??
+                            'I agree to receive marketing communications and prize notifications',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: b.secondaryTextColor.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
 
             // CTA button
@@ -384,6 +420,6 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
       return;
     }
     setState(() => _emailError = null);
-    widget.onSubmit(trimmed);
+    widget.onSubmit(trimmed, _isMarketingConsented);
   }
 }
