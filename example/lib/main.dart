@@ -36,10 +36,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   bool _isLoading = true;
   String? _error;
 
-  Giveaway? _giveaway;
-  StreakState? _streakState;
-  bool _claimedToday = false;
-
   @override
   void initState() {
     super.initState();
@@ -48,36 +44,20 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
 
   Future<void> _initializeSDK() async {
     try {
-      // Initialize the WINR SDK with configuration
-      await WINR.configure(WINROptions(
+      // 1. Configure the WINR SDK
+      await WINR.configure(WINRConfiguration(
         apiKey: 'demo-api-key-12345',
         environment: WINREnvironment.production,
-        branding: const WINRBranding(
-          primaryColor: Color(0xFF6366F1),
-          primaryButtonColor: Color(0xFF8B5CF6),
-          accentGlowColor: Color(0xFFEC4899),
-          backgroundColor: Color(0xFF0F172A),
-          cardBackgroundColor: Color(0xFF1E293B),
-          cardBorderColor: Color(0xFF334155),
-          primaryButtonTextColor: Colors.white,
-          secondaryButtonColor: Color(0xFF334155),
-          secondaryButtonTextColor: Color(0xFFCBD5E1),
-          secondaryTextColor: Color(0xFFCBD5E1),
-          mutedTextColor: Color(0xFF64748B),
-          inputFieldBackgroundColor: Color(0xFF334155),
-          inputFieldBorderColor: Color(0xFF475569),
-          inputFieldPlaceholderColor: Color(0xFF94A3B8),
-          cornerRadius: 16.0,
+        user: const WINRUser(
+          id: 'demo_user_123',
+          firstName: 'Jane',
+          lastName: 'Doe',
         ),
-        analyticsAdapter: DemoAnalyticsAdapter(),
-        logging: LoggingLevel.debug,
+        options: WINROptions(
+          logging: LoggingLevel.debug,
+          analyticsAdapter: DemoAnalyticsAdapter(),
+        ),
       ));
-
-      // Set demo user information
-      WINR.setUser(WINRUser(id: 'demo_user_123'));
-
-      // Load initial data
-      await _loadData();
 
       setState(() {
         _isLoading = false;
@@ -88,28 +68,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _loadData() async {
-    // In a real app, this data comes from the WINR backend automatically.
-    // For demo purposes, we create mock data to show the UI components.
-    _giveaway = const Giveaway(
-      id: 'demo_giveaway',
-      title: 'Win \$10,000 Cash',
-      period: GiveawayPeriod.monthly,
-      maxDailyBaseEntries: 300,
-      doublingEnabled: true,
-      streakConfig: StreakConfig(),
-      prizeDescription: 'Enter daily for your chance to win big!',
-      prizeValue: 10000.0,
-    );
-
-    _streakState = const StreakState(
-      currentDay: 3,
-      totalEntriesEarned: 30,
-    );
-
-    _claimedToday = false;
   }
 
   @override
@@ -143,10 +101,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             SizedBox(height: 16),
             Text(
               'Initializing WINR SDK...',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ],
         ),
@@ -160,11 +115,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 64,
-              ),
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
               const SizedBox(height: 16),
               const Text(
                 'Failed to initialize SDK',
@@ -177,10 +128,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               const SizedBox(height: 8),
               Text(
                 _error!,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -207,11 +155,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         children: [
           _buildHeader(),
           const SizedBox(height: 32),
-          _buildExampleCards(),
-          const SizedBox(height: 32),
           _buildActionButtons(),
-          const SizedBox(height: 32),
-          _buildDemoData(),
         ],
       ),
     );
@@ -232,11 +176,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.emoji_events,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: const Icon(Icons.emoji_events, color: Colors.white, size: 24),
             ),
             const SizedBox(width: 16),
             const Expanded(
@@ -253,10 +193,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                   ),
                   Text(
                     'Example Integration',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ],
               ),
@@ -275,15 +212,11 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
           child: const Row(
             children: [
-              Icon(
-                Icons.check_circle,
-                color: Color(0xFF10B981),
-                size: 20,
-              ),
+              Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'SDK initialized successfully!',
+                  'SDK configured successfully!',
                   style: TextStyle(
                     color: Color(0xFF10B981),
                     fontWeight: FontWeight.w500,
@@ -292,60 +225,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExampleCards() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Card Examples',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Small card example
-        WINRExperienceCard(
-          branding: WINRBranding.defaultBranding(),
-          giveaway: _giveaway,
-          streakState: _streakState,
-          claimedToday: _claimedToday,
-          size: WINRCardSize.small,
-          onTap: () => _showFullExperience(),
-          onQuickClaim: () => _handleQuickClaim(),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Medium card example
-        WINRExperienceCard(
-          branding: WINRBranding.defaultBranding(),
-          giveaway: _giveaway,
-          streakState: _streakState,
-          claimedToday: _claimedToday,
-          size: WINRCardSize.medium,
-          onTap: () => _showFullExperience(),
-          onQuickClaim: () => _handleQuickClaim(),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Large card example
-        WINRExperienceCard(
-          branding: WINRBranding.defaultBranding(),
-          giveaway: _giveaway,
-          streakState: _streakState,
-          claimedToday: _claimedToday,
-          size: WINRCardSize.large,
-          onTap: () => _showFullExperience(),
-          onQuickClaim: () => _handleQuickClaim(),
         ),
       ],
     );
@@ -367,9 +246,9 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () => _showFullExperience(),
+            onPressed: () => _presentExperience(),
             icon: const Icon(Icons.open_in_new),
-            label: const Text('Open Full Experience'),
+            label: const Text('Present WINR Experience'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -379,102 +258,24 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => _showHowItWorks(),
-            icon: const Icon(Icons.help_outline),
-            label: const Text('How It Works'),
+            onPressed: () => _deleteAccount(),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete Account (GDPR)'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _resetDemo(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reset Demo'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              foregroundColor: Colors.red,
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDemoData() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Demo Data',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF334155),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDataRow('Giveaway ID', _giveaway?.id ?? 'None'),
-              _buildDataRow('Prize Value',
-                  '\$${_giveaway?.prizeValue?.toStringAsFixed(0) ?? '0'}'),
-              _buildDataRow(
-                  'Current Streak', '${_streakState?.currentDay ?? 0} days'),
-              _buildDataRow(
-                  'Total Entries', '${_streakState?.totalEntriesEarned ?? 0}'),
-              _buildDataRow('Claimed Today', _claimedToday ? 'Yes' : 'No'),
-              _buildDataRow('SDK Version', '1.0.0'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDataRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   // MARK: - Actions
 
-  Future<void> _showFullExperience() async {
+  Future<void> _presentExperience() async {
     try {
+      // 2. Present the experience
       final result = await WINR.present(context);
 
       if (mounted) {
@@ -485,9 +286,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         );
       }
-
-      await _loadData();
-      setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -500,60 +298,27 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     }
   }
 
-  void _showHowItWorks() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.9,
-        child: HowItWorksView(
-          branding: WINRBranding.defaultBranding(),
-          onPrimary: () => Navigator.of(context).pop(),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleQuickClaim() async {
-    if (_claimedToday) return;
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _claimedToday = true;
-      _streakState = _streakState?.copyWith(
-        currentDay: (_streakState?.currentDay ?? 0) + 1,
-        lastClaimedDate: DateTime.now(),
-        totalEntriesEarned: (_streakState?.totalEntriesEarned ?? 0) + 10,
-      );
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Daily entries claimed! +10 entries'),
-          backgroundColor: Colors.green,
-        ),
-      );
+  Future<void> _deleteAccount() async {
+    try {
+      await WINR.deleteUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account data deleted'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-  }
-
-  void _resetDemo() {
-    setState(() {
-      _claimedToday = false;
-      _streakState = const StreakState(
-        currentDay: 1,
-        totalEntriesEarned: 0,
-      );
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Demo data reset'),
-        backgroundColor: Colors.blue,
-      ),
-    );
   }
 }
 
