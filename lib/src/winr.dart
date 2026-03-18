@@ -27,26 +27,23 @@ import 'winr_user.dart';
 
 /// Main entry point for the WINR Flutter SDK.
 ///
-/// This class provides the primary interface for initializing the SDK,
-/// setting user information, and presenting the WINR experience.
+/// This class provides the primary interface for initializing the SDK
+/// and presenting the WINR experience.
 ///
 /// Example usage:
 /// ```dart
-/// // Initialize the SDK
+/// // Configure the SDK with user
 /// await WINR.configure(WINRConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
 ///   environment: WINREnvironment.production,
+///   user: WINRUser(id: 'user123', firstName: 'Jane', lastName: 'Doe'),
 /// ));
-///
-/// // Set user information
-/// WINR.setUser(WINRUser(id: 'user123'));
 ///
 /// // Present the experience
 /// final result = await WINR.present(context);
 /// ```
 class WINR {
   static WINRConfiguration? _configuration;
-  static WINRUser? _currentUser;
   static NetworkClient? _networkClient;
   static SecureStorage? _secureStorage;
   static PreferencesStorage? _preferencesStorage;
@@ -88,6 +85,7 @@ class WINR {
       _configuration = WINRConfiguration(
         apiKey: config.apiKey,
         environment: config.environment,
+        user: config.user,
         bundleId: bundleId,
         options: config.options,
       );
@@ -120,32 +118,20 @@ class WINR {
       // Track configuration event
       config.options.analyticsAdapter?.track(WINRAnalyticsEvents.sdkConfigured);
 
+      // Identify user and submit profile
+      _configuration!.options.analyticsAdapter?.identify(config.user.id);
+      Logger.instance.debug('User set: ${config.user.id}');
+
       // Register device in background
       unawaited(_registerDeviceIfNeeded());
+
+      // Submit user profile in background
+      unawaited(_submitUserProfileIfNeeded(config.user));
 
       return true;
     } catch (e) {
       Logger.instance.error('SDK configuration failed', e);
       return false;
-    }
-  }
-
-  /// Sets the current user for the SDK.
-  ///
-  /// This should be called after [configure] and whenever the user
-  /// identity changes in your app.
-  static void setUser(WINRUser user) {
-    _currentUser = user;
-    Logger.instance.debug('User set: ${user.id}');
-
-    // Track user identification
-    _configuration?.options.analyticsAdapter?.identify(user.id);
-    _configuration?.options.analyticsAdapter
-        ?.track(WINRAnalyticsEvents.userSet);
-
-    // Submit profile data (always send publisher user ID)
-    if (_networkClient != null) {
-      unawaited(_submitUserProfileIfNeeded(user));
     }
   }
 
@@ -160,10 +146,7 @@ class WINR {
       throw const WINRException(WINRError.notConfigured);
     }
 
-    final user = _currentUser;
-    if (user == null) {
-      throw const WINRException(WINRError.noUser);
-    }
+    final user = config.user;
 
     // Ensure registration is complete
     await _ensureRegistrationComplete();
@@ -216,9 +199,8 @@ class WINR {
     VoidCallback? onError,
   }) {
     final config = _configuration;
-    final user = _currentUser;
 
-    if (config == null || user == null) {
+    if (config == null) {
       return Container(
         padding: const EdgeInsets.all(16),
         child: const Text('WINR SDK not configured'),
@@ -269,7 +251,6 @@ class WINR {
       _cachedSdkCopy = null;
       _cachedSdkMedia = null;
       _cachedClaimedToday = null;
-      _currentUser = null;
 
       Logger.instance.info('User data deleted successfully');
     } catch (e) {
@@ -467,7 +448,6 @@ class WINR {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
-        smsConsent: user.isSMSPermissioned,
         publisherUserId: user.id,
       );
 
@@ -511,13 +491,12 @@ class WINR {
 
   /// Gets the current user (for testing).
   @visibleForTesting
-  static WINRUser? get userForTesting => _currentUser;
+  static WINRUser? get userForTesting => _configuration?.user;
 
   /// Resets the SDK state (for testing).
   @visibleForTesting
   static void resetForTesting() {
     _configuration = null;
-    _currentUser = null;
     _networkClient = null;
     _secureStorage = null;
     _preferencesStorage = null;

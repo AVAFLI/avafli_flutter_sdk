@@ -6,8 +6,8 @@ enum WINRError {
   /// SDK has not been configured with [WINR.configure]
   notConfigured('SDK not configured. Call WINR.configure() first.'),
   
-  /// No user has been set with [WINR.setUser]
-  noUser('No user set. Call WINR.setUser() first.'),
+  /// No user has been set in configuration
+  noUser('No user set. Pass WINRUser in WINRConfiguration.'),
   
   /// User already claimed their entries today
   ineligibleToday('Already claimed entries today. Try again tomorrow.'),

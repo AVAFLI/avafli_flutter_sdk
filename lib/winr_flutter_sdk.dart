@@ -15,14 +15,16 @@
 /// ```dart
 /// import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 /// 
-/// // Initialize the SDK
+/// // Configure the SDK with user
 /// await WINR.configure(WINRConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
 ///   environment: WINREnvironment.production,
+///   user: WINRUser(
+///     id: 'user123',
+///     firstName: 'Jane',
+///     lastName: 'Doe',
+///   ),
 /// ));
-/// 
-/// // Set user information
-/// WINR.setUser(WINRUser(id: 'user123'));
 /// 
 /// // Present the experience
 /// WINR.present(context);

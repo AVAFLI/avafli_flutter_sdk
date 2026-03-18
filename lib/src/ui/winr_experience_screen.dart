@@ -198,7 +198,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return EmailCaptureView(
           branding: _branding,
           rulesUrl: null, // giveaway rulesUrl if available
-          prefillEmail: widget.user.email,
+          prefillEmail: null,
           prizeValue: _giveaway?.prizeValue,
           sdkCopy: widget.sdkCopy,
           sdkMedia: widget.sdkMedia,

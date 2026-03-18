@@ -1,6 +1,7 @@
 import 'winr_branding.dart';
 import 'winr_options.dart';
 import 'winr_environment.dart';
+import 'winr_user.dart';
 
 /// Required configuration for the WINR SDK.
 ///
@@ -23,6 +24,9 @@ class WINRConfiguration {
   /// Target environment (production or staging). Required.
   final WINREnvironment environment;
 
+  /// The authenticated user. Required.
+  final WINRUser user;
+
   /// Your app's bundle identifier. Auto-detected if not provided.
   final String? bundleId;
 
@@ -31,11 +35,12 @@ class WINRConfiguration {
 
   /// Creates a new [WINRConfiguration].
   ///
-  /// [apiKey] and [environment] are required.
+  /// [apiKey], [environment], and [user] are required.
   /// [options] defaults to [WINROptions()] if not provided.
   const WINRConfiguration({
     required this.apiKey,
     this.environment = WINREnvironment.production,
+    required this.user,
     this.bundleId,
     this.options = const WINROptions(),
   });

@@ -65,37 +65,45 @@ import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Configure the SDK
-  await WINR.configure(WINRConfiguration(
-    apiKey: 'winr_live_xxxxxxxxxx',
+  // 1. Configure the SDK with your user
+  final config = WINRConfiguration(
+    apiKey: 'YOUR_API_KEY',
     environment: WINREnvironment.production,
-  ));
+    user: WINRUser(
+      id: 'user_123',
+      firstName: 'Jane',
+      lastName: 'Doe',
+    ),
+  );
+  await WINR.configure(config);
 
   runApp(const MyApp());
 }
 ```
 
 ```dart
-// 2. Identify the user after authentication
-WINR.setUser(WINRUser(id: 'user_abc123'));
-
-// 3. Present the WINR experience
+// 2. Present the WINR experience
 final grant = await WINR.present(context);
 print('Entries earned: ${grant.total}');
 ```
 
-That's it. Three calls — configure, identify, present.
+That's it. Two calls — configure, present.
 
 ## API Reference
 
 ### `WINR.configure(WINRConfiguration config)`
 
-Initializes the SDK. Call once at app startup, before any other WINR methods.
+Initializes the SDK and identifies the user. Call once at app startup, before any other WINR methods.
 
 ```dart
 final success = await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
+  user: WINRUser(
+    id: 'user_abc123',
+    firstName: 'Jane',
+    lastName: 'Doe',
+  ),
   options: WINROptions(
     logging: LoggingLevel.debug,
     enablePushReminders: true,
@@ -112,8 +120,20 @@ final success = await WINR.configure(WINRConfiguration(
 | ------------- | ------------------ | -------- | --------------------------------------------- |
 | `apiKey`      | `String`           | ✅       | Your WINR API key from the dashboard          |
 | `environment` | `WINREnvironment`  | ✅       | `.production`, `.staging`, or `.qa`            |
+| `user`        | `WINRUser`         | ✅       | The authenticated user                        |
 | `bundleId`    | `String?`          | —        | App bundle ID. Auto-detected if not provided. |
 | `options`     | `WINROptions`      | —        | Optional behavior toggles (see below).        |
+
+#### `WINRUser`
+
+| Parameter   | Type      | Required | Description                            |
+| ----------- | --------- | -------- | -------------------------------------- |
+| `id`        | `String`  | ✅       | Unique, stable user identifier         |
+| `firstName` | `String`  | ✅       | User's first name                      |
+| `lastName`  | `String`  | ✅       | User's last name                       |
+| `phone`     | `String?` | —        | Phone number in E.164 format           |
+
+> **Email:** The SDK captures email through its own opt-in UI. Do not pass email via `WINRUser`.
 
 #### `WINROptions`
 
@@ -123,32 +143,6 @@ final success = await WINR.configure(WINRConfiguration(
 | `analyticsAdapter`    | `AnalyticsAdapter?`    | —        | Forward SDK events to your analytics provider.     |
 | `rewardedVideoProvider` | `RewardedVideoProvider?` | —    | Custom rewarded video provider for bonus entries.  |
 | `enablePushReminders` | `bool`                 | —        | Enable daily push reminders. Defaults to `true`.   |
-
----
-
-### `WINR.setUser(WINRUser user)`
-
-Identifies the current user. Call after your authentication flow completes. The SDK handles email capture internally — you only need to pass an identifier.
-
-```dart
-WINR.setUser(WINRUser(
-  id: 'user_abc123',          // required — your stable user ID
-  firstName: 'Jane',          // optional
-  lastName: 'Doe',            // optional
-  phone: '+15551234567',      // optional
-));
-```
-
-#### `WINRUser`
-
-| Parameter   | Type      | Required | Description                            |
-| ----------- | --------- | -------- | -------------------------------------- |
-| `id`        | `String`  | ✅       | Unique, stable user identifier         |
-| `firstName` | `String?` | —        | User's first name                      |
-| `lastName`  | `String?` | —        | User's last name                       |
-| `phone`     | `String?` | —        | Phone number in E.164 format           |
-
-> **Email:** The SDK captures email through its own opt-in UI. Do not pass email via `WINRUser`.
 
 ---
 
@@ -285,6 +279,7 @@ Pass it during configuration:
 await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
+  user: WINRUser(id: 'user_abc123', firstName: 'Jane', lastName: 'Doe'),
   options: WINROptions(
     analyticsAdapter: MyAnalyticsAdapter(),
   ),
@@ -314,6 +309,11 @@ void main() async {
   await WINR.configure(WINRConfiguration(
     apiKey: 'winr_live_xxxxxxxxxx',
     environment: WINREnvironment.production,
+    user: WINRUser(
+      id: 'user_abc123',
+      firstName: 'Jane',
+      lastName: 'Doe',
+    ),
     options: WINROptions(
       enablePushReminders: true,
       analyticsAdapter: MyAnalyticsAdapter(),
@@ -334,19 +334,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _setupWINR();
+    _setupPush();
   }
 
-  Future<void> _setupWINR() async {
-    // Identify user
-    WINR.setUser(WINRUser(
-      id: 'user_abc123',
-      firstName: 'Jane',
-    ));
-
-    // Connect rewarded video
-    WINR.setRewardedVideoProvider(MyRewardedVideoProvider());
-
+  Future<void> _setupPush() async {
     // Register for push (after permission granted)
     final settings = await FirebaseMessaging.instance.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
@@ -407,7 +398,7 @@ For questions about data processing, contact [privacy@avafli.com](mailto:privacy
 | Symptom                        | Solution                                                        |
 | ------------------------------ | --------------------------------------------------------------- |
 | `configure()` returns `false`  | Verify your API key and network connectivity                    |
-| Entries not appearing          | Ensure `setUser()` is called before `present()`                 |
+| Entries not appearing          | Ensure `configure()` is called with a valid `WINRUser`          |
 | Push not working               | Confirm FCM setup, `enablePushReminders: true`, and permissions |
 | Rewarded video not shown       | Check that `isAvailable()` returns `true` in your provider      |
 | Blank UI on present            | Ensure `BuildContext` is from a mounted widget                  |
@@ -418,6 +409,7 @@ Enable debug logging for detailed diagnostics:
 await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.staging,
+  user: WINRUser(id: 'user_123', firstName: 'Test', lastName: 'User'),
   options: WINROptions(logging: LoggingLevel.debug),
 ));
 ```
