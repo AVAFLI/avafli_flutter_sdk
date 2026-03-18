@@ -94,7 +94,7 @@ Initializes the SDK. Call once at app startup, before any other WINR methods.
 
 ```dart
 final success = await WINR.configure(WINROptions(
-  apiKey: 'wk_live_xxxxxxxxxx',
+  apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
   logging: true,
   enablePushReminders: true,
@@ -273,7 +273,7 @@ Pass it during configuration:
 
 ```dart
 await WINR.configure(WINROptions(
-  apiKey: 'wk_live_xxxxxxxxxx',
+  apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
   analyticsAdapter: MyAnalyticsAdapter(),
 ));
@@ -300,7 +300,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await WINR.configure(WINROptions(
-    apiKey: 'wk_live_xxxxxxxxxx',
+    apiKey: 'winr_live_xxxxxxxxxx',
     environment: WINREnvironment.production,
     enablePushReminders: true,
     analyticsAdapter: MyAnalyticsAdapter(),
@@ -402,7 +402,7 @@ Enable debug logging for detailed diagnostics:
 
 ```dart
 await WINR.configure(WINROptions(
-  apiKey: 'wk_live_xxxxxxxxxx',
+  apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.staging,
   logging: true,
 ));
