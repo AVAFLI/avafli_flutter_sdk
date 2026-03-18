@@ -1,51 +1,50 @@
+import 'winr_branding.dart';
 import 'winr_options.dart';
 import 'winr_environment.dart';
-import 'winr_branding.dart';
 
-/// Internal configuration state for the WINR SDK.
-/// 
-/// This class holds the processed configuration after [WINR.configure] is called.
-/// It includes resolved values like the actual bundle ID and other computed settings.
+/// Required configuration for the WINR SDK.
+///
+/// Contains the credentials and settings needed to initialize the SDK.
+/// Optional behavior toggles live in [WINROptions].
+///
+/// Example:
+/// ```dart
+/// final config = WINRConfiguration(
+///   apiKey: 'winr_live_xxxxxxxxxx',
+///   environment: WINREnvironment.production,
+/// );
+///
+/// await WINR.configure(config);
+/// ```
 class WINRConfiguration {
-  /// The WINR API key
+  /// Your WINR API key from the publisher dashboard. Required.
   final String apiKey;
-  
-  /// Target environment
+
+  /// Target environment (production or staging). Required.
   final WINREnvironment environment;
-  
-  /// Resolved bundle identifier
-  final String bundleId;
-  
-  /// Visual branding configuration
-  final WINRBranding branding;
-  
-  /// Original options passed to configure
+
+  /// Your app's bundle identifier. Auto-detected if not provided.
+  final String? bundleId;
+
+  /// Optional behavior toggles (logging, analytics, push, rewarded video).
   final WINROptions options;
-  
-  /// Creates a new configuration instance.
+
+  /// Creates a new [WINRConfiguration].
+  ///
+  /// [apiKey] and [environment] are required.
+  /// [options] defaults to [WINROptions()] if not provided.
   const WINRConfiguration({
     required this.apiKey,
-    required this.environment,
-    required this.bundleId,
-    required this.branding,
-    required this.options,
+    this.environment = WINREnvironment.production,
+    this.bundleId,
+    this.options = const WINROptions(),
   });
-  
-  /// Creates a configuration from [WINROptions], resolving any missing values.
-  factory WINRConfiguration.fromOptions(WINROptions options, String bundleId) {
-    return WINRConfiguration(
-      apiKey: options.apiKey,
-      environment: options.environment,
-      bundleId: bundleId,
-      branding: options.branding,
-      options: options,
-    );
-  }
-  
+
+  /// Default branding (server-driven overrides are merged at runtime).
+  WINRBranding get branding => WINRBranding.defaultBranding();
+
   /// Base URL for the Cloud Functions backend based on environment.
   String get baseURL {
-    // All environments currently point to the same project
-    // This can be split later if needed for staging
     return 'https://us-central1-winr-9c11f.cloudfunctions.net';
   }
 }

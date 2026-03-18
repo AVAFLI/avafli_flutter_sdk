@@ -66,8 +66,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1. Configure the SDK
-  await WINR.configure(WINROptions(
-    apiKey: 'your-api-key',
+  await WINR.configure(WINRConfiguration(
+    apiKey: 'winr_live_xxxxxxxxxx',
     environment: WINREnvironment.production,
   ));
 
@@ -88,31 +88,41 @@ That's it. Three calls — configure, identify, present.
 
 ## API Reference
 
-### `WINR.configure(WINROptions options)`
+### `WINR.configure(WINRConfiguration config)`
 
 Initializes the SDK. Call once at app startup, before any other WINR methods.
 
 ```dart
-final success = await WINR.configure(WINROptions(
+final success = await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
-  logging: true,
-  enablePushReminders: true,
-  analyticsAdapter: myAdapter,       // optional — see Analytics section
+  options: WINROptions(
+    logging: LoggingLevel.debug,
+    enablePushReminders: true,
+    analyticsAdapter: myAdapter,     // optional — see Analytics section
+  ),
 ));
 ```
 
 **Returns:** `Future<bool>` — `true` if initialization succeeded.
 
+#### `WINRConfiguration`
+
+| Parameter     | Type               | Required | Description                                   |
+| ------------- | ------------------ | -------- | --------------------------------------------- |
+| `apiKey`      | `String`           | ✅       | Your WINR API key from the dashboard          |
+| `environment` | `WINREnvironment`  | ✅       | `.production`, `.staging`, or `.qa`            |
+| `bundleId`    | `String?`          | —        | App bundle ID. Auto-detected if not provided. |
+| `options`     | `WINROptions`      | —        | Optional behavior toggles (see below).        |
+
 #### `WINROptions`
 
-| Parameter             | Type                   | Required | Description                                       |
-| --------------------- | ---------------------- | -------- | ------------------------------------------------- |
-| `apiKey`              | `String`               | ✅       | Your WINR API key from the dashboard              |
-| `environment`         | `WINREnvironment`      | ✅       | `.production`, `.staging`, or `.qa`                |
-| `logging`             | `bool`                 | —        | Enable debug logging. Defaults to `false`.         |
-| `analyticsAdapter`    | `AnalyticsAdapter?`    | —        | Forward SDK events to your analytics provider      |
-| `enablePushReminders` | `bool`                 | —        | Enable daily push reminder support. Defaults to `false`. |
+| Parameter             | Type                   | Required | Description                                        |
+| --------------------- | ---------------------- | -------- | -------------------------------------------------- |
+| `logging`             | `LoggingLevel`         | —        | Logging verbosity. Defaults to `.error`.           |
+| `analyticsAdapter`    | `AnalyticsAdapter?`    | —        | Forward SDK events to your analytics provider.     |
+| `rewardedVideoProvider` | `RewardedVideoProvider?` | —    | Custom rewarded video provider for bonus entries.  |
+| `enablePushReminders` | `bool`                 | —        | Enable daily push reminders. Defaults to `true`.   |
 
 ---
 
@@ -272,10 +282,12 @@ class MyAnalyticsAdapter implements AnalyticsAdapter {
 Pass it during configuration:
 
 ```dart
-await WINR.configure(WINROptions(
+await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.production,
-  analyticsAdapter: MyAnalyticsAdapter(),
+  options: WINROptions(
+    analyticsAdapter: MyAnalyticsAdapter(),
+  ),
 ));
 ```
 
@@ -299,11 +311,13 @@ import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await WINR.configure(WINROptions(
+  await WINR.configure(WINRConfiguration(
     apiKey: 'winr_live_xxxxxxxxxx',
     environment: WINREnvironment.production,
-    enablePushReminders: true,
-    analyticsAdapter: MyAnalyticsAdapter(),
+    options: WINROptions(
+      enablePushReminders: true,
+      analyticsAdapter: MyAnalyticsAdapter(),
+    ),
   ));
 
   runApp(const MyApp());
@@ -401,10 +415,10 @@ For questions about data processing, contact [privacy@avafli.com](mailto:privacy
 Enable debug logging for detailed diagnostics:
 
 ```dart
-await WINR.configure(WINROptions(
+await WINR.configure(WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   environment: WINREnvironment.staging,
-  logging: true,
+  options: WINROptions(logging: LoggingLevel.debug),
 ));
 ```
 

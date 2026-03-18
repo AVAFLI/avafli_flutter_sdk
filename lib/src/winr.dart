@@ -23,7 +23,6 @@ import 'storage/secure_storage.dart';
 import 'ui/winr_experience_screen.dart';
 import 'winr_configuration.dart';
 import 'winr_error.dart';
-import 'winr_options.dart';
 import 'winr_user.dart';
 
 /// Main entry point for the WINR Flutter SDK.
@@ -34,8 +33,8 @@ import 'winr_user.dart';
 /// Example usage:
 /// ```dart
 /// // Initialize the SDK
-/// await WINR.configure(WINROptions(
-///   apiKey: 'your-api-key',
+/// await WINR.configure(WINRConfiguration(
+///   apiKey: 'winr_live_xxxxxxxxxx',
 ///   environment: WINREnvironment.production,
 /// ));
 ///
@@ -70,27 +69,32 @@ class WINR {
   static const String sdkVersion = '1.0.0';
   static const String platformOS = 'flutter';
 
-  /// Configures the WINR SDK with the provided options.
+  /// Configures the WINR SDK with the provided configuration.
   ///
   /// This must be called before any other SDK methods. It initializes
   /// the networking, storage, and other core components.
   ///
   /// Returns `true` if configuration was successful, `false` otherwise.
-  static Future<bool> configure(WINROptions options) async {
+  static Future<bool> configure(WINRConfiguration config) async {
     try {
       // Get bundle ID if not provided
-      String bundleId = options.bundleId ?? '';
+      String bundleId = config.bundleId ?? '';
       if (bundleId.isEmpty) {
         final packageInfo = await PackageInfo.fromPlatform();
         bundleId = packageInfo.packageName;
       }
 
-      // Create configuration
-      _configuration = WINRConfiguration.fromOptions(options, bundleId);
+      // Store configuration (resolve bundleId)
+      _configuration = WINRConfiguration(
+        apiKey: config.apiKey,
+        environment: config.environment,
+        bundleId: bundleId,
+        options: config.options,
+      );
 
       // Initialize logger
-      Logger.instance.level = options.logging;
-      Logger.instance.info('WINR SDK configured for ${options.environment}');
+      Logger.instance.level = config.options.logging;
+      Logger.instance.info('WINR SDK configured for ${config.environment}');
 
       // Initialize storage
       _secureStorage = SecureStorage();
@@ -102,19 +106,19 @@ class WINR {
       // Initialize network client
       _networkClient = NetworkClientImpl(
         baseURL: _configuration!.baseURL,
-        apiKey: options.apiKey,
+        apiKey: config.apiKey,
       );
 
       // Set up token refresh handler
       _networkClient!.setRefreshHandler(_refreshTokenIfNeeded);
 
       // Initialize push notification manager
-      if (options.enablePushReminders) {
+      if (config.options.enablePushReminders) {
         PushNotificationManager.instance.setNetworkClient(_networkClient!);
       }
 
       // Track configuration event
-      options.analyticsAdapter?.track(WINRAnalyticsEvents.sdkConfigured);
+      config.options.analyticsAdapter?.track(WINRAnalyticsEvents.sdkConfigured);
 
       // Register device in background
       unawaited(_registerDeviceIfNeeded());
@@ -312,7 +316,7 @@ class WINR {
       final request = RegisterDeviceRequest(
         apiKey: config.apiKey,
         deviceFingerprint: deviceFingerprint,
-        bundleId: config.bundleId,
+        bundleId: config.bundleId!,
         timezone: DateTime.now().timeZoneName,
         platformOS: platformOS,
         sdkVersion: sdkVersion,
