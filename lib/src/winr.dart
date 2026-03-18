@@ -143,8 +143,8 @@ class WINR {
     _configuration?.options.analyticsAdapter
         ?.track(WINRAnalyticsEvents.userSet);
 
-    // Submit profile data if available
-    if (user.hasProfileData && _networkClient != null) {
+    // Submit profile data (always send publisher user ID)
+    if (_networkClient != null) {
       unawaited(_submitUserProfileIfNeeded(user));
     }
   }
@@ -462,14 +462,13 @@ class WINR {
 
   /// Submits user profile data if available.
   static Future<void> _submitUserProfileIfNeeded(WINRUser user) async {
-    if (!user.hasProfileData) return;
-
     try {
       final request = SubmitUserProfileRequest(
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
         smsConsent: user.isSMSPermissioned,
+        publisherUserId: user.id,
       );
 
       await _networkClient!.send(request);

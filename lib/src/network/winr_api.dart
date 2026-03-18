@@ -264,6 +264,7 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
   final String? phone;
   final bool? smsConsent;
   final String? maidId;
+  final String? publisherUserId;
   
   SubmitUserProfileRequest({
     this.firstName,
@@ -271,6 +272,7 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
     this.phone,
     this.smsConsent,
     this.maidId,
+    this.publisherUserId,
   });
   
   @override
@@ -283,6 +285,7 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
     if (phone != null) 'phone': phone,
     if (smsConsent != null) 'smsConsent': smsConsent,
     if (maidId != null) 'maidId': maidId,
+    if (publisherUserId != null) 'publisherUserId': publisherUserId,
   };
   
   @override
