@@ -20,8 +20,11 @@ import 'services/logger.dart';
 import 'services/push_notification_manager.dart';
 import 'storage/preferences_storage.dart';
 import 'storage/secure_storage.dart';
+import 'ui/winr_experience_card.dart';
 import 'ui/winr_experience_screen.dart';
+import 'winr_branding.dart';
 import 'winr_configuration.dart';
+import 'winr_environment.dart';
 import 'winr_error.dart';
 import 'winr_user.dart';
 
@@ -207,8 +210,17 @@ class WINR {
       );
     }
 
-    // Return the embedded experience widget
-    return Container(); // TODO: Implement embedded card widget
+    return WINRExperienceCard(
+      branding: WINRBranding.defaultBranding(),
+      giveaway: _cachedGiveaway,
+      streakState: _cachedStreakState,
+      claimedToday: _cachedClaimedToday ?? false,
+      onTap: () {
+        // When card is tapped, the publisher should call WINR.present()
+        onEntryGranted?.call();
+      },
+      onQuickClaim: onEntryGranted,
+    );
   }
 
   /// Registers for push notifications.
@@ -373,7 +385,7 @@ class WINR {
     _rewardedVideoProvider = AdProviderFactory.create(
       adNetwork: adNetwork,
       adUnitId: adUnitId,
-      testMode: false, // TODO: Add test mode detection
+      testMode: _configuration?.environment == WINREnvironment.staging,
     );
   }
 

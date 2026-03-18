@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 import '../domain/giveaway.dart';
 import '../domain/sdk_copy.dart';
@@ -45,8 +46,13 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
     if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
-      // Use Lottie if available, or fallback
-      return defaultWidget; // TODO: Remote Lottie needs lottie package with network support
+      return Lottie.network(
+        media.lottieUrl!,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
     }
     if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
       return Image.network(
