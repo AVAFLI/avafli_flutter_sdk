@@ -29,12 +29,14 @@ android/app/build/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
+pubspec.lock
+example/pubspec.lock
 
 # Symbolication related
 app.*.symbols
