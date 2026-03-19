@@ -12,6 +12,7 @@ import '../rewards/rewarded_video_provider.dart';
 import '../services/logger.dart';
 import '../storage/preferences_storage.dart';
 import '../storage/secure_storage.dart';
+import '../storage/storage.dart';
 import '../winr_branding.dart';
 import '../winr_configuration.dart';
 import '../winr_user.dart';
@@ -24,6 +25,7 @@ import 'winr_experience_header.dart';
 /// Experience state — mirrors iOS WINRExperienceViewModel.State.
 enum _ExperiencePhase {
   loading,
+  noActiveGiveaway,
   emailCapture,
   streak,
   bonus,
@@ -194,6 +196,9 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       case _ExperiencePhase.loading:
         return _buildLoading();
 
+      case _ExperiencePhase.noActiveGiveaway:
+        return _buildNoActiveGiveaway();
+
       case _ExperiencePhase.emailCapture:
         return EmailCaptureView(
           branding: _branding,
@@ -325,6 +330,68 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
     );
   }
 
+  Widget _buildNoActiveGiveaway() {
+    final title = widget.sdkCopy?.noActiveGiveaway?.title ?? 'No Active Giveaway';
+    final subtitle = widget.sdkCopy?.noActiveGiveaway?.subtitle ?? 
+        'Check back soon for your next chance to win!';
+    final buttonText = widget.sdkCopy?.noActiveGiveaway?.closeButton ?? 'Close';
+    
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Logo placeholder — branding logo handled by sdkMedia if configured
+            const SizedBox(height: 20),
+            
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: _branding.primaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 16,
+                color: _branding.mutedTextColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _branding.primaryButtonColor,
+                  borderRadius:
+                      BorderRadius.circular(_branding.cornerRadius),
+                ),
+                child: Center(
+                  child: Text(
+                    buttonText,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: _branding.primaryButtonTextColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildError() {
     final title = widget.sdkCopy?.error?.title ?? 'Something went wrong.';
     final subtitle = widget.sdkCopy?.error?.subtitle ?? 
@@ -419,16 +486,30 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       try {
         final response =
             await widget.networkClient.send(GetActiveGiveawayRequest());
-        _giveaway = response.giveaway ?? _giveaway;
+        
+        // Handle null giveaway response (no active giveaway)
+        if (response.giveaway == null) {
+          _giveaway = null;
+          // Clear cached giveaway from storage
+          await widget.preferencesStorage.remove(StorageKeys.cachedGiveaway);
+          setState(() => _phase = _ExperiencePhase.noActiveGiveaway);
+          return;
+        }
+        
+        _giveaway = response.giveaway;
         backendClaimed = response.claimedToday;
         backendStreakDay = response.streakDay;
-        if (response.giveaway != null) {
-          await widget.preferencesStorage.cacheGiveaway(response.giveaway!);
-        }
+        await widget.preferencesStorage.cacheGiveaway(response.giveaway!);
       } catch (e) {
         // Offline fallback
         _giveaway ??= await widget.preferencesStorage.getCachedGiveaway();
         Logger.instance.error('Using cached giveaway (offline)', e);
+      }
+      
+      // If we still don't have a giveaway after trying cache, show no active giveaway
+      if (_giveaway == null) {
+        setState(() => _phase = _ExperiencePhase.noActiveGiveaway);
+        return;
       }
 
       _backendClaimedToday = backendClaimed;

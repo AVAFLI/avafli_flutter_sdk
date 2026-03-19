@@ -12,6 +12,7 @@ class SdkCopy {
   final ErrorCopy? error;
   final HowItWorksCopy? howItWorks;
   final LoadingCopy? loading;
+  final NoActiveGiveawayCopy? noActiveGiveaway;
 
   // Flat backward compatibility fields
   final String? welcomeTitle;
@@ -32,6 +33,7 @@ class SdkCopy {
     this.error,
     this.howItWorks,
     this.loading,
+    this.noActiveGiveaway,
     this.welcomeTitle,
     this.welcomeSubtitle,
     this.dailyClaimButton,
@@ -69,6 +71,9 @@ class SdkCopy {
           : null,
       loading: json['loading'] != null
           ? LoadingCopy.fromJson(json['loading'])
+          : null,
+      noActiveGiveaway: json['noActiveGiveaway'] != null
+          ? NoActiveGiveawayCopy.fromJson(json['noActiveGiveaway'])
           : null,
       // Flat backward compatibility fields
       welcomeTitle: json['welcomeTitle'] as String?,
@@ -345,6 +350,27 @@ class LoadingCopy {
   factory LoadingCopy.fromJson(Map<String, dynamic> json) {
     return LoadingCopy(
       text: json['text'] as String?,
+    );
+  }
+}
+
+/// Copy configuration for no active giveaway screen.
+class NoActiveGiveawayCopy {
+  final String? title;
+  final String? subtitle;
+  final String? closeButton;
+
+  const NoActiveGiveawayCopy({
+    this.title,
+    this.subtitle,
+    this.closeButton,
+  });
+
+  factory NoActiveGiveawayCopy.fromJson(Map<String, dynamic> json) {
+    return NoActiveGiveawayCopy(
+      title: json['title'] as String?,
+      subtitle: json['subtitle'] as String?,
+      closeButton: json['closeButton'] as String?,
     );
   }
 }
