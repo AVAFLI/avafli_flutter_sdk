@@ -285,9 +285,21 @@ class WINR {
       if (existingToken != null && existingUuid != null) {
         // Restore auth token on the network client before making requests
         _networkClient!.setAuthToken(existingToken);
-        // We have existing auth, just refresh giveaway data
-        await _refreshGiveawayData();
-        return;
+        try {
+          // Try to refresh giveaway data with the cached token
+          await _refreshGiveawayData();
+          return;
+        } on WINRException catch (e) {
+          // If auth failed, the cached token is stale — clear it and re-register
+          if (e.error == WINRError.authenticationFailed) {
+            Logger.instance.info('Cached token expired, re-registering device');
+            _networkClient!.setAuthToken(null);
+            await secureStorage.deleteAuthData();
+            // Fall through to fresh registration below
+          } else {
+            rethrow;
+          }
+        }
       }
 
       // Generate device fingerprint
@@ -424,11 +436,19 @@ class WINR {
     if (refreshToken == null) return null;
 
     try {
+      // Clear the stale auth token before calling refreshToken endpoint.
+      // Firebase onCall validates Bearer tokens at the transport layer —
+      // if a stale token is present, it returns 401 before the function runs.
+      _networkClient!.setAuthToken(null);
+
       final request = RefreshTokenRequest(refreshToken: refreshToken);
       final response = await _networkClient!.send(request);
 
       await secureStorage.saveAuthToken(response.token);
       await secureStorage.saveRefreshToken(response.refreshToken);
+
+      // Set the fresh token on the network client
+      _networkClient!.setAuthToken(response.token);
 
       Logger.instance.debug('Token refreshed successfully');
       return response.token;
