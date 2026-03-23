@@ -123,7 +123,7 @@ class GetActiveGiveawayRequest extends PostRequest<GetActiveGiveawayResponse> {
   String get endpoint => '/getActiveGiveaway';
   
   @override
-  Map<String, dynamic>? get body => null;
+  Map<String, dynamic> get body => {};
   
   @override
   GetActiveGiveawayResponse parseResponse(http.Response response) {
@@ -164,7 +164,7 @@ class ClaimDailyEntriesRequest extends PostRequest<ClaimDailyEntriesResponse> {
   String get endpoint => '/claimDailyEntries';
   
   @override
-  Map<String, dynamic>? get body => null;
+  Map<String, dynamic> get body => {};
   
   @override
   ClaimDailyEntriesResponse parseResponse(http.Response response) {
@@ -214,7 +214,7 @@ class ClaimBonusEntriesRequest extends PostRequest<ClaimBonusEntriesResponse> {
   String get endpoint => '/claimBonusEntries';
   
   @override
-  Map<String, dynamic>? get body => null;
+  Map<String, dynamic> get body => {};
   
   @override
   ClaimBonusEntriesResponse parseResponse(http.Response response) {
@@ -335,7 +335,7 @@ class DeleteUserDataRequest extends PostRequest<SuccessResponse> {
   String get endpoint => '/deleteUserData';
   
   @override
-  Map<String, dynamic>? get body => null;
+  Map<String, dynamic> get body => {};
   
   @override
   SuccessResponse parseResponse(http.Response response) {
