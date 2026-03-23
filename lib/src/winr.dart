@@ -283,6 +283,8 @@ class WINR {
       final existingUuid = await secureStorage.getUserUuid();
 
       if (existingToken != null && existingUuid != null) {
+        // Restore auth token on the network client before making requests
+        _networkClient!.setAuthToken(existingToken);
         // We have existing auth, just refresh giveaway data
         await _refreshGiveawayData();
         return;

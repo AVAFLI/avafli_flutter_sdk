@@ -116,9 +116,14 @@ class RefreshTokenResponse {
 }
 
 /// Get active giveaway request.
-class GetActiveGiveawayRequest extends GetRequest<GetActiveGiveawayResponse> {
+///
+/// Uses POST because the backend is a Firebase onCall function (POST-only).
+class GetActiveGiveawayRequest extends PostRequest<GetActiveGiveawayResponse> {
   @override
   String get endpoint => '/getActiveGiveaway';
+  
+  @override
+  Map<String, dynamic>? get body => null;
   
   @override
   GetActiveGiveawayResponse parseResponse(http.Response response) {
