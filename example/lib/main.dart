@@ -46,7 +46,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     try {
       // 1. Configure the WINR SDK
       await WINR.configure(WINRConfiguration(
-        apiKey: 'demo-api-key-12345',
+        apiKey: 'winr_live_50b1b3b801a843d5e1f99593fcad4d14',
+        bundleId: 'com.avafli.winr.example',
         environment: WINREnvironment.production,
         user: const WINRUser(
           id: 'demo_user_123',
@@ -176,7 +177,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.emoji_events, color: Colors.white, size: 24),
+              child:
+                  const Icon(Icons.emoji_events, color: Colors.white, size: 24),
             ),
             const SizedBox(width: 16),
             const Expanded(

@@ -14,9 +14,7 @@ class SecureStorage implements Storage {
     String? accountName,
   }) {
     _storage = FlutterSecureStorage(
-      aOptions: const AndroidOptions(
-        encryptedSharedPreferences: true,
-      ),
+      aOptions: const AndroidOptions(),
       iOptions: IOSOptions(
         groupId: groupId,
         accountName: accountName ?? 'winr_flutter_sdk',
