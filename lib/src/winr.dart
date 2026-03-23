@@ -351,6 +351,9 @@ class WINR {
   }
 
   /// Refreshes giveaway data from the backend.
+  ///
+  /// Auth errors are rethrown so callers can handle stale token recovery.
+  /// Other errors are logged and swallowed (offline fallback).
   static Future<void> _refreshGiveawayData() async {
     try {
       final response = await _networkClient!.send(GetActiveGiveawayRequest());
@@ -369,6 +372,13 @@ class WINR {
       _setupRewardedVideoProvider();
 
       Logger.instance.debug('Giveaway data refreshed');
+    } on WINRException catch (e) {
+      // Rethrow auth errors so callers can handle stale token recovery
+      if (e.error == WINRError.authenticationFailed) {
+        Logger.instance.error('Auth failed during giveaway refresh', e);
+        rethrow;
+      }
+      Logger.instance.error('Failed to refresh giveaway data', e);
     } catch (e) {
       Logger.instance.error('Failed to refresh giveaway data', e);
     }

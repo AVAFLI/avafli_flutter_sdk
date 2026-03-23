@@ -16,6 +16,11 @@ abstract class ApiRequest<T> {
   /// Request body data (for POST/PUT requests)
   Map<String, dynamic>? get body;
 
+  /// Whether this request requires authentication.
+  /// If false, the Authorization header is omitted even if a token exists.
+  /// Defaults to true. Override in subclasses for unauthenticated endpoints.
+  bool get requiresAuth => true;
+
   /// Parses the HTTP response into the expected type.
   T parseResponse(http.Response response);
 

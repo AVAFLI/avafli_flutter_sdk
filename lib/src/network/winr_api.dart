@@ -5,6 +5,9 @@ import '../domain/daily_entry_grant.dart';
 
 /// Device registration request.
 class RegisterDeviceRequest extends PostRequest<RegisterDeviceResponse> {
+  @override
+  bool get requiresAuth => false;
+
   final String apiKey;
   final String deviceFingerprint;
   final String bundleId;
@@ -78,6 +81,9 @@ class RegisterDeviceResponse {
 
 /// Token refresh request.
 class RefreshTokenRequest extends PostRequest<RefreshTokenResponse> {
+  @override
+  bool get requiresAuth => false;
+
   final String refreshToken;
   
   RefreshTokenRequest({required this.refreshToken});

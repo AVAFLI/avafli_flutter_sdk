@@ -116,8 +116,8 @@ class NetworkClientImpl implements NetworkClient {
       'User-Agent': 'WINR-Flutter-SDK/1.0.0',
     };
 
-    // Add auth token if available
-    if (_authToken != null) {
+    // Add auth token if available and the request requires it
+    if (_authToken != null && request.requiresAuth) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
 
