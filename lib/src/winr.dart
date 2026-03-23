@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import 'domain/giveaway.dart';
 import 'domain/daily_entry_grant.dart';
@@ -77,21 +76,8 @@ class WINR {
   /// Returns `true` if configuration was successful, `false` otherwise.
   static Future<bool> configure(WINRConfiguration config) async {
     try {
-      // Get bundle ID if not provided
-      String bundleId = config.bundleId ?? '';
-      if (bundleId.isEmpty) {
-        final packageInfo = await PackageInfo.fromPlatform();
-        bundleId = packageInfo.packageName;
-      }
-
-      // Store configuration (resolve bundleId)
-      _configuration = WINRConfiguration(
-        apiKey: config.apiKey,
-        environment: config.environment,
-        user: config.user,
-        bundleId: bundleId,
-        options: config.options,
-      );
+      // Store configuration
+      _configuration = config;
 
       // Initialize logger
       Logger.instance.level = config.options.logging;
@@ -309,7 +295,7 @@ class WINR {
       final request = RegisterDeviceRequest(
         apiKey: config.apiKey,
         deviceFingerprint: deviceFingerprint,
-        bundleId: config.bundleId!,
+        bundleId: config.bundleId,
         timezone: DateTime.now().timeZoneName,
         platformOS: platformOS,
         sdkVersion: sdkVersion,

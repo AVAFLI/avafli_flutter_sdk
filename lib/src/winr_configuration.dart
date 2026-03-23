@@ -27,21 +27,21 @@ class WINRConfiguration {
   /// The authenticated user. Required.
   final WINRUser user;
 
-  /// Your app's bundle identifier. Auto-detected if not provided.
-  final String? bundleId;
+  /// Your app's bundle identifier. Must match what's registered in the WINR dashboard.
+  final String bundleId;
 
   /// Optional behavior toggles (logging, analytics, push, rewarded video).
   final WINROptions options;
 
   /// Creates a new [WINRConfiguration].
   ///
-  /// [apiKey], [environment], and [user] are required.
+  /// [apiKey], [environment], [bundleId], and [user] are required.
   /// [options] defaults to [WINROptions()] if not provided.
   const WINRConfiguration({
     required this.apiKey,
     this.environment = WINREnvironment.production,
+    required this.bundleId,
     required this.user,
-    this.bundleId,
     this.options = const WINROptions(),
   });
 
