@@ -69,9 +69,12 @@ class NetworkClientImpl implements NetworkClient {
           rethrow;
         }
 
-        // Handle 401 with token refresh
+        // Handle 401 with token refresh — but NOT for requests that don't
+        // require auth (e.g. refreshToken, registerDevice) to avoid infinite
+        // recursive loops where refresh→401→refresh→401→...
         if (e.error == WINRError.authenticationFailed &&
-            _refreshHandler != null) {
+            _refreshHandler != null &&
+            request.requiresAuth) {
           Logger.instance
               .debug('Authentication failed, attempting token refresh');
           final newToken = await _refreshHandler!();
