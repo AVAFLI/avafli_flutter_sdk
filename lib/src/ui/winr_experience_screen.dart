@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 
 import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
+import '../winr_error.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../domain/streak_engine.dart';
@@ -643,19 +644,31 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return;
       }
 
-      // Offline fallback
-      Logger.instance.error('Backend claim failed, using local', e);
-      _streakState = _streakState?.copyWith(lastClaimedDate: DateTime.now());
-      _claimedToday = true;
-      final grant = DailyEntryGrant(baseEntries: _entriesToday);
-      _lastGrant = grant;
+      // Only allow offline fallback for network errors — not auth or server errors.
+      // Faking a successful claim when the backend rejected it causes duplicate
+      // claim attempts and inconsistent state.
+      if (e is WINRException && e.error == WINRError.networkError) {
+        Logger.instance.error('Network error during claim, using local fallback', e);
+        _streakState = _streakState?.copyWith(lastClaimedDate: DateTime.now());
+        _claimedToday = true;
+        final grant = DailyEntryGrant(baseEntries: _entriesToday);
+        _lastGrant = grant;
 
-      final bonusFallbackEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
-      if (bonusFallbackEnabled && widget.rewardedVideoProvider != null) {
-        setState(() => _phase = _ExperiencePhase.bonus);
-      } else {
-        _complete(grant);
+        final bonusFallbackEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
+        if (bonusFallbackEnabled && widget.rewardedVideoProvider != null) {
+          setState(() => _phase = _ExperiencePhase.bonus);
+        } else {
+          _complete(grant);
+        }
+        return;
       }
+
+      // For all other errors, show error state
+      Logger.instance.error('Backend claim failed', e);
+      setState(() {
+        _errorMessage = e.toString();
+        _phase = _ExperiencePhase.error;
+      });
     }
   }
 
