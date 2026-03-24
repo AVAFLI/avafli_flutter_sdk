@@ -223,7 +223,7 @@ For detailed API documentation, see the [WINR Docs](https://avafli-website.web.a
 
 - **Dashboard:** [https://avafli-website.web.app/sdk/dashboard](https://avafli-website.web.app/sdk/dashboard)
 - **Documentation:** [https://avafli-website.web.app/sdk/flutter](https://avafli-website.web.app/sdk/flutter)
-- **Support:** [team@avafli.com](mailto:team@avafli.com)
+- **Support:** [info@avafli.com](mailto:info@avafli.com)
 
 ---
 
