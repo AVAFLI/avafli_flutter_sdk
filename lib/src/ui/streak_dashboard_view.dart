@@ -40,14 +40,16 @@ class StreakDashboardView extends StatelessWidget {
 
   static String formatPrize(double value) {
     final intVal = value.toInt();
-    final formatted = intVal.toString().replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    final formatted = intVal
+        .toString()
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
     return '\$$formatted CASH';
   }
 
   static String _formatEntries(int value) {
-    return value.toString().replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return value
+        .toString()
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
   }
 
   Widget _buildHeroMedia(
@@ -116,7 +118,7 @@ class StreakDashboardView extends StatelessWidget {
                 ),
 
                 // Footer (flows after content, pushed to bottom on short screens)
-                const SizedBox(height: 20),
+                // const SizedBox(height: 20),
                 _buildFooterContent(safeBottom),
               ],
             ),
@@ -128,8 +130,8 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildHeroLogo(BoxConstraints constraints) {
     final heroLogo = branding.logoTwo ?? branding.logo;
-    final heroWidth = constraints.maxWidth * 0.75;
-    final heroHeight = constraints.maxHeight * 0.22;
+    final heroWidth = constraints.maxWidth * 0.85;
+    final heroHeight = constraints.maxHeight * 0.28;
 
     final defaultWidget = heroLogo != null
         ? Container(
@@ -217,8 +219,6 @@ class StreakDashboardView extends StatelessWidget {
     return claimedToday ? _buildClaimedFooter() : _buildClaimFooter();
   }
 
-
-
   Widget _buildClaimedFooter() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -269,11 +269,9 @@ class StreakDashboardView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: branding.cardBackgroundColor.withValues(alpha: 0.8),
-                borderRadius:
-                    BorderRadius.circular(branding.cornerRadius),
+                borderRadius: BorderRadius.circular(branding.cornerRadius),
                 border: Border.all(
-                  color:
-                      branding.accentGlowColor.withValues(alpha: 0.4),
+                  color: branding.accentGlowColor.withValues(alpha: 0.4),
                   width: 1,
                 ),
               ),
@@ -344,12 +342,10 @@ class StreakDashboardView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: branding.primaryButtonColor,
-                borderRadius:
-                    BorderRadius.circular(branding.cornerRadius),
+                borderRadius: BorderRadius.circular(branding.cornerRadius),
                 boxShadow: [
                   BoxShadow(
-                    color: branding.accentGlowColor
-                        .withValues(alpha: 0.6),
+                    color: branding.accentGlowColor.withValues(alpha: 0.6),
                     blurRadius: 14,
                     offset: const Offset(0, 8),
                   ),
@@ -407,8 +403,8 @@ class _StreakGrid extends StatelessWidget {
       for (int j = i; j < rowEnd; j++) {
         final day = j + 1;
         final entries = ladder[j];
-        final isClaimed = day < currentDay ||
-            (day == currentDay && claimedToday);
+        final isClaimed =
+            day < currentDay || (day == currentDay && claimedToday);
         final isToday = day == currentDay && !claimedToday;
 
         rowItems.add(
@@ -431,10 +427,9 @@ class _StreakGrid extends StatelessWidget {
         Padding(
           padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
           child: Row(
-            children: rowItems
-                .expand((w) => [w, const SizedBox(width: 10)])
-                .toList()
-              ..removeLast(),
+            children:
+                rowItems.expand((w) => [w, const SizedBox(width: 10)]).toList()
+                  ..removeLast(),
           ),
         ),
       );
@@ -564,16 +559,44 @@ class _GridStreakTileState extends State<_GridStreakTile>
                 parent: _pulseController, curve: Curves.easeInOut))
             : 0.0;
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: _pillBg,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Text(
+        return Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            if (widget.isToday)
+              Transform.scale(
+                scale: pulseVal,
+                child: Opacity(
+                  opacity: pulseOpacity,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: b.accentGlowColor,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text(
+                      'DAY ${widget.dayNumber}',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: _pillBg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
                 'DAY ${widget.dayNumber}',
                 style: TextStyle(
                   fontSize: 9,
@@ -583,26 +606,8 @@ class _GridStreakTileState extends State<_GridStreakTile>
                       : b.secondaryTextColor,
                 ),
               ),
-              if (widget.isToday)
-                Positioned.fill(
-                  child: Transform.scale(
-                    scale: pulseVal,
-                    child: Opacity(
-                      opacity: pulseOpacity,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: b.accentGlowColor,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -730,8 +735,7 @@ class _EntryProgressPill extends StatelessWidget {
           ),
           const SizedBox(width: 5),
           Text(
-            StreakDashboardView._formatEntries(
-                currentEntries + entriesToAdd),
+            StreakDashboardView._formatEntries(currentEntries + entriesToAdd),
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w900,

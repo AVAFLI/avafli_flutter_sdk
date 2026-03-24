@@ -66,3 +66,7 @@ firebase_storage_rules.txt
 
 # Firebase
 **/firebase_options.dart
+
+
+*.stamp
+build/
