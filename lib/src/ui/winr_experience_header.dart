@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../winr_branding.dart';
 
 /// Header component for the WINR experience — matches iOS WINRExperienceHeaderView.
@@ -40,7 +41,10 @@ class WINRExperienceHeader extends StatelessWidget {
 
   Widget _circularIcon(IconData icon, VoidCallback action) {
     return GestureDetector(
-      onTap: action,
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        action();
+      },
       child: Container(
         width: 40,
         height: 40,

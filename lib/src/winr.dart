@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'domain/giveaway.dart';
 import 'domain/daily_entry_grant.dart';
@@ -204,6 +205,7 @@ class WINR {
       streakState: _cachedStreakState,
       claimedToday: _cachedClaimedToday ?? false,
       onTap: () {
+        HapticFeedback.mediumImpact();
         // When card is tapped, the publisher should call WINR.present()
         onEntryGranted?.call();
       },

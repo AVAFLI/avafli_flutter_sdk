@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../winr_branding.dart';
@@ -55,7 +56,10 @@ class BonusEntriesView extends StatelessWidget {
 
           // Watch & Claim button
           GestureDetector(
-            onTap: onClaim,
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              onClaim();
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -80,7 +84,10 @@ class BonusEntriesView extends StatelessWidget {
 
           // Skip button
           GestureDetector(
-            onTap: onSkip,
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              onSkip();
+            },
             child: Text(
               (sdkCopy?.bonusEntries?.skipText ?? 'No thanks, continue with {entries} entries')
                   .replaceAll('{entries}', '$entries'),

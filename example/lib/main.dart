@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 
 void main() {
@@ -135,6 +136,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
+                  HapticFeedback.lightImpact();
                   setState(() {
                     _isLoading = true;
                     _error = null;
@@ -276,6 +278,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   // MARK: - Actions
 
   Future<void> _presentExperience() async {
+    HapticFeedback.mediumImpact();
     try {
       // 2. Present the experience
       final result = await WINR.present(context);
@@ -301,6 +304,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   }
 
   Future<void> _deleteAccount() async {
+    HapticFeedback.mediumImpact();
     try {
       await WINR.deleteUserData();
       if (mounted) {

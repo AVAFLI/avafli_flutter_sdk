@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -263,7 +264,10 @@ class StreakDashboardView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: GestureDetector(
-            onTap: onClose,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onClose();
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -336,7 +340,10 @@ class StreakDashboardView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: GestureDetector(
-            onTap: onClaim,
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              onClaim();
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -819,7 +826,10 @@ class _LegalLinks extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: () => _openUrl('https://winfrastructure.us/rules'),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _openUrl('https://winfrastructure.us/rules');
+          },
           child: Text(
             'OFFICIAL RULES',
             style: TextStyle(
@@ -842,7 +852,10 @@ class _LegalLinks extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => _openUrl('https://winfrastructure.us/privacy'),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _openUrl('https://winfrastructure.us/privacy');
+          },
           child: Text(
             'PRIVACY POLICY',
             style: TextStyle(

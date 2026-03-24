@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 
 import '../domain/sdk_copy.dart';
@@ -246,7 +247,10 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: GestureDetector(
-                onTap: () => setState(() => _isAgeConfirmed = !_isAgeConfirmed),
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _isAgeConfirmed = !_isAgeConfirmed);
+                },
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -282,7 +286,10 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: GestureDetector(
-                onTap: () => setState(() => _isMarketingConsented = !_isMarketingConsented),
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _isMarketingConsented = !_isMarketingConsented);
+                },
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -317,7 +324,10 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
             Padding(
               padding: const EdgeInsets.only(top: 6, left: 20, right: 20),
               child: GestureDetector(
-                onTap: _handleSubmit,
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  _handleSubmit();
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -372,6 +382,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
+                          HapticFeedback.lightImpact();
                           final url = widget.rulesUrl;
                           if (url != null) {
                             widget.onOpenUrl?.call(url);
@@ -387,6 +398,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
+                          HapticFeedback.lightImpact();
                           widget.onOpenUrl
                               ?.call('https://winfrastructure.us/privacy');
                         },

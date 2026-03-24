@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:winr_flutter_sdk/shared/constants/image_strings.dart';
 
@@ -214,7 +215,10 @@ class HowItWorksView extends StatelessWidget {
                   ),
                 ),
                 child: GestureDetector(
-                  onTap: onPrimary,
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    onPrimary();
+                  },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),

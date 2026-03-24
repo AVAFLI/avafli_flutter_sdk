@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../domain/giveaway.dart';
 import '../domain/streak_state.dart';
@@ -124,15 +125,18 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
           scale: _isPressed ? _scaleAnimation.value : _pulseAnimation.value,
           child: GestureDetector(
             onTapDown: (_) {
+              HapticFeedback.mediumImpact();
               setState(() => _isPressed = true);
               _scaleController.forward();
             },
             onTapUp: (_) {
+              HapticFeedback.mediumImpact();
               setState(() => _isPressed = false);
               _scaleController.reverse();
               widget.onTap();
             },
             onTapCancel: () {
+              HapticFeedback.mediumImpact();
               setState(() => _isPressed = false);
               _scaleController.reverse();
             },
@@ -469,7 +473,10 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: widget.onQuickClaim,
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          widget.onQuickClaim?.call();
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: widget.branding.primaryButtonColor,
           foregroundColor: widget.branding.primaryButtonTextColor,
@@ -494,7 +501,10 @@ class _WINRExperienceCardState extends State<WINRExperienceCard>
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: widget.onTap,
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          widget.onTap();
+        },
         style: OutlinedButton.styleFrom(
           side: BorderSide(
             color: widget.branding.primaryButtonColor,

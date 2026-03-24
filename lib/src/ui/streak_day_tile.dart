@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../winr_branding.dart';
 
 /// Standalone streak day tile (130×160) — matches iOS StreakDayTile.swift.
@@ -55,7 +56,10 @@ class _StreakDayTileState extends State<StreakDayTile>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        widget.onTap?.call();
+      },
       child: Transform.scale(
         scale: widget.isToday ? 1.08 : 0.96,
         child: Container(

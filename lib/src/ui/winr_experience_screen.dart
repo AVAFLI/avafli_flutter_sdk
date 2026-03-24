@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 
-import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
-import '../winr_error.dart';
+import '../domain/giveaway.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../domain/streak_engine.dart';
@@ -20,6 +19,7 @@ import '../storage/secure_storage.dart';
 import '../storage/storage.dart';
 import '../winr_branding.dart';
 import '../winr_configuration.dart';
+import '../winr_error.dart';
 import '../winr_user.dart';
 import 'bonus_entries_view.dart';
 import 'email_capture_view.dart';
@@ -101,16 +101,14 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   int _backendTotalEntries = 0;
 
   /// Branding with server-driven overrides merged in.
-  late final WINRBranding _branding = widget.configuration.branding
-      .applyingServerBranding(_serverBranding);
+  late final WINRBranding _branding =
+      widget.configuration.branding.applyingServerBranding(_serverBranding);
 
   /// Server branding map from sdkConfig (nullable).
   Map<String, dynamic>? get _serverBranding {
     final branding = widget.sdkConfig?['branding'];
     return branding is Map<String, dynamic> ? branding : null;
   }
-
-
 
   @override
   void initState() {
@@ -264,9 +262,9 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildLoading() {
-    final loadingText = widget.sdkCopy?.loading?.text ?? 
-        'Loading today\'s reward…';
-    
+    final loadingText =
+        widget.sdkCopy?.loading?.text ?? 'Loading today\'s reward…';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -310,11 +308,12 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   }
 
   Widget _buildNoActiveGiveaway() {
-    final title = widget.sdkCopy?.noActiveGiveaway?.title ?? 'No Active Giveaway';
-    final subtitle = widget.sdkCopy?.noActiveGiveaway?.subtitle ?? 
+    final title =
+        widget.sdkCopy?.noActiveGiveaway?.title ?? 'No Active Giveaway';
+    final subtitle = widget.sdkCopy?.noActiveGiveaway?.subtitle ??
         'Check back soon for your next chance to win!';
     final buttonText = widget.sdkCopy?.noActiveGiveaway?.closeButton ?? 'Close';
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -323,7 +322,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           children: [
             // Logo placeholder — branding logo handled by sdkMedia if configured
             const SizedBox(height: 20),
-            
+
             Text(
               title,
               style: TextStyle(
@@ -344,14 +343,16 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
             ),
             const SizedBox(height: 24),
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.of(context).pop();
+              },
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _branding.primaryButtonColor,
-                  borderRadius:
-                      BorderRadius.circular(_branding.cornerRadius),
+                  borderRadius: BorderRadius.circular(_branding.cornerRadius),
                 ),
                 child: Center(
                   child: Text(
@@ -373,10 +374,11 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
 
   Widget _buildError() {
     final title = widget.sdkCopy?.error?.title ?? 'Something went wrong.';
-    final subtitle = widget.sdkCopy?.error?.subtitle ?? 
-        _errorMessage ?? 'Please try again later.';
+    final subtitle = widget.sdkCopy?.error?.subtitle ??
+        _errorMessage ??
+        'Please try again later.';
     final buttonText = widget.sdkCopy?.error?.closeButton ?? 'Close';
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -398,14 +400,16 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.of(context).pop();
+              },
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _branding.primaryButtonColor,
-                  borderRadius:
-                      BorderRadius.circular(_branding.cornerRadius),
+                  borderRadius: BorderRadius.circular(_branding.cornerRadius),
                 ),
                 child: Center(
                   child: Text(
@@ -465,7 +469,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       try {
         final response =
             await widget.networkClient.send(GetActiveGiveawayRequest());
-        
+
         // Handle null giveaway response (no active giveaway)
         if (response.giveaway == null) {
           _giveaway = null;
@@ -474,7 +478,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           setState(() => _phase = _ExperiencePhase.noActiveGiveaway);
           return;
         }
-        
+
         _giveaway = response.giveaway;
         backendClaimed = response.claimedToday;
         backendStreakDay = response.streakDay;
@@ -485,7 +489,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         _giveaway ??= await widget.preferencesStorage.getCachedGiveaway();
         Logger.instance.error('Using cached giveaway (offline)', e);
       }
-      
+
       // If we still don't have a giveaway after trying cache, show no active giveaway
       if (_giveaway == null) {
         setState(() => _phase = _ExperiencePhase.noActiveGiveaway);
@@ -614,8 +618,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       _claimedToday = true;
       _lastGrant = grant;
 
-      await widget.preferencesStorage
-          .saveStreakState(_streakState!);
+      await widget.preferencesStorage.saveStreakState(_streakState!);
 
       // Decide next phase — feature flag gates the bonus flow
       final bonusEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
@@ -648,13 +651,15 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       // Faking a successful claim when the backend rejected it causes duplicate
       // claim attempts and inconsistent state.
       if (e is WINRException && e.error == WINRError.networkError) {
-        Logger.instance.error('Network error during claim, using local fallback', e);
+        Logger.instance
+            .error('Network error during claim, using local fallback', e);
         _streakState = _streakState?.copyWith(lastClaimedDate: DateTime.now());
         _claimedToday = true;
         final grant = DailyEntryGrant(baseEntries: _entriesToday);
         _lastGrant = grant;
 
-        final bonusFallbackEnabled = widget.sdkConfig?['bonusEntriesEnabled'] == true;
+        final bonusFallbackEnabled =
+            widget.sdkConfig?['bonusEntriesEnabled'] == true;
         if (bonusFallbackEnabled && widget.rewardedVideoProvider != null) {
           setState(() => _phase = _ExperiencePhase.bonus);
         } else {
@@ -772,8 +777,9 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
   bool _showContent = false;
 
   static String _formatEntries(int value) {
-    return value.toString().replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return value
+        .toString()
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
   }
 
   @override
@@ -1030,7 +1036,10 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
                   ),
                 ),
                 child: GestureDetector(
-                  onTap: widget.onContinue,
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    widget.onContinue();
+                  },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1171,11 +1180,16 @@ class _ConfettiParticle {
 
   Color color(Color accent) {
     switch (colorIndex) {
-      case 0: return accent;
-      case 1: return Colors.white;
-      case 2: return const Color(0xFFFFD700);
-      case 3: return const Color(0xFFFF6B6B);
-      default: return const Color(0xFF7C3AED);
+      case 0:
+        return accent;
+      case 1:
+        return Colors.white;
+      case 2:
+        return const Color(0xFFFFD700);
+      case 3:
+        return const Color(0xFFFF6B6B);
+      default:
+        return const Color(0xFF7C3AED);
     }
   }
 }
