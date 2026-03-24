@@ -120,12 +120,22 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildHeroLogo(BoxConstraints constraints) {
     final heroLogo = branding.logoTwo ?? branding.logo;
-    // Match iOS: hero takes ~30% of screen height, nearly full width
+    // Use full screen height for sizing (constraints are reduced by header/padding).
+    // iOS uses geo.size.height * 0.22 with maxHeight 0.24 — approximate by
+    // using the screen height directly so the hero is comparably large.
+    final screenHeight = MediaQueryData.fromView(
+            WidgetsBinding.instance.platformDispatcher.views.first)
+        .size
+        .height;
     final heroWidth = constraints.maxWidth * 0.85;
-    final heroHeight = constraints.maxHeight * 0.28;
+    final heroHeight = screenHeight * 0.22;
 
     final defaultWidget = heroLogo != null
         ? Container(
+            constraints: BoxConstraints(
+              maxWidth: constraints.maxWidth * 0.85,
+              maxHeight: screenHeight * 0.24,
+            ),
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
@@ -559,8 +569,8 @@ class _GridStreakTileState extends State<_GridStreakTile>
                 child: Opacity(
                   opacity: pulseOpacity,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
@@ -580,8 +590,7 @@ class _GridStreakTileState extends State<_GridStreakTile>
                 ),
               ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: _pillBg,
                 borderRadius: BorderRadius.circular(20),

@@ -29,9 +29,9 @@ class WINRExperienceHeader extends StatelessWidget {
         if (showsBack)
           _circularIcon(Icons.chevron_left, onBack)
         else if (showsInfo)
-          _circularIcon(Icons.help_outline, onInfo)
+          _circularIcon(Icons.question_mark, onInfo)
         else
-          const SizedBox(width: 34),
+          const SizedBox(width: 40),
         const Spacer(),
         _circularIcon(Icons.close, onClose),
       ],
@@ -42,8 +42,8 @@ class WINRExperienceHeader extends StatelessWidget {
     return GestureDetector(
       onTap: action,
       child: Container(
-        width: 28,
-        height: 28,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: branding.cardBackgroundColor.withValues(alpha: 0.9),
@@ -55,8 +55,9 @@ class WINRExperienceHeader extends StatelessWidget {
         child: Center(
           child: Icon(
             icon,
-            size: 14,
-            color: branding.primaryColor,
+            size: 18,
+            weight: 700,
+            color: Colors.white,
           ),
         ),
       ),
