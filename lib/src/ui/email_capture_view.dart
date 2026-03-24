@@ -372,13 +372,14 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                     color: b.mutedTextColor.withValues(alpha: 0.7),
                   ),
                   children: [
-                    TextSpan(text: widget.sdkCopy?.emailCapture?.rulesPrefix ?? 'By entering, you agree to the '),
+                    TextSpan(text: '${widget.sdkCopy?.emailCapture?.rulesPrefix ?? 'By entering, you agree to the'} '),
                     TextSpan(
-                      text: widget.sdkCopy?.emailCapture?.rulesLinkText ?? 
+                      text:  widget.sdkCopy?.emailCapture?.rulesLinkText ?? 
                             widget.sdkCopy?.rulesLinkText ?? 'Official Rules',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: b.primaryButtonColor,
+                        decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
@@ -395,6 +396,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: b.primaryButtonColor,
+                        decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
