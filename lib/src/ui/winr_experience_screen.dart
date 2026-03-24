@@ -24,6 +24,7 @@ import '../winr_user.dart';
 import 'bonus_entries_view.dart';
 import 'email_capture_view.dart';
 import 'how_it_works_view.dart';
+import 'skeleton_views.dart';
 import 'streak_dashboard_view.dart';
 import 'winr_experience_header.dart';
 
@@ -268,22 +269,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildLoading() {
-    final loadingText =
-        widget.sdkCopy?.loading?.text ?? 'Loading today\'s reward…';
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: _branding.accentGlowColor),
-          const SizedBox(height: 16),
-          Text(
-            loadingText,
-            style: TextStyle(color: _branding.primaryColor),
-          ),
-        ],
-      ),
-    );
+    return StreakDashboardSkeleton(branding: _branding);
   }
 
   Widget _buildCompleted() {

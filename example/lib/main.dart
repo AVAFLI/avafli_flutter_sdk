@@ -47,11 +47,11 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     try {
       // 1. Configure the WINR SDK
       await WINR.configure(WINRConfiguration(
-        apiKey: 'winr_live_50b1b3b801a843d5e1f99593fcad4d14',
-        bundleId: 'com.avafli.winr.example',
+        apiKey: 'YOUR_API_KEY',
+        bundleId: 'com.example.myapp',
         environment: WINREnvironment.production,
         user: const WINRUser(
-          id: 'demo_user_123',
+          id: 'user_123',
           firstName: 'Jane',
           lastName: 'Doe',
         ),
