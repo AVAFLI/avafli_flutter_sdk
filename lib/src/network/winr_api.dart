@@ -212,9 +212,9 @@ class ClaimDailyEntriesResponse {
   
   factory ClaimDailyEntriesResponse.fromJson(Map<String, dynamic> json) {
     return ClaimDailyEntriesResponse(
-      baseEntries: json['baseEntries'] ?? 0,
+      baseEntries: json['entries'] ?? json['baseEntries'] ?? 0,
       bonusEntries: json['bonusEntries'] ?? 0,
-      newStreakDay: json['newStreakDay'] ?? 1,
+      newStreakDay: json['streakDay'] ?? json['newStreakDay'] ?? 1,
       weeklyBonusEarned: json['weeklyBonusEarned'] ?? false,
       monthlyBonusEarned: json['monthlyBonusEarned'] ?? false,
     );

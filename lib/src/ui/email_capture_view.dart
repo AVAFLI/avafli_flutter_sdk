@@ -20,6 +20,7 @@ class EmailCaptureView extends StatefulWidget {
   final SdkCopy? sdkCopy;
   final SdkMedia? sdkMedia;
   final void Function(String url)? onOpenUrl;
+  final bool isSubmitting;
 
   const EmailCaptureView({
     super.key,
@@ -32,6 +33,7 @@ class EmailCaptureView extends StatefulWidget {
     this.sdkCopy,
     this.sdkMedia,
     this.onOpenUrl,
+    this.isSubmitting = false,
   });
 
   @override
@@ -209,6 +211,10 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                                 color: b.inputFieldPlaceholderColor,
                               ),
                               border: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
                               isDense: true,
                             ),

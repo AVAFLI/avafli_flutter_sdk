@@ -21,6 +21,7 @@ class StreakDashboardView extends StatelessWidget {
   final bool claimedToday;
   final Giveaway? giveaway;
   final VoidCallback onClaim;
+  final bool isClaiming;
   final VoidCallback onClose;
   final SdkCopy? sdkCopy;
   final SdkMedia? sdkMedia;
@@ -33,6 +34,7 @@ class StreakDashboardView extends StatelessWidget {
     required this.ladder,
     required this.claimedToday,
     required this.onClaim,
+    this.isClaiming = false,
     required this.onClose,
     this.giveaway,
     this.sdkCopy,
@@ -340,15 +342,18 @@ class StreakDashboardView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: GestureDetector(
-            onTap: () {
+            onTap: isClaiming ? null : () {
               HapticFeedback.mediumImpact();
               onClaim();
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: branding.primaryButtonColor,
+                color: isClaiming
+                    ? branding.primaryButtonColor.withValues(alpha: 0.6)
+                    : branding.primaryButtonColor,
                 borderRadius: BorderRadius.circular(branding.cornerRadius),
                 boxShadow: [
                   BoxShadow(
@@ -359,17 +364,26 @@ class StreakDashboardView extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(
-                  (sdkCopy?.streakDashboard?.claimButton ??
-                          sdkCopy?.dailyClaimButton ??
-                          "Claim Today's Entries")
-                      .replaceAll('{entries}', '$entriesToday'),
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: branding.primaryButtonTextColor,
-                  ),
-                ),
+                child: isClaiming
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: branding.primaryButtonTextColor,
+                        ),
+                      )
+                    : Text(
+                        (sdkCopy?.streakDashboard?.claimButton ??
+                                sdkCopy?.dailyClaimButton ??
+                                "Claim Today's Entries")
+                            .replaceAll('{entries}', '$entriesToday'),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: branding.primaryButtonTextColor,
+                        ),
+                      ),
               ),
             ),
           ),

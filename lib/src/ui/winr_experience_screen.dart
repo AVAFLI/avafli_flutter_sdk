@@ -100,6 +100,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   int? _backendStreakDay;
   int _backendTotalEntries = 0;
 
+  // Loading states
+  bool _isClaiming = false;
+  final bool _isSubmittingEmail = false;
+
   /// Branding with server-driven overrides merged in.
   late final WINRBranding _branding =
       widget.configuration.branding.applyingServerBranding(_serverBranding);
@@ -214,6 +218,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           sdkCopy: widget.sdkCopy,
           sdkMedia: widget.sdkMedia,
           onSubmit: _submitEmail,
+          isSubmitting: _isSubmittingEmail,
           onSkip: _skipEmailCapture,
         );
 
@@ -228,6 +233,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
           sdkCopy: widget.sdkCopy,
           sdkMedia: widget.sdkMedia,
           onClaim: _claimDailyEntries,
+          isClaiming: _isClaiming,
           onClose: () => Navigator.of(context).pop(),
         );
 
@@ -600,8 +606,9 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _claimDailyEntries() async {
-    if (_claimedToday) return;
+    if (_claimedToday || _isClaiming) return;
 
+    setState(() => _isClaiming = true);
     try {
       final response =
           await widget.networkClient.send(ClaimDailyEntriesRequest());
@@ -671,6 +678,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       // For all other errors, show error state
       Logger.instance.error('Backend claim failed', e);
       setState(() {
+        _isClaiming = false;
         _errorMessage = e.toString();
         _phase = _ExperiencePhase.error;
       });
