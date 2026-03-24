@@ -56,7 +56,7 @@ Then run:
 flutter pub get
 ```
 
-> **Note:** Contact [team@avafli.com](mailto:team@avafli.com) to obtain an API key.
+> **Note:** Contact [AVAFLI](https://avafli-website.web.app/sdk/pricing) to obtain an API key.
 
 ## Configuration
 
@@ -217,12 +217,12 @@ This permanently removes all user data, entries, preferences, and consent record
 | ------ | ------- | ----------- |
 | `WINRPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to WINR |
 
-For detailed API documentation, see the [WINR Docs](https://docs.avafli.com).
+For detailed API documentation, see the [WINR Docs](https://avafli-website.web.app/sdk/flutter).
 
 ## Links
 
 - **Dashboard:** [https://avafli-website.web.app/sdk/dashboard](https://avafli-website.web.app/sdk/dashboard)
-- **Documentation:** [https://docs.avafli.com](https://docs.avafli.com)
+- **Documentation:** [https://avafli-website.web.app/sdk/flutter](https://avafli-website.web.app/sdk/flutter)
 - **Support:** [team@avafli.com](mailto:team@avafli.com)
 
 ---
