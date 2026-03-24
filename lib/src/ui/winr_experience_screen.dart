@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lottie/lottie.dart';
 
 import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
@@ -276,57 +280,28 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
 
   Widget _buildCompleted() {
     final grant = _lastGrant;
-    final title = widget.sdkCopy?.completed?.title ?? 'Entries Claimed!';
-    final subtitle = widget.sdkCopy?.completed?.subtitle ?? 
-        '+${grant?.total ?? _entriesToday} entries added to this month\'s drawing.';
-    final buttonText = widget.sdkCopy?.completed?.closeButton ?? 'Close';
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: _branding.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              subtitle.replaceAll('{total}', '${grant?.total ?? _entriesToday}'),
-              style: TextStyle(color: _branding.mutedTextColor),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: _branding.primaryButtonColor,
-                  borderRadius:
-                      BorderRadius.circular(_branding.cornerRadius),
-                ),
-                child: Center(
-                  child: Text(
-                    buttonText,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: _branding.primaryButtonTextColor,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final entries = grant?.baseEntries ?? _entriesToday;
+    final bonus = grant?.bonusEntries ?? 0;
+
+    // Resolve prize headline: copy.completed.title → copy.streakDashboard.prizeHeadline → giveaway prize
+    final prizeHeadline = widget.sdkCopy?.completed?.title ??
+        widget.sdkCopy?.streakDashboard?.prizeHeadline ??
+        (_giveaway?.prizeValue != null
+            ? 'WIN ${StreakDashboardView.formatPrize(_giveaway!.prizeValue!)}!'
+            : 'WIN PRIZES!');
+
+    final subtitle = widget.sdkCopy?.completed?.subtitle ?? 'Entries Claimed!';
+    final buttonText = widget.sdkCopy?.completed?.closeButton ?? 'Continue';
+
+    return _CompletedCelebrationView(
+      branding: _branding,
+      entries: entries,
+      bonusEntries: bonus,
+      prizeHeadline: prizeHeadline,
+      subtitle: subtitle.replaceAll('{entries}', '$entries'),
+      buttonText: buttonText,
+      sdkMedia: widget.sdkMedia,
+      onContinue: () => Navigator.of(context).pop(),
     );
   }
 
@@ -735,5 +710,455 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       'winr_experience_closed',
       {'total_entries': grant.total},
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// COMPLETED CELEBRATION VIEW — matches iOS DailyEntriesConfirmedView.swift
+// ---------------------------------------------------------------------------
+
+class _CompletedCelebrationView extends StatefulWidget {
+  final WINRBranding branding;
+  final int entries;
+  final int bonusEntries;
+  final String prizeHeadline;
+  final String subtitle;
+  final String buttonText;
+  final SdkMedia? sdkMedia;
+  final VoidCallback onContinue;
+
+  const _CompletedCelebrationView({
+    required this.branding,
+    required this.entries,
+    required this.bonusEntries,
+    required this.prizeHeadline,
+    required this.subtitle,
+    required this.buttonText,
+    required this.onContinue,
+    this.sdkMedia,
+  });
+
+  @override
+  State<_CompletedCelebrationView> createState() =>
+      _CompletedCelebrationViewState();
+}
+
+class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
+    with TickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  late AnimationController _confettiController;
+  bool _showContent = false;
+
+  static String _formatEntries(int value) {
+    return value.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+    _confettiController = AnimationController(
+      duration: const Duration(milliseconds: 2500),
+      vsync: this,
+    );
+
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      setState(() => _showContent = true);
+      _scaleController.forward();
+      _confettiController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  WINRBranding get b => widget.branding;
+
+  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+    // Try completed media first, then fall back to streakDashboard media
+    final completedMedia = media;
+    final streakMedia = widget.sdkMedia?.streakDashboard;
+
+    final lottieUrl = completedMedia?.lottieUrl ?? streakMedia?.lottieUrl;
+    final imageUrl = completedMedia?.imageUrl ?? streakMedia?.imageUrl;
+
+    if (lottieUrl != null && lottieUrl.isNotEmpty) {
+      return Lottie.network(
+        lottieUrl,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: 200,
+        height: 150,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => defaultWidget,
+      );
+    }
+    return defaultWidget;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
+        final safeBottom = bottomPadding == 0 ? 24.0 : bottomPadding + 4;
+
+        return Stack(
+          children: [
+            // Confetti particles
+            if (_showContent)
+              _ConfettiOverlay(
+                controller: _confettiController,
+                accentColor: b.accentGlowColor,
+                size: constraints.biggest,
+              ),
+
+            // Main content
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                left: 14,
+                right: 14,
+                bottom: 140,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+
+                    // Hero media
+                    _buildHeroMedia(
+                      widget.sdkMedia?.completed,
+                      b.logoTwo != null || b.logo != null
+                          ? Container(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth * 0.85,
+                                maxHeight: constraints.maxHeight * 0.24,
+                              ),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: b.accentGlowColor
+                                        .withValues(alpha: 0.5),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: SizedBox(
+                                width: constraints.maxWidth * 0.75,
+                                height: constraints.maxHeight * 0.22,
+                                child: (b.logoTwo ?? b.logo)!,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Prize headline
+                    Text(
+                      widget.prizeHeadline,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: b.accentGlowColor.withValues(alpha: 0.8),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Big entry count with scale animation
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: Opacity(
+                            opacity: _showContent ? 1.0 : 0.0,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text(
+                        _formatEntries(widget.entries),
+                        style: TextStyle(
+                          fontSize: 52,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: b.accentGlowColor.withValues(alpha: 0.6),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Subtitle
+                    AnimatedOpacity(
+                      opacity: _showContent ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 400),
+                      child: Text(
+                        widget.subtitle,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: b.secondaryTextColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    // Bonus entries breakdown
+                    if (widget.bonusEntries > 0) ...[
+                      const SizedBox(height: 8),
+                      AnimatedOpacity(
+                        opacity: _showContent ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 400),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.card_giftcard,
+                              size: 11,
+                              color: b.accentGlowColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '+${_formatEntries(widget.bonusEntries)} bonus entries',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: b.accentGlowColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Encouragement text
+                    AnimatedOpacity(
+                      opacity: _showContent ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 500),
+                      child: Text(
+                        'Come back tomorrow to keep your streak alive!',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: b.mutedTextColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Sticky footer
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.only(
+                  left: 18,
+                  right: 18,
+                  top: 16,
+                  bottom: safeBottom,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      b.backgroundColor.withValues(alpha: 0.0),
+                      b.backgroundColor.withValues(alpha: 0.96),
+                    ],
+                  ),
+                ),
+                child: GestureDetector(
+                  onTap: widget.onContinue,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: b.primaryButtonColor,
+                      borderRadius: BorderRadius.circular(b.cornerRadius),
+                      boxShadow: [
+                        BoxShadow(
+                          color: b.accentGlowColor.withValues(alpha: 0.6),
+                          blurRadius: 14,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        widget.buttonText,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: b.primaryButtonTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CONFETTI OVERLAY — lightweight particle effect for celebration
+// ---------------------------------------------------------------------------
+
+class _ConfettiOverlay extends StatelessWidget {
+  final AnimationController controller;
+  final Color accentColor;
+  final Size size;
+
+  const _ConfettiOverlay({
+    required this.controller,
+    required this.accentColor,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return CustomPaint(
+          size: size,
+          painter: _ConfettiPainter(
+            progress: controller.value,
+            accentColor: accentColor,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final double progress;
+  final Color accentColor;
+  static final math.Random _rng = math.Random(42);
+  static late List<_ConfettiParticle> _particles;
+  static bool _initialized = false;
+
+  _ConfettiPainter({required this.progress, required this.accentColor}) {
+    if (!_initialized) {
+      _particles = List.generate(40, (i) => _ConfettiParticle(_rng));
+      _initialized = true;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    final fadeOut = progress > 0.7 ? (1.0 - progress) / 0.3 : 1.0;
+
+    for (final p in _particles) {
+      final x = p.startX * size.width + p.driftX * size.width * progress;
+      final y = p.startY * size.height + p.speed * size.height * progress;
+
+      if (y > size.height || y < 0) continue;
+
+      final paint = Paint()
+        ..color = p.color(accentColor).withValues(alpha: fadeOut * 0.8)
+        ..style = PaintingStyle.fill;
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(p.rotation + progress * p.rotationSpeed);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset.zero, width: p.w, height: p.h),
+          const Radius.circular(1.5),
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _ConfettiParticle {
+  final double startX;
+  final double startY;
+  final double driftX;
+  final double speed;
+  final double rotation;
+  final double rotationSpeed;
+  final double w;
+  final double h;
+  final int colorIndex;
+
+  _ConfettiParticle(math.Random rng)
+      : startX = rng.nextDouble(),
+        startY = -rng.nextDouble() * 0.3,
+        driftX = (rng.nextDouble() - 0.5) * 0.4,
+        speed = 0.6 + rng.nextDouble() * 0.5,
+        rotation = rng.nextDouble() * math.pi * 2,
+        rotationSpeed = (rng.nextDouble() - 0.5) * 10,
+        w = 4 + rng.nextDouble() * 6,
+        h = 3 + rng.nextDouble() * 4,
+        colorIndex = rng.nextInt(5);
+
+  Color color(Color accent) {
+    switch (colorIndex) {
+      case 0: return accent;
+      case 1: return Colors.white;
+      case 2: return const Color(0xFFFFD700);
+      case 3: return const Color(0xFFFF6B6B);
+      default: return const Color(0xFF7C3AED);
+    }
   }
 }
