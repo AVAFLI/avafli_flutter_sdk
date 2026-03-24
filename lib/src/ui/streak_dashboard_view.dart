@@ -118,7 +118,6 @@ class StreakDashboardView extends StatelessWidget {
                 ),
 
                 // Footer (flows after content, pushed to bottom on short screens)
-                // const SizedBox(height: 20),
                 _buildFooterContent(safeBottom),
               ],
             ),

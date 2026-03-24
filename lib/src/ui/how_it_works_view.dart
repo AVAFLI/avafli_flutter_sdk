@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:winr_flutter_sdk/shared/constants/image_strings.dart';
+
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../winr_branding.dart';
@@ -44,27 +46,31 @@ class HowItWorksView extends StatelessWidget {
   }
 
   List<({IconData icon, String title, String desc})> get _steps => [
-    (
-      icon: Icons.calendar_month,
-      title: sdkCopy?.howItWorks?.step1Title ?? 'Visit Daily',
-      desc: sdkCopy?.howItWorks?.step1Description ?? 'Open the app each day to claim your daily entries.',
-    ),
-    (
-      icon: Icons.local_fire_department,
-      title: sdkCopy?.howItWorks?.step2Title ?? 'Build Your Streak',
-      desc: sdkCopy?.howItWorks?.step2Description ?? 'Keep your streak alive — the longer it goes, the more entries you earn each day.',
-    ),
-    (
-      icon: Icons.play_circle_filled,
-      title: sdkCopy?.howItWorks?.step3Title ?? 'Watch & Double',
-      desc: sdkCopy?.howItWorks?.step3Description ?? 'Watch an optional short video to double your daily entries.',
-    ),
-    (
-      icon: Icons.card_giftcard,
-      title: sdkCopy?.howItWorks?.step4Title ?? 'Win Prizes',
-      desc: sdkCopy?.howItWorks?.step4Description ?? 'Your entries go into the monthly prize drawing. More entries = better odds!',
-    ),
-  ];
+        (
+          icon: Icons.calendar_month,
+          title: sdkCopy?.howItWorks?.step1Title ?? 'Visit Daily',
+          desc: sdkCopy?.howItWorks?.step1Description ??
+              'Open the app each day to claim your daily entries.',
+        ),
+        (
+          icon: Icons.local_fire_department,
+          title: sdkCopy?.howItWorks?.step2Title ?? 'Build Your Streak',
+          desc: sdkCopy?.howItWorks?.step2Description ??
+              'Keep your streak alive — the longer it goes, the more entries you earn each day.',
+        ),
+        (
+          icon: Icons.play_circle_filled,
+          title: sdkCopy?.howItWorks?.step3Title ?? 'Watch & Double',
+          desc: sdkCopy?.howItWorks?.step3Description ??
+              'Watch an optional short video to double your daily entries.',
+        ),
+        (
+          icon: Icons.card_giftcard,
+          title: sdkCopy?.howItWorks?.step4Title ?? 'Win Prizes',
+          desc: sdkCopy?.howItWorks?.step4Description ??
+              'Your entries go into the monthly prize drawing. More entries = better odds!',
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +101,7 @@ class HowItWorksView extends StatelessWidget {
                             height: branding.primaryLogoSize.height,
                             child: branding.logo!,
                           )
-                        : const Text('🎰', style: TextStyle(fontSize: 48)),
+                        : Lottie.asset(ImageStrings.howItWorksAnimation),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -108,7 +114,8 @@ class HowItWorksView extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    sdkCopy?.howItWorks?.subtitle ?? 'Earn entries every day for a chance to win big.',
+                    sdkCopy?.howItWorks?.subtitle ??
+                        'Earn entries every day for a chance to win big.',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -143,8 +150,8 @@ class HowItWorksView extends StatelessWidget {
                       borderRadius:
                           BorderRadius.circular(branding.cornerRadius),
                       border: Border.all(
-                        color: branding.primaryButtonColor
-                            .withValues(alpha: 0.2),
+                        color:
+                            branding.primaryButtonColor.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -159,7 +166,8 @@ class HowItWorksView extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            sdkCopy?.howItWorks?.tip ?? 'Pro tip: A 5-day streak earns a weekly bonus of extra entries!',
+                            sdkCopy?.howItWorks?.tip ??
+                                'Pro tip: A 5-day streak earns a weekly bonus of extra entries!',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -206,8 +214,8 @@ class HowItWorksView extends StatelessWidget {
                           BorderRadius.circular(branding.cornerRadius),
                       boxShadow: [
                         BoxShadow(
-                          color: branding.accentGlowColor
-                              .withValues(alpha: 0.5),
+                          color:
+                              branding.accentGlowColor.withValues(alpha: 0.5),
                           blurRadius: 14,
                           offset: const Offset(0, 8),
                         ),
