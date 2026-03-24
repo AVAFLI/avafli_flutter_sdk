@@ -1,20 +1,9 @@
-<p align="center">
-  <img src="https://avafli.com/winr-logo.png" alt="WINR" width="200" />
-</p>
+# WINR Flutter SDK
+**Drop-in sweepstakes, prizing, and gamification for your Flutter app**
 
-<h1 align="center">WINR Flutter SDK</h1>
-
-<p align="center">
-  <a href="https://pub.dev/packages/winr_flutter_sdk"><img src="https://img.shields.io/pub/v/winr_flutter_sdk.svg" alt="pub.dev" /></a>
-  <a href="https://pub.dev/packages/winr_flutter_sdk"><img src="https://img.shields.io/badge/flutter-%3E%3D3.10-blue.svg" alt="Flutter 3.10+" /></a>
-  <a href="https://pub.dev/packages/winr_flutter_sdk"><img src="https://img.shields.io/badge/dart-%3E%3D3.0-blue.svg" alt="Dart 3.0+" /></a>
-  <a href="https://pub.dev/packages/winr_flutter_sdk"><img src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg" alt="Platforms" /></a>
-</p>
-
-<p align="center">
-  Drop-in sweepstakes, prizing, and gamification for your Flutter app.<br />
-  Built by <a href="https://avafli.com">Avafli</a>.
-</p>
+[![Flutter](https://img.shields.io/badge/Flutter-3.10%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.0%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg)](https://flutter.dev)
 
 ---
 
@@ -23,7 +12,6 @@
 WINR lets you add daily-entry sweepstakes and prize experiences to your app in under 20 lines of code. The entire UI — branding, theming, copy, and prize configuration — is managed server-side from the WINR dashboard. You integrate once; your marketing team controls the rest.
 
 **Key capabilities:**
-
 - **Daily entry sweepstakes** — Users earn entries every day they engage
 - **Bonus entries via rewarded video** — Monetize attention with opt-in ads
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
@@ -31,14 +19,27 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 - **GDPR/CCPA compliant** — Built-in consent flows and user data deletion
 - **Analytics forwarding** — Route SDK events to your existing analytics stack
 
-## Requirements
+## Quick Start
 
-| Platform | Minimum Version |
-| -------- | --------------- |
-| Flutter  | 3.10+           |
-| Dart     | 3.0+            |
-| iOS      | 13.0+           |
-| Android  | API 21+         |
+```dart
+import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+
+// 1. Configure the SDK
+final config = WINRConfiguration(
+  apiKey: 'YOUR_API_KEY',
+  bundleId: 'com.example.myapp',
+  environment: WINREnvironment.production,
+  user: WINRUser(
+    id: 'user_123',
+    firstName: 'Jane',
+    lastName: 'Doe',
+  ),
+);
+await WINR.configure(config);
+
+// 2. Present the experience
+await WINR.present(context);
+```
 
 ## Installation
 
@@ -55,100 +56,57 @@ Then run:
 flutter pub get
 ```
 
-> **Note:** This package is distributed via [pub.dev](https://pub.dev/packages/winr_flutter_sdk). Contact [sales@avafli.com](mailto:sales@avafli.com) to obtain an API key.
+> **Note:** Contact [team@avafli.com](mailto:team@avafli.com) to obtain an API key.
 
-## Quick Start
+## Configuration
 
-```dart
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 1. Configure the SDK with your user
-  final config = WINRConfiguration(
-    apiKey: 'YOUR_API_KEY',
-    environment: WINREnvironment.production,
-    user: WINRUser(
-      id: 'user_123',
-      firstName: 'Jane',
-      lastName: 'Doe',
-    ),
-  );
-  await WINR.configure(config);
-
-  runApp(const MyApp());
-}
-```
+Initialize the SDK with your user and environment settings:
 
 ```dart
-// 2. Present the WINR experience
-final grant = await WINR.present(context);
-print('Entries earned: ${grant.total}');
-```
-
-That's it. Two calls — configure, present.
-
-## API Reference
-
-### `WINR.configure(WINRConfiguration config)`
-
-Initializes the SDK and identifies the user. Call once at app startup, before any other WINR methods.
-
-```dart
-final success = await WINR.configure(WINRConfiguration(
+final config = WINRConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
+  bundleId: 'com.example.myapp',
   environment: WINREnvironment.production,
   user: WINRUser(
     id: 'user_abc123',
     firstName: 'Jane',
     lastName: 'Doe',
+    phone: '+15551234567',  // optional
   ),
   options: WINROptions(
     logging: LoggingLevel.debug,
     enablePushReminders: true,
-    analyticsAdapter: myAdapter,     // optional — see Analytics section
+    analyticsAdapter: myAdapter,  // optional
   ),
-));
+);
+
+final success = await WINR.configure(config);
 ```
 
-**Returns:** `Future<bool>` — `true` if initialization succeeded.
+### WINRConfiguration
 
-#### `WINRConfiguration`
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `apiKey` | `String` | ✅ | Your WINR API key from the dashboard |
+| `bundleId` | `String` | ✅ | App bundle ID (e.g., com.example.myapp) |
+| `environment` | `WINREnvironment` | ✅ | `.production`, `.staging`, or `.qa` |
+| `user` | `WINRUser` | ✅ | The authenticated user |
+| `options` | `WINROptions?` | — | Optional behavior toggles |
 
-| Parameter     | Type               | Required | Description                                   |
-| ------------- | ------------------ | -------- | --------------------------------------------- |
-| `apiKey`      | `String`           | ✅       | Your WINR API key from the dashboard          |
-| `environment` | `WINREnvironment`  | ✅       | `.production`, `.staging`, or `.qa`            |
-| `user`        | `WINRUser`         | ✅       | The authenticated user                        |
-| `bundleId`    | `String?`          | —        | App bundle ID. Auto-detected if not provided. |
-| `options`     | `WINROptions`      | —        | Optional behavior toggles (see below).        |
+### WINRUser
 
-#### `WINRUser`
-
-| Parameter   | Type      | Required | Description                            |
-| ----------- | --------- | -------- | -------------------------------------- |
-| `id`        | `String`  | ✅       | Unique, stable user identifier         |
-| `firstName` | `String`  | ✅       | User's first name                      |
-| `lastName`  | `String`  | ✅       | User's last name                       |
-| `phone`     | `String?` | —        | Phone number in E.164 format           |
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `id` | `String` | ✅ | Unique, stable user identifier |
+| `firstName` | `String` | ✅ | User's first name |
+| `lastName` | `String` | ✅ | User's last name |
+| `phone` | `String?` | — | Phone number in E.164 format |
 
 > **Email:** The SDK captures email through its own opt-in UI. Do not pass email via `WINRUser`.
 
-#### `WINROptions`
+## Present the Experience
 
-| Parameter             | Type                   | Required | Description                                        |
-| --------------------- | ---------------------- | -------- | -------------------------------------------------- |
-| `logging`             | `LoggingLevel`         | —        | Logging verbosity. Defaults to `.error`.           |
-| `analyticsAdapter`    | `AnalyticsAdapter?`    | —        | Forward SDK events to your analytics provider.     |
-| `rewardedVideoProvider` | `RewardedVideoProvider?` | —    | Custom rewarded video provider for bonus entries.  |
-| `enablePushReminders` | `bool`                 | —        | Enable daily push reminders. Defaults to `true`.   |
-
----
-
-### `WINR.present(BuildContext context)`
-
-Launches the full-screen WINR experience. The user sees their daily entries, available prizes, and can earn bonus entries through rewarded video.
+Launch the full-screen WINR experience:
 
 ```dart
 final grant = await WINR.present(context);
@@ -158,110 +116,55 @@ if (grant.total > 0) {
 }
 ```
 
-**Returns:** `Future<DailyEntryGrant>`
+The method returns a `DailyEntryGrant` with the entries earned during the session.
 
-#### `DailyEntryGrant`
+## Push Notifications
 
-| Field          | Type  | Description                                   |
-| -------------- | ----- | --------------------------------------------- |
-| `baseEntries`  | `int` | Entries earned from the daily visit            |
-| `bonusEntries` | `int` | Additional entries earned (e.g., rewarded video) |
-| `total`        | `int` | Sum of base and bonus entries                  |
+Drive re-engagement with daily reminders. Publishers forward their FCM token to WINR:
 
----
+### 1. Setup Firebase Cloud Messaging
 
-### `WINR.presentAsCard()`
+Follow the [Firebase setup guide](https://firebase.google.com/docs/cloud-messaging/flutter/client) for Flutter.
 
-Embed the WINR experience as an inline card widget — ideal for home feeds, reward sections, or dashboard layouts.
+### 2. Forward FCM Token
 
 ```dart
-@override
-Widget build(BuildContext context) {
-  return Column(
-    children: [
-      const Text('Your Rewards'),
-      WINR.presentAsCard(),     // Inline sweepstakes card
-      const SizedBox(height: 16),
-      // ... rest of your UI
-    ],
-  );
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Get the FCM token and forward it to WINR
+final fcmToken = await FirebaseMessaging.instance.getToken();
+if (fcmToken != null) {
+  await WINRPushNotificationManager.instance.didReceiveRegistrationToken(fcmToken);
 }
+
+// Listen for token refreshes
+FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+  WINRPushNotificationManager.instance.didReceiveRegistrationToken(token);
+});
 ```
 
-> The card inherits server-driven branding and adapts to the available width.
+### 3. Upload FCM Service Account Key
 
----
+Upload your FCM service account key via the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard) to enable push notifications.
 
-### `WINR.setRewardedVideoProvider(RewardedVideoProvider provider)`
+### 4. Enable Push Reminders
 
-Connects your existing ad mediation layer so users can earn bonus entries by watching rewarded video.
+Set `enablePushReminders: true` in `WINROptions` during configuration.
 
-```dart
-WINR.setRewardedVideoProvider(MyRewardedVideoProvider());
-```
+## Customization
 
-Implement the `RewardedVideoProvider` interface:
+All branding, themes, and copy are managed server-side through the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard):
 
-```dart
-class MyRewardedVideoProvider implements RewardedVideoProvider {
-  @override
-  Future<bool> isAvailable() async {
-    // Return true if a rewarded ad is loaded and ready
-    return true;
-  }
+- **Colors & Branding** — Primary colors, logos, backgrounds
+- **Copy & Messaging** — Headlines, CTAs, legal text
+- **Prize Configuration** — Active giveaways, entry mechanics
+- **Push Notifications** — Reminder schedules and messaging
 
-  @override
-  Future<bool> show() async {
-    // Show the rewarded ad. Return true if the user completed it.
-    final result = await myAdSdk.showRewardedAd();
-    return result.completed;
-  }
-}
-```
+Changes apply instantly across all app installations without requiring an app update.
 
-| Method        | Returns         | Description                                  |
-| ------------- | --------------- | -------------------------------------------- |
-| `isAvailable` | `Future<bool>`  | Whether a rewarded ad is loaded and ready     |
-| `show`        | `Future<bool>`  | Display the ad; return `true` on completion   |
+## Analytics
 
-> If no provider is set, the bonus entry option is hidden automatically.
-
----
-
-### `WINR.registerForPushNotifications()`
-
-Registers the device for WINR push reminders via Firebase Cloud Messaging. Call after the user has granted notification permissions.
-
-```dart
-// Request permission first (e.g., via firebase_messaging)
-final settings = await FirebaseMessaging.instance.requestPermission();
-
-if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-  await WINR.registerForPushNotifications();
-}
-```
-
-**Prerequisites:**
-
-1. Add `firebase_messaging` to your project ([setup guide](https://firebase.google.com/docs/cloud-messaging/flutter/client))
-2. Provide your FCM server key in the [WINR dashboard](https://avafli-website.web.app/sdk/dashboard)
-3. Set `enablePushReminders: true` in `WINROptions`
-
----
-
-### `WINR.deleteUserData()`
-
-Permanently deletes all data associated with the current user. Use this to honor GDPR/CCPA deletion requests.
-
-```dart
-await WINR.deleteUserData();
-```
-
-> This action is irreversible. The user's entries, preferences, and consent records are removed from WINR servers.
-
-## Analytics Adapter
-
-Forward WINR events to your existing analytics stack by implementing `AnalyticsAdapter`:
+Forward WINR events to your existing analytics stack:
 
 ```dart
 class MyAnalyticsAdapter implements AnalyticsAdapter {
@@ -271,15 +174,10 @@ class MyAnalyticsAdapter implements AnalyticsAdapter {
     analytics.track(name, properties);
   }
 }
-```
 
-Pass it during configuration:
-
-```dart
+// Pass during configuration
 await WINR.configure(WINRConfiguration(
-  apiKey: 'winr_live_xxxxxxxxxx',
-  environment: WINREnvironment.production,
-  user: WINRUser(id: 'user_abc123', firstName: 'Jane', lastName: 'Doe'),
+  // ... other config
   options: WINROptions(
     analyticsAdapter: MyAnalyticsAdapter(),
   ),
@@ -287,142 +185,46 @@ await WINR.configure(WINRConfiguration(
 ```
 
 **Events emitted by the SDK:**
+- `winr.session_started` — User opened the WINR experience
+- `winr.entry_granted` — Daily entries awarded
+- `winr.bonus_entry_granted` — Bonus entries earned via rewarded video
+- `winr.session_completed` — User closed the WINR experience
+- `winr.push_registered` — Device registered for push reminders
 
-| Event                        | Description                             |
-| ---------------------------- | --------------------------------------- |
-| `winr.session_started`       | User opened the WINR experience         |
-| `winr.entry_granted`         | Daily entries awarded                   |
-| `winr.bonus_entry_granted`   | Bonus entries earned via rewarded video  |
-| `winr.session_completed`     | User closed the WINR experience         |
-| `winr.push_registered`       | Device registered for push reminders    |
+## GDPR / Delete User Data
 
-## Full Integration Example
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await WINR.configure(WINRConfiguration(
-    apiKey: 'winr_live_xxxxxxxxxx',
-    environment: WINREnvironment.production,
-    user: WINRUser(
-      id: 'user_abc123',
-      firstName: 'Jane',
-      lastName: 'Doe',
-    ),
-    options: WINROptions(
-      enablePushReminders: true,
-      analyticsAdapter: MyAnalyticsAdapter(),
-    ),
-  ));
-
-  runApp(const MyApp());
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _setupPush();
-  }
-
-  Future<void> _setupPush() async {
-    // Register for push (after permission granted)
-    final settings = await FirebaseMessaging.instance.requestPermission();
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      await WINR.registerForPushNotifications();
-    }
-  }
-
-  Future<void> _openWINR() async {
-    final grant = await WINR.present(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('You earned ${grant.total} entries!')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My App')),
-      body: Column(
-        children: [
-          // Inline card embed
-          WINR.presentAsCard(),
-
-          // Or launch full-screen
-          ElevatedButton(
-            onPressed: _openWINR,
-            child: const Text('Open Sweepstakes'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-```
-
-## Privacy & Compliance
-
-WINR is designed for privacy-first integration:
-
-- **GDPR & CCPA** — Built-in consent collection and `deleteUserData()` for right-to-erasure
-- **Minimal data** — The SDK collects only what's necessary for sweepstakes operation
-- **Email capture** — Handled within the SDK's own consent-driven UI; publishers never touch PII
-- **No tracking across apps** — WINR does not share user data between publisher integrations
-- **SOC 2 Type II** — Avafli maintains enterprise-grade security controls
-
-For questions about data processing, contact [privacy@avafli.com](mailto:privacy@avafli.com).
-
-## Environments
-
-| Environment                    | Use Case                                          |
-| ------------------------------ | ------------------------------------------------- |
-| `WINREnvironment.production`   | Live app with real prizes and entries              |
-| `WINREnvironment.staging`      | Pre-release testing with sandbox prizes            |
-| `WINREnvironment.qa`           | Internal QA — no external API calls, mock responses|
-
-## Troubleshooting
-
-| Symptom                        | Solution                                                        |
-| ------------------------------ | --------------------------------------------------------------- |
-| `configure()` returns `false`  | Verify your API key and network connectivity                    |
-| Entries not appearing          | Ensure `configure()` is called with a valid `WINRUser`          |
-| Push not working               | Confirm FCM setup, `enablePushReminders: true`, and permissions |
-| Rewarded video not shown       | Check that `isAvailable()` returns `true` in your provider      |
-| Blank UI on present            | Ensure `BuildContext` is from a mounted widget                  |
-
-Enable debug logging for detailed diagnostics:
+Support GDPR/CCPA deletion requests:
 
 ```dart
-await WINR.configure(WINRConfiguration(
-  apiKey: 'winr_live_xxxxxxxxxx',
-  environment: WINREnvironment.staging,
-  user: WINRUser(id: 'user_123', firstName: 'Test', lastName: 'User'),
-  options: WINROptions(logging: LoggingLevel.debug),
-));
+await WINR.deleteUserData();
 ```
 
-## Support
+This permanently removes all user data, entries, preferences, and consent records from WINR servers.
 
-- **Dashboard:** [dashboard.avafli.com](https://avafli-website.web.app/sdk/dashboard)
-- **Documentation:** [docs.avafli.com](https://docs.avafli.com)
-- **Email:** [support@avafli.com](mailto:support@avafli.com)
-- **Sales:** [sales@avafli.com](mailto:sales@avafli.com)
+## API Reference
+
+### Core Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
+| `WINR.present(context)` | `Future<DailyEntryGrant>` | Launch the full-screen WINR experience |
+| `WINR.deleteUserData()` | `Future<void>` | Permanently delete all user data |
+
+### Push Notifications
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `WINRPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to WINR |
+
+For detailed API documentation, see the [WINR Docs](https://docs.avafli.com).
+
+## Links
+
+- **Dashboard:** [https://avafli-website.web.app/sdk/dashboard](https://avafli-website.web.app/sdk/dashboard)
+- **Documentation:** [https://docs.avafli.com](https://docs.avafli.com)
+- **Support:** [team@avafli.com](mailto:team@avafli.com)
 
 ---
 
-<p align="center">
-  Built by <a href="https://avafli.com">Avafli</a> · © 2025 Avafli, Inc. All rights reserved.
-</p>
+© 2026 Avafli. All Rights Reserved.
