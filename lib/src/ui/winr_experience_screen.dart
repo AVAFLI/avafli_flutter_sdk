@@ -517,7 +517,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   }) {
     // Build ladder from engine defaults
     _ladder = List.generate(
-      6,
+      7,
       (i) => widget.streakEngine.baseEntries(i + 1),
     );
 

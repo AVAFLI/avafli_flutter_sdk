@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/giveaway.dart';
 import '../domain/sdk_copy.dart';
 import '../domain/sdk_media.dart';
 import '../domain/streak_state.dart';
 import '../winr_branding.dart';
-import 'streak_day_tile.dart';
 
 /// Streak dashboard view — matches iOS StreakDashboardView.swift.
 ///
-/// Hero logo + prize banner → horizontal streak tiles → bonus progress → sticky footer.
+/// Hero logo + prize banner → 4-column grid streak tiles → sticky footer
+/// with entry progress pill, claim CTA, and legal links.
 class StreakDashboardView extends StatelessWidget {
   final WINRBranding branding;
   final StreakState streakState;
@@ -44,6 +45,11 @@ class StreakDashboardView extends StatelessWidget {
     return '\$$formatted CASH';
   }
 
+  static String _formatEntries(int value) {
+    return value.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  }
+
   Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
     if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
       return Lottie.network(
@@ -71,7 +77,7 @@ class StreakDashboardView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bottomPadding = MediaQuery.of(context).padding.bottom;
-        final safeBottom = bottomPadding == 0 ? 16.0 : bottomPadding;
+        final safeBottom = bottomPadding == 0 ? 20.0 : bottomPadding + 4;
 
         return Stack(
           alignment: Alignment.bottomCenter,
@@ -81,7 +87,7 @@ class StreakDashboardView extends StatelessWidget {
               padding: const EdgeInsets.only(
                 left: 14,
                 right: 14,
-                bottom: 120,
+                bottom: 180,
               ),
               child: ConstrainedBox(
                 constraints:
@@ -89,8 +95,7 @@ class StreakDashboardView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Headroom for animations
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
 
                     // Hero logo
                     _buildHeroLogo(constraints),
@@ -100,12 +105,8 @@ class StreakDashboardView extends StatelessWidget {
                     _buildPrizeBanner(),
                     const SizedBox(height: 14),
 
-                    // Streak tiles carousel
-                    _buildStreakTiles(),
-                    const SizedBox(height: 14),
-
-                    // Bonus progress
-                    if (giveaway != null) _buildBonusProgress(),
+                    // Streak tiles grid (4-column like iOS)
+                    _buildStreakGrid(),
                   ],
                 ),
               ),
@@ -189,100 +190,14 @@ class StreakDashboardView extends StatelessWidget {
     );
   }
 
-  Widget _buildStreakTiles() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: Text(
-            sdkCopy?.streakDashboard?.upcomingLabel ?? 'Upcoming rewards',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: branding.secondaryTextColor,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 155,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Row(
-              children: List.generate(ladder.length, (index) {
-                final day = index + 1;
-                final entries = ladder[index];
-                final isClaimed = day < streakState.currentDay ||
-                    (day == streakState.currentDay && claimedToday);
-                final isToday =
-                    day == streakState.currentDay && !claimedToday;
-
-                return Padding(
-                  padding: EdgeInsets.only(
-                      right: index < ladder.length - 1 ? 10 : 0),
-                  child: CompactStreakTile(
-                    dayNumber: day,
-                    entries: entries,
-                    isClaimed: isClaimed,
-                    isToday: isToday,
-                    branding: branding,
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBonusProgress() {
-    final config = giveaway!.streakConfig;
-
+  Widget _buildStreakGrid() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            sdkCopy?.streakDashboard?.bonusProgress ?? 'Bonus Progress',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: branding.secondaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _BonusProgressPill(
-                  label: sdkCopy?.streakDashboard?.weekLabel ?? 'Week',
-                  current: streakState.weeklyCurrent,
-                  target: config.weeklyBonusThreshold,
-                  bonus: config.weeklyBonusEntries,
-                  branding: branding,
-                  sdkCopy: sdkCopy,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _BonusProgressPill(
-                  label: sdkCopy?.streakDashboard?.monthLabel ?? 'Month',
-                  current: streakState.monthlyCurrent,
-                  target: config.monthlyBonusThreshold,
-                  bonus: config.monthlyBonusEntries,
-                  branding: branding,
-                  sdkCopy: sdkCopy,
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: _StreakGrid(
+        ladder: ladder,
+        currentDay: streakState.currentDay,
+        claimedToday: claimedToday,
+        branding: branding,
       ),
     );
   }
@@ -292,6 +207,7 @@ class StreakDashboardView extends StatelessWidget {
       padding: EdgeInsets.only(
         left: 14,
         right: 14,
+        top: 16,
         bottom: safeBottom,
       ),
       decoration: BoxDecoration(
@@ -319,16 +235,28 @@ class StreakDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          sdkCopy?.streakDashboard?.alreadyClaimedTitle ?? "Today's entries claimed!",
+          sdkCopy?.streakDashboard?.alreadyClaimedTitle ??
+              "Today's entries claimed!",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: branding.secondaryTextColor,
           ),
         ),
+
+        // Total entries pill
+        if (streakState.totalEntriesEarned > 0) ...[
+          const SizedBox(height: 8),
+          _TotalEntriesPill(
+            total: streakState.totalEntriesEarned,
+            branding: branding,
+          ),
+        ],
+
         const SizedBox(height: 6),
         Text(
-          sdkCopy?.streakDashboard?.alreadyClaimedSubtitle ?? 'Come back tomorrow to continue your streak.',
+          sdkCopy?.streakDashboard?.alreadyClaimedSubtitle ??
+              'Come back tomorrow to continue your streak.',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -367,6 +295,10 @@ class StreakDashboardView extends StatelessWidget {
             ),
           ),
         ),
+
+        // Legal links
+        const SizedBox(height: 10),
+        _LegalLinks(branding: branding),
       ],
     );
   }
@@ -384,9 +316,21 @@ class StreakDashboardView extends StatelessWidget {
             color: branding.secondaryTextColor,
           ),
         ),
+
+        // Entry progress pill (current → new total)
+        if (streakState.totalEntriesEarned > 0 || entriesToday > 0) ...[
+          const SizedBox(height: 6),
+          _EntryProgressPill(
+            currentEntries: streakState.totalEntriesEarned,
+            entriesToAdd: entriesToday,
+            branding: branding,
+          ),
+        ],
+
         const SizedBox(height: 6),
         Text(
-          (sdkCopy?.streakDashboard?.claimDescription ?? 'Claim {entries} entries for today\'s visit to keep your streak alive.')
+          (sdkCopy?.streakDashboard?.claimDescription ??
+                  "Claim entries for today's visit to keep your streak alive.")
               .replaceAll('{entries}', '$entriesToday'),
           style: TextStyle(
             fontSize: 12,
@@ -418,7 +362,9 @@ class StreakDashboardView extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  (sdkCopy?.streakDashboard?.claimButton ?? sdkCopy?.dailyClaimButton ?? 'Claim {entries} Entries')
+                  (sdkCopy?.streakDashboard?.claimButton ??
+                          sdkCopy?.dailyClaimButton ??
+                          "Claim Today's Entries")
                       .replaceAll('{entries}', '$entriesToday'),
                   style: TextStyle(
                     fontSize: 17,
@@ -430,97 +376,491 @@ class StreakDashboardView extends StatelessWidget {
             ),
           ),
         ),
+
+        // Legal links
+        const SizedBox(height: 10),
+        _LegalLinks(branding: branding),
       ],
     );
   }
 }
 
-/// Bonus progress pill — matches iOS BonusProgressPill.
-class _BonusProgressPill extends StatelessWidget {
-  final String label;
-  final int current;
-  final int target;
-  final int bonus;
-  final WINRBranding branding;
-  final SdkCopy? sdkCopy;
+// ---------------------------------------------------------------------------
+// STREAK GRID — 4-column grid layout matching iOS LazyVGrid
+// ---------------------------------------------------------------------------
 
-  const _BonusProgressPill({
-    required this.label,
-    required this.current,
-    required this.target,
-    required this.bonus,
+class _StreakGrid extends StatelessWidget {
+  final List<int> ladder;
+  final int currentDay;
+  final bool claimedToday;
+  final WINRBranding branding;
+
+  const _StreakGrid({
+    required this.ladder,
+    required this.currentDay,
+    required this.claimedToday,
     required this.branding,
-    this.sdkCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Build rows: 4 tiles per row (matches iOS)
+    final List<Widget> rows = [];
+    for (int i = 0; i < ladder.length; i += 4) {
+      final rowEnd = (i + 4).clamp(0, ladder.length);
+      final rowItems = <Widget>[];
+      for (int j = i; j < rowEnd; j++) {
+        final day = j + 1;
+        final entries = ladder[j];
+        final isClaimed = day < currentDay ||
+            (day == currentDay && claimedToday);
+        final isToday = day == currentDay && !claimedToday;
+
+        rowItems.add(
+          Expanded(
+            child: _GridStreakTile(
+              dayNumber: day,
+              entries: entries,
+              isClaimed: isClaimed,
+              isToday: isToday,
+              branding: branding,
+            ),
+          ),
+        );
+      }
+      // Pad with empty expanded to keep grid alignment
+      while (rowItems.length < 4) {
+        rowItems.add(const Expanded(child: SizedBox.shrink()));
+      }
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
+          child: Row(
+            children: rowItems
+                .expand((w) => [w, const SizedBox(width: 10)])
+                .toList()
+              ..removeLast(),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(children: rows),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GRID STREAK TILE — matches iOS CompactStreakTile in grid mode
+// ---------------------------------------------------------------------------
+
+class _GridStreakTile extends StatefulWidget {
+  final int dayNumber;
+  final int entries;
+  final bool isClaimed;
+  final bool isToday;
+  final WINRBranding branding;
+
+  const _GridStreakTile({
+    required this.dayNumber,
+    required this.entries,
+    required this.isClaimed,
+    required this.isToday,
+    required this.branding,
+  });
+
+  @override
+  State<_GridStreakTile> createState() => _GridStreakTileState();
+}
+
+class _GridStreakTileState extends State<_GridStreakTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1400),
+      vsync: this,
+    );
+    if (widget.isToday) {
+      _pulseController.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  WINRBranding get b => widget.branding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scale: widget.isToday ? 1.05 : 1.0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        decoration: BoxDecoration(
+          gradient: _tileBg,
+          borderRadius: BorderRadius.circular(b.cornerRadius),
+          border: Border.all(
+            color: _borderColor,
+            width: widget.isToday ? 2 : 1,
+          ),
+          boxShadow: widget.isToday
+              ? [
+                  BoxShadow(
+                    color: b.accentGlowColor.withValues(alpha: 0.7),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Day pill
+            _buildDayPill(),
+            const SizedBox(height: 4),
+            // Entries count
+            Text(
+              '${widget.entries}',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: _textColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            // Entries label
+            Text(
+              'Entries',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: _labelColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Status icon
+            _buildStatusIcon(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayPill() {
+    return AnimatedBuilder(
+      animation: widget.isToday ? _pulseController : kAlwaysCompleteAnimation,
+      builder: (context, child) {
+        final pulseVal = widget.isToday
+            ? Tween<double>(begin: 1.0, end: 1.12).evaluate(CurvedAnimation(
+                parent: _pulseController, curve: Curves.easeInOut))
+            : 1.0;
+        final pulseOpacity = widget.isToday
+            ? Tween<double>(begin: 1.0, end: 0.4).evaluate(CurvedAnimation(
+                parent: _pulseController, curve: Curves.easeInOut))
+            : 0.0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: _pillBg,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Text(
+                'DAY ${widget.dayNumber}',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: widget.isToday
+                      ? b.primaryButtonTextColor
+                      : b.secondaryTextColor,
+                ),
+              ),
+              if (widget.isToday)
+                Positioned.fill(
+                  child: Transform.scale(
+                    scale: pulseVal,
+                    child: Opacity(
+                      opacity: pulseOpacity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: b.accentGlowColor,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusIcon() {
+    const size = 16.0;
+    if (widget.isToday) {
+      return Icon(
+        Icons.local_fire_department,
+        size: size,
+        color: b.accentGlowColor,
+        shadows: [Shadow(color: b.accentGlowColor, blurRadius: 6)],
+      );
+    } else if (widget.isClaimed) {
+      return Icon(Icons.verified, size: size, color: b.primaryColor);
+    } else {
+      return Icon(
+        Icons.lock,
+        size: size,
+        color: b.mutedTextColor.withValues(alpha: 0.6),
+      );
+    }
+  }
+
+  LinearGradient get _tileBg {
+    if (widget.isToday) {
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          b.primaryButtonColor,
+          b.cardBackgroundColor.withValues(alpha: 0.9),
+        ],
+      );
+    } else if (widget.isClaimed) {
+      return LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          b.primaryColor.withValues(alpha: 0.2),
+          b.cardBackgroundColor.withValues(alpha: 0.9),
+        ],
+      );
+    } else {
+      return LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          b.cardBackgroundColor.withValues(alpha: 0.45),
+          b.cardBackgroundColor.withValues(alpha: 0.3),
+        ],
+      );
+    }
+  }
+
+  Color get _pillBg {
+    if (widget.isToday) return b.cardBackgroundColor.withValues(alpha: 0.95);
+    if (widget.isClaimed) return b.primaryColor.withValues(alpha: 0.35);
+    return b.cardBackgroundColor.withValues(alpha: 0.85);
+  }
+
+  Color get _borderColor {
+    if (widget.isToday) return b.accentGlowColor;
+    if (widget.isClaimed) return b.primaryColor.withValues(alpha: 0.6);
+    return Colors.white.withValues(alpha: 0.15);
+  }
+
+  Color get _textColor {
+    if (widget.isToday) return Colors.white;
+    if (widget.isClaimed) return b.primaryColor;
+    return b.mutedTextColor.withValues(alpha: 0.85);
+  }
+
+  Color get _labelColor {
+    if (widget.isToday) return Colors.white.withValues(alpha: 0.85);
+    if (widget.isClaimed) return b.primaryColor.withValues(alpha: 0.8);
+    return b.mutedTextColor.withValues(alpha: 0.6);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ENTRY PROGRESS PILL — "1,170 → 1,200 entries" (matches iOS)
+// ---------------------------------------------------------------------------
+
+class _EntryProgressPill extends StatelessWidget {
+  final int currentEntries;
+  final int entriesToAdd;
+  final WINRBranding branding;
+
+  const _EntryProgressPill({
+    required this.currentEntries,
+    required this.entriesToAdd,
+    required this.branding,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: branding.cardBackgroundColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(branding.cornerRadius),
+        color: branding.cardBackgroundColor.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: branding.accentGlowColor.withValues(alpha: 0.25),
-          width: 1,
+          color: branding.accentGlowColor.withValues(alpha: 0.3),
+          width: 0.5,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: branding.mutedTextColor,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '$current/$target days',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: branding.secondaryTextColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: (current / target).clamp(0.0, 1.0),
-              backgroundColor: branding.cardBorderColor,
-              color: branding.accentGlowColor,
-              minHeight: 4.8,
+          Text(
+            StreakDashboardView._formatEntries(currentEntries),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: branding.mutedTextColor,
             ),
           ),
-          const SizedBox(height: 6),
-          if (current >= target)
-            Text(
-              sdkCopy?.streakDashboard?.bonusEarned ?? '✓ Bonus earned!',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: branding.accentGlowColor,
-              ),
-            )
-          else
-            Text(
-              (sdkCopy?.streakDashboard?.entriesLabel ?? '+{bonus} entries')
-                  .replaceAll('{bonus}', '$bonus'),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: branding.mutedTextColor,
-              ),
+          const SizedBox(width: 5),
+          Icon(
+            Icons.arrow_forward,
+            size: 9,
+            color: branding.accentGlowColor,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            StreakDashboardView._formatEntries(
+                currentEntries + entriesToAdd),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
             ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'entries',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: branding.mutedTextColor,
+            ),
+          ),
         ],
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TOTAL ENTRIES PILL — "★ Total Entries: 1,200" (matches iOS claimed state)
+// ---------------------------------------------------------------------------
+
+class _TotalEntriesPill extends StatelessWidget {
+  final int total;
+  final WINRBranding branding;
+
+  const _TotalEntriesPill({
+    required this.total,
+    required this.branding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: branding.cardBackgroundColor.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: branding.accentGlowColor.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.star,
+            size: 12,
+            color: branding.accentGlowColor,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Total: ${StreakDashboardView._formatEntries(total)} entries',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: branding.secondaryTextColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LEGAL LINKS — "OFFICIAL RULES • PRIVACY POLICY" (matches iOS)
+// ---------------------------------------------------------------------------
+
+class _LegalLinks extends StatelessWidget {
+  final WINRBranding branding;
+
+  const _LegalLinks({required this.branding});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () => _openUrl('https://winfrastructure.us/rules'),
+          child: Text(
+            'OFFICIAL RULES',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: branding.mutedTextColor,
+              decoration: TextDecoration.underline,
+              decorationColor: branding.mutedTextColor,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            '•',
+            style: TextStyle(
+              fontSize: 11,
+              color: branding.mutedTextColor.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () => _openUrl('https://winfrastructure.us/privacy'),
+          child: Text(
+            'PRIVACY POLICY',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: branding.mutedTextColor,
+              decoration: TextDecoration.underline,
+              decorationColor: branding.mutedTextColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openUrl(String url) {
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 }

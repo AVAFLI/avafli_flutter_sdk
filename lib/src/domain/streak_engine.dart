@@ -29,7 +29,7 @@ abstract class StreakEngineProtocol {
 /// and monthly bonus tracking with proper UTC date handling.
 class StreakEngine implements StreakEngineProtocol {
   /// Default streak ladder values (can be overridden by giveaway config).
-  static const List<int> defaultStreakLadder = [10, 30, 60, 130, 240, 300];
+  static const List<int> defaultStreakLadder = [10, 30, 60, 130, 240, 300, 500];
 
   @override
   Result<StreakState, WINRError> nextState(
@@ -136,7 +136,7 @@ class StreakEngine implements StreakEngineProtocol {
   int _calculateDailyStreak(int currentDay, int daysDifference) {
     if (daysDifference == 1) {
       // Consecutive day - advance streak but cap at 6
-      return (currentDay + 1).clamp(1, 6);
+      return (currentDay + 1).clamp(1, 7);
     } else {
       // Streak broken or gap - reset to 1
       return 1;
