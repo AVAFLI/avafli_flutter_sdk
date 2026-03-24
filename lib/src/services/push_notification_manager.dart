@@ -13,16 +13,16 @@ import 'logger.dart';
 /// ```dart
 /// FirebaseMessaging.instance.getToken().then((token) {
 ///   if (token != null) {
-///     PushNotificationManager.instance.didReceiveRegistrationToken(token);
+///     WINRPushNotificationManager.instance.didReceiveRegistrationToken(token);
 ///   }
 /// });
 /// ```
-class PushNotificationManager {
-  static final PushNotificationManager _instance =
-      PushNotificationManager._internal();
-  static PushNotificationManager get instance => _instance;
+class WINRPushNotificationManager {
+  static final WINRPushNotificationManager _instance =
+      WINRPushNotificationManager._internal();
+  static WINRPushNotificationManager get instance => _instance;
 
-  PushNotificationManager._internal();
+  WINRPushNotificationManager._internal();
 
   final PreferencesStorage _storage = PreferencesStorage();
 

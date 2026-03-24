@@ -103,7 +103,7 @@ class WINR {
 
       // Initialize push notification manager
       if (config.options.enablePushReminders) {
-        PushNotificationManager.instance.setNetworkClient(_networkClient!);
+        WINRPushNotificationManager.instance.setNetworkClient(_networkClient!);
       }
 
       // Track configuration event
@@ -227,7 +227,7 @@ class WINR {
       return;
     }
 
-    Logger.instance.debug('Push reminders enabled — call PushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
+    Logger.instance.debug('Push reminders enabled — call WINRPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
   }
 
   /// Deletes all user data (GDPR compliance).
