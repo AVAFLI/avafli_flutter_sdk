@@ -23,12 +23,17 @@ class HowItWorksView extends StatelessWidget {
     required this.onPrimary,
   });
 
-  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+  Widget _buildHeroMedia(
+    ScreenMedia? media,
+    Widget defaultWidget, {
+    double? width,
+    double? height,
+  }) {
     if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
       return Lottie.network(
         media.lottieUrl!,
-        width: 200,
-        height: 150,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -36,8 +41,8 @@ class HowItWorksView extends StatelessWidget {
     if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
       return Image.network(
         media.imageUrl!,
-        width: 200,
-        height: 150,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -97,11 +102,16 @@ class HowItWorksView extends StatelessWidget {
                     sdkMedia?.howItWorks,
                     branding.logo != null
                         ? SizedBox(
-                            width: branding.primaryLogoSize.width,
-                            height: branding.primaryLogoSize.height,
-                            child: branding.logo!,
+                            width: constraints.maxWidth * 0.5,
+                            height: constraints.maxHeight * 0.15,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: branding.logo!,
+                            ),
                           )
                         : Lottie.asset(ImageStrings.howItWorksAnimation),
+                    width: constraints.maxWidth * 0.5,
+                    height: constraints.maxHeight * 0.15,
                   ),
                   const SizedBox(height: 10),
                   Text(

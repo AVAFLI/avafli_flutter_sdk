@@ -72,8 +72,6 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
     if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
       return Lottie.network(
         media.lottieUrl!,
-        width: 200,
-        height: 150,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -81,8 +79,6 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
     if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
       return Image.network(
         media.imageUrl!,
-        width: 200,
-        height: 150,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );

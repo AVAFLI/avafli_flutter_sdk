@@ -807,8 +807,6 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
     if (lottieUrl != null && lottieUrl.isNotEmpty) {
       return Lottie.network(
         lottieUrl,
-        width: 200,
-        height: 150,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -816,8 +814,6 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return Image.network(
         imageUrl,
-        width: 200,
-        height: 150,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );

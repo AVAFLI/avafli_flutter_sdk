@@ -92,35 +92,26 @@ class StreakDashboardView extends StatelessWidget {
             right: 14,
             bottom: safeBottom,
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top content
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 8),
 
-                    // Hero logo
-                    _buildHeroLogo(constraints),
-                    const SizedBox(height: 14),
+              // Hero media — large, prominent like iOS
+              _buildHeroLogo(constraints),
+              const SizedBox(height: 18),
 
-                    // Prize banner
-                    _buildPrizeBanner(),
-                    const SizedBox(height: 14),
+              // Prize banner
+              _buildPrizeBanner(),
+              const SizedBox(height: 16),
 
-                    // Streak tiles grid (4-column like iOS)
-                    _buildStreakGrid(),
-                  ],
-                ),
+              // Streak tiles grid (4-column like iOS)
+              _buildStreakGrid(),
+              const SizedBox(height: 24),
 
-                // Footer (flows after content, pushed to bottom on short screens)
-                _buildFooterContent(safeBottom),
-              ],
-            ),
+              // Footer — flows directly after grid
+              _buildFooterContent(safeBottom),
+            ],
           ),
         );
       },
@@ -129,15 +120,12 @@ class StreakDashboardView extends StatelessWidget {
 
   Widget _buildHeroLogo(BoxConstraints constraints) {
     final heroLogo = branding.logoTwo ?? branding.logo;
+    // Match iOS: hero takes ~30% of screen height, nearly full width
     final heroWidth = constraints.maxWidth * 0.85;
     final heroHeight = constraints.maxHeight * 0.28;
 
     final defaultWidget = heroLogo != null
         ? Container(
-            constraints: BoxConstraints(
-              maxWidth: constraints.maxWidth * 0.85,
-              maxHeight: constraints.maxHeight * 0.24,
-            ),
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
@@ -150,7 +138,10 @@ class StreakDashboardView extends StatelessWidget {
             child: SizedBox(
               width: heroWidth,
               height: heroHeight,
-              child: heroLogo,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: heroLogo,
+              ),
             ),
           )
         : const SizedBox.shrink();
