@@ -50,12 +50,17 @@ class StreakDashboardView extends StatelessWidget {
         RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
   }
 
-  Widget _buildHeroMedia(ScreenMedia? media, Widget defaultWidget) {
+  Widget _buildHeroMedia(
+    ScreenMedia? media,
+    Widget defaultWidget, {
+    double? width,
+    double? height,
+  }) {
     if (media?.lottieUrl != null && media!.lottieUrl!.isNotEmpty) {
       return Lottie.network(
         media.lottieUrl!,
-        width: 200,
-        height: 150,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -63,8 +68,8 @@ class StreakDashboardView extends StatelessWidget {
     if (media?.imageUrl != null && media!.imageUrl!.isNotEmpty) {
       return Image.network(
         media.imageUrl!,
-        width: 200,
-        height: 150,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => defaultWidget,
       );
@@ -148,7 +153,12 @@ class StreakDashboardView extends StatelessWidget {
           )
         : const SizedBox.shrink();
 
-    return _buildHeroMedia(sdkMedia?.streakDashboard, defaultWidget);
+    return _buildHeroMedia(
+      sdkMedia?.streakDashboard,
+      defaultWidget,
+      width: heroWidth,
+      height: heroHeight,
+    );
   }
 
   Widget _buildPrizeBanner() {

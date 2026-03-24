@@ -52,6 +52,7 @@ class RegisterDeviceResponse {
   final Giveaway? giveaway;
   final bool claimedToday;
   final int streakDay;
+  final int totalEntries;
   final Map<String, dynamic>? sdkConfig;
   
   const RegisterDeviceResponse({
@@ -61,6 +62,7 @@ class RegisterDeviceResponse {
     this.giveaway,
     this.claimedToday = false,
     this.streakDay = 1,
+    this.totalEntries = 0,
     this.sdkConfig,
   });
   
@@ -74,6 +76,7 @@ class RegisterDeviceResponse {
           : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,
+      totalEntries: json['totalEntries'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
     );
   }
@@ -143,12 +146,20 @@ class GetActiveGiveawayResponse {
   final Giveaway? giveaway;
   final bool claimedToday;
   final int streakDay;
+  final int totalEntries;
+  final int weeklyCurrent;
+  final int monthlyCurrent;
+  final int lifetimeCount;
   final Map<String, dynamic>? sdkConfig;
   
   const GetActiveGiveawayResponse({
     this.giveaway,
     this.claimedToday = false,
     this.streakDay = 1,
+    this.totalEntries = 0,
+    this.weeklyCurrent = 0,
+    this.monthlyCurrent = 0,
+    this.lifetimeCount = 0,
     this.sdkConfig,
   });
   
@@ -159,6 +170,10 @@ class GetActiveGiveawayResponse {
           : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,
+      totalEntries: json['totalEntries'] ?? 0,
+      weeklyCurrent: json['weeklyCurrent'] ?? 0,
+      monthlyCurrent: json['monthlyCurrent'] ?? 0,
+      lifetimeCount: json['lifetimeCount'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
     );
   }

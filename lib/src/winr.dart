@@ -59,6 +59,7 @@ class WINR {
   static SdkCopy? _cachedSdkCopy;
   static SdkMedia? _cachedSdkMedia;
   static bool? _cachedClaimedToday;
+  static int _cachedTotalEntries = 0;
 
   // Registration state
   static bool _isRegistering = false;
@@ -159,6 +160,7 @@ class WINR {
             cachedGiveaway: _cachedGiveaway,
             cachedStreakState: _cachedStreakState,
             cachedClaimedToday: _cachedClaimedToday,
+            cachedTotalEntries: _cachedTotalEntries,
             sdkConfig: _cachedSdkConfig,
             sdkCopy: _cachedSdkCopy,
             sdkMedia: _cachedSdkMedia,
@@ -249,6 +251,7 @@ class WINR {
       _cachedSdkCopy = null;
       _cachedSdkMedia = null;
       _cachedClaimedToday = null;
+      _cachedTotalEntries = 0;
 
       Logger.instance.info('User data deleted successfully');
     } catch (e) {
@@ -328,6 +331,7 @@ class WINR {
       // Cache response data
       _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
+      _cachedTotalEntries = response.totalEntries;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
       _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
@@ -360,6 +364,7 @@ class WINR {
 
       _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
+      _cachedTotalEntries = response.totalEntries;
       _cachedSdkConfig = response.sdkConfig;
       _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
       _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
@@ -538,6 +543,7 @@ class WINR {
     _cachedSdkCopy = null;
     _cachedSdkMedia = null;
     _cachedClaimedToday = null;
+    _cachedTotalEntries = 0;
     _isRegistering = false;
     _registrationCompleter = null;
   }

@@ -53,6 +53,7 @@ class WINRExperienceScreen extends StatefulWidget {
   final Giveaway? cachedGiveaway;
   final StreakState? cachedStreakState;
   final bool? cachedClaimedToday;
+  final int cachedTotalEntries;
   final Map<String, dynamic>? sdkConfig;
   final SdkCopy? sdkCopy;
   final SdkMedia? sdkMedia;
@@ -69,6 +70,7 @@ class WINRExperienceScreen extends StatefulWidget {
     this.cachedGiveaway,
     this.cachedStreakState,
     this.cachedClaimedToday,
+    this.cachedTotalEntries = 0,
     this.sdkConfig,
     this.sdkCopy,
     this.sdkMedia,
@@ -95,6 +97,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   // Backend cache
   bool? _backendClaimedToday;
   int? _backendStreakDay;
+  int _backendTotalEntries = 0;
 
   /// Branding with server-driven overrides merged in.
   late final WINRBranding _branding = widget.configuration.branding
@@ -474,6 +477,7 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         _giveaway = response.giveaway;
         backendClaimed = response.claimedToday;
         backendStreakDay = response.streakDay;
+        _backendTotalEntries = response.totalEntries;
         await widget.preferencesStorage.cacheGiveaway(response.giveaway!);
       } catch (e) {
         // Offline fallback
@@ -525,12 +529,16 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       final day = backendStreakDay ?? _streakState?.currentDay ?? 1;
       final dayIndex = (day - 1).clamp(0, _ladder.length - 1);
       _entriesToday = _ladder[dayIndex];
+      final totalEntries = _backendTotalEntries > 0
+          ? _backendTotalEntries
+          : widget.cachedTotalEntries;
       _streakState = _streakState ??
           StreakState(
             currentDay: day,
             lastClaimedDate: backendClaimedToday ? DateTime.now() : null,
             weeklyCurrent: 1,
             monthlyCurrent: 1,
+            totalEntriesEarned: totalEntries,
           );
       _claimedToday = backendClaimedToday;
     } else {
