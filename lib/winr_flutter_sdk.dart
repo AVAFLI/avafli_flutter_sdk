@@ -55,5 +55,8 @@ export 'src/ui/winr_theme.dart';
 // Analytics
 export 'src/services/analytics/analytics_adapter.dart';
 
+// Push Notifications
+export 'src/services/push_notification_manager.dart';
+
 // Rewards
 export 'src/rewards/rewarded_video_provider.dart';
