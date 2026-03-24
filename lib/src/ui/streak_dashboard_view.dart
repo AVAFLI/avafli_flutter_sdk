@@ -84,20 +84,20 @@ class StreakDashboardView extends StatelessWidget {
         final bottomPadding = MediaQuery.of(context).padding.bottom;
         final safeBottom = bottomPadding == 0 ? 20.0 : bottomPadding + 4;
 
-        return Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Main scrollable content
-            SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: 14,
-                right: 14,
-                bottom: 180,
-              ),
-              child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(minHeight: constraints.maxHeight),
-                child: Column(
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 14,
+            right: 14,
+            bottom: safeBottom,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Top content
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 8),
@@ -114,12 +114,13 @@ class StreakDashboardView extends StatelessWidget {
                     _buildStreakGrid(),
                   ],
                 ),
-              ),
-            ),
 
-            // Sticky footer
-            _buildStickyFooter(safeBottom),
-          ],
+                // Footer (flows after content, pushed to bottom on short screens)
+                const SizedBox(height: 20),
+                _buildFooterContent(safeBottom),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -212,27 +213,11 @@ class StreakDashboardView extends StatelessWidget {
     );
   }
 
-  Widget _buildStickyFooter(double safeBottom) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 14,
-        right: 14,
-        top: 16,
-        bottom: safeBottom,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            branding.backgroundColor.withValues(alpha: 0.0),
-            branding.backgroundColor.withValues(alpha: 0.96),
-          ],
-        ),
-      ),
-      child: claimedToday ? _buildClaimedFooter() : _buildClaimFooter(),
-    );
+  Widget _buildFooterContent(double safeBottom) {
+    return claimedToday ? _buildClaimedFooter() : _buildClaimFooter();
   }
+
+
 
   Widget _buildClaimedFooter() {
     return Column(
