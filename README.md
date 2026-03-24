@@ -244,7 +244,7 @@ if (settings.authorizationStatus == AuthorizationStatus.authorized) {
 **Prerequisites:**
 
 1. Add `firebase_messaging` to your project ([setup guide](https://firebase.google.com/docs/cloud-messaging/flutter/client))
-2. Provide your FCM server key in the [WINR dashboard](https://dashboard.avafli.com)
+2. Provide your FCM server key in the [WINR dashboard](https://avafli-website.web.app/sdk/dashboard)
 3. Set `enablePushReminders: true` in `WINROptions`
 
 ---
@@ -416,7 +416,7 @@ await WINR.configure(WINRConfiguration(
 
 ## Support
 
-- **Dashboard:** [dashboard.avafli.com](https://dashboard.avafli.com)
+- **Dashboard:** [dashboard.avafli.com](https://avafli-website.web.app/sdk/dashboard)
 - **Documentation:** [docs.avafli.com](https://docs.avafli.com)
 - **Email:** [support@avafli.com](mailto:support@avafli.com)
 - **Sales:** [sales@avafli.com](mailto:sales@avafli.com)

@@ -865,215 +865,181 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
                 size: constraints.biggest,
               ),
 
-            // Main content
-            SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: 14,
-                right: 14,
-                bottom: 140,
+            // Main content — vertically centered like iOS
+            Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: safeBottom + 80, // Room for Continue button
               ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Spacer(flex: 2),
 
-                    // Hero media
-                    _buildHeroMedia(
-                      widget.sdkMedia?.completed,
-                      b.logoTwo != null || b.logo != null
-                          ? Container(
-                              constraints: BoxConstraints(
-                                maxWidth: constraints.maxWidth * 0.85,
-                                maxHeight: constraints.maxHeight * 0.24,
-                              ),
-                              decoration: BoxDecoration(
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: b.accentGlowColor
-                                        .withValues(alpha: 0.5),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: SizedBox(
-                                width: constraints.maxWidth * 0.75,
-                                height: constraints.maxHeight * 0.22,
-                                child: (b.logoTwo ?? b.logo)!,
-                              ),
-                            )
-                          : const SizedBox.shrink(),
+                  // Hero media
+                  _buildHeroMedia(
+                    widget.sdkMedia?.completed,
+                    b.logoTwo != null || b.logo != null
+                        ? SizedBox(
+                            width: constraints.maxWidth * 0.6,
+                            height: constraints.maxHeight * 0.18,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: (b.logoTwo ?? b.logo)!,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Prize headline
+                  Text(
+                    widget.prizeHeadline,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: b.accentGlowColor.withValues(alpha: 0.8),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
 
-                    // Prize headline
-                    Text(
-                      widget.prizeHeadline,
+                  // Big entry count with scale animation
+                  AnimatedBuilder(
+                    animation: _scaleAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: Opacity(
+                          opacity: _showContent ? 1.0 : 0.0,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Text(
+                      _formatEntries(widget.entries),
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 64,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         shadows: [
                           Shadow(
-                            color: b.accentGlowColor.withValues(alpha: 0.8),
-                            blurRadius: 8,
+                            color: b.accentGlowColor.withValues(alpha: 0.6),
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Subtitle — "Entries Claimed!"
+                  AnimatedOpacity(
+                    opacity: _showContent ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 400),
+                    child: Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: b.secondaryTextColor,
+                      ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
+                  ),
 
-                    // Big entry count with scale animation
-                    AnimatedBuilder(
-                      animation: _scaleAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _scaleAnimation.value,
-                          child: Opacity(
-                            opacity: _showContent ? 1.0 : 0.0,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Text(
-                        _formatEntries(widget.entries),
-                        style: TextStyle(
-                          fontSize: 52,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: b.accentGlowColor.withValues(alpha: 0.6),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Subtitle
+                  // Bonus entries breakdown
+                  if (widget.bonusEntries > 0) ...[
+                    const SizedBox(height: 10),
                     AnimatedOpacity(
                       opacity: _showContent ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 400),
-                      child: Text(
-                        widget.subtitle,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: b.secondaryTextColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                    // Bonus entries breakdown
-                    if (widget.bonusEntries > 0) ...[
-                      const SizedBox(height: 8),
-                      AnimatedOpacity(
-                        opacity: _showContent ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 400),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.card_giftcard,
-                              size: 11,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.card_giftcard,
+                            size: 12,
+                            color: b.accentGlowColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '+${_formatEntries(widget.bonusEntries)} bonus entries',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                               color: b.accentGlowColor,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '+${_formatEntries(widget.bonusEntries)} bonus entries',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: b.accentGlowColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Encouragement text
-                    AnimatedOpacity(
-                      opacity: _showContent ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 500),
-                      child: Text(
-                        'Come back tomorrow to keep your streak alive!',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: b.mutedTextColor,
-                        ),
-                        textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
 
-            // Sticky footer
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.only(
-                  left: 18,
-                  right: 18,
-                  top: 16,
-                  bottom: safeBottom,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      b.backgroundColor.withValues(alpha: 0.0),
-                      b.backgroundColor.withValues(alpha: 0.96),
-                    ],
-                  ),
-                ),
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    widget.onContinue();
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: b.primaryButtonColor,
-                      borderRadius: BorderRadius.circular(b.cornerRadius),
-                      boxShadow: [
-                        BoxShadow(
-                          color: b.accentGlowColor.withValues(alpha: 0.6),
-                          blurRadius: 14,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+
+                  // Encouragement text
+                  AnimatedOpacity(
+                    opacity: _showContent ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 500),
+                    child: Text(
+                      
+                          'Entries added to this month\'s drawing.\nCome back tomorrow to keep your streak alive!',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: b.mutedTextColor,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    child: Center(
-                      child: Text(
-                        widget.buttonText,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: b.primaryButtonTextColor,
+                  ),
+
+                  const Spacer(flex: 3),
+
+                  // Continue button — inline, not sticky
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      widget.onContinue();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: b.primaryButtonColor,
+                        borderRadius: BorderRadius.circular(b.cornerRadius),
+                        boxShadow: [
+                          BoxShadow(
+                            color: b.accentGlowColor.withValues(alpha: 0.6),
+                            blurRadius: 14,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          widget.buttonText,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: b.primaryButtonTextColor,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
