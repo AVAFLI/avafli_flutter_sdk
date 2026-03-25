@@ -28,16 +28,33 @@ class WINRPushNotificationManager {
 
   NetworkClient? _networkClient;
 
+  /// Token received before SDK was configured — will be sent once setNetworkClient is called.
+  String? _pendingToken;
+
   /// Sets the network client for API calls.
+  /// Also flushes any pending token that arrived before the SDK was configured.
   void setNetworkClient(NetworkClient client) {
     _networkClient = client;
+    // Flush pending token if one arrived before configure()
+    final pending = _pendingToken;
+    if (pending != null) {
+      _pendingToken = null;
+      _registerTokenWithBackend(pending);
+    }
   }
 
   /// Registers a push token received from the publisher's push notification
   /// setup (e.g., Firebase Cloud Messaging).
   ///
-  /// Call this when your app receives a new FCM/APNs token.
+  /// Safe to call before WINR.configure() — the token will be queued
+  /// and sent once the SDK is initialized.
   Future<void> didReceiveRegistrationToken(String token) async {
+    // If SDK isn't configured yet, just queue the token — don't touch storage
+    if (_networkClient == null) {
+      _pendingToken = token;
+      Logger.instance.debug('WINR SDK not configured yet, queuing push token');
+      return;
+    }
     await _handleTokenUpdate(token);
   }
 
@@ -54,10 +71,8 @@ class WINRPushNotificationManager {
       // Save new token locally
       await _storage.savePushToken(token);
 
-      // Send to backend if we have a network client
-      if (_networkClient != null) {
-        await _registerTokenWithBackend(token);
-      }
+      // Send to backend
+      await _registerTokenWithBackend(token);
 
       Logger.instance.debug('Push token updated successfully');
     } catch (e) {
