@@ -979,8 +979,7 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
                     opacity: _showContent ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 500),
                     child: Text(
-                      
-                          'Entries added to this month\'s drawing.\nCome back tomorrow to keep your streak alive!',
+                      'Come back tomorrow to keep your streak alive!',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -991,7 +990,7 @@ class _CompletedCelebrationViewState extends State<_CompletedCelebrationView>
                     ),
                   ),
 
-                  const Spacer(flex: 3),
+                  const SizedBox(height: 10),
 
                   // Continue button — inline, not sticky
                   GestureDetector(
