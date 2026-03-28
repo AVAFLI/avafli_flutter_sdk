@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ import '../storage/secure_storage.dart';
 import '../storage/storage.dart';
 import '../winr_branding.dart';
 import '../winr_configuration.dart';
+import '../winr.dart';
 import '../winr_error.dart';
 import '../winr_user.dart';
 import 'bonus_entries_view.dart';
@@ -488,6 +490,14 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return;
       }
 
+      // If backend says not claimed, check local persistence as belt-and-suspenders
+      if (backendClaimed != true) {
+        final localClaimed = await WINR.checkLocalClaimedToday(widget.preferencesStorage);
+        if (localClaimed) {
+          backendClaimed = true;
+        }
+      }
+
       _backendClaimedToday = backendClaimed;
       _backendStreakDay = backendStreakDay;
 
@@ -611,6 +621,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       _claimedToday = true;
       _lastGrant = grant;
 
+      // Sync static cache + persist to local storage (Option C)
+      WINR.syncClaimedToday(true);
+      await WINR.persistClaimedToday(widget.preferencesStorage);
+
       await widget.preferencesStorage.saveStreakState(_streakState!);
 
       // Decide next phase — feature flag gates the bonus flow
@@ -634,6 +648,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       final errorMsg = e.toString();
       if (errorMsg.contains('Already claimed')) {
         _claimedToday = true;
+        WINR.syncClaimedToday(true);
+        unawaited(WINR.persistClaimedToday(widget.preferencesStorage));
         final grant = DailyEntryGrant(baseEntries: _entriesToday);
         _lastGrant = grant;
         _complete(grant);
@@ -648,6 +664,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
             .error('Network error during claim, using local fallback', e);
         _streakState = _streakState?.copyWith(lastClaimedDate: DateTime.now());
         _claimedToday = true;
+        WINR.syncClaimedToday(true);
+        unawaited(WINR.persistClaimedToday(widget.preferencesStorage));
         final grant = DailyEntryGrant(baseEntries: _entriesToday);
         _lastGrant = grant;
 

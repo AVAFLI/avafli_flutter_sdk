@@ -95,7 +95,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.only(top: 20, left: 4, right: 4),
         child: Column(
           children: [
             // Logo / Hero Media
@@ -109,11 +109,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                     )
                   : const SizedBox.shrink(),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 28),
 
             // Title + subtitle
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
               child: Column(
                 children: [
                   Text(
@@ -151,7 +151,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
             // Email field
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -247,11 +247,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // 18+ Age gate checkbox
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
@@ -286,11 +286,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
             // Marketing consent checkbox
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
@@ -324,11 +324,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
 
             // CTA button
             Padding(
-              padding: const EdgeInsets.only(top: 6, left: 20, right: 20),
+              padding: const EdgeInsets.only(top: 6, left: 24, right: 24),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();

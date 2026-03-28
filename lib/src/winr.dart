@@ -20,6 +20,7 @@ import 'services/logger.dart';
 import 'services/push_notification_manager.dart';
 import 'storage/preferences_storage.dart';
 import 'storage/secure_storage.dart';
+import 'storage/storage.dart';
 import 'ui/winr_experience_card.dart';
 import 'ui/winr_experience_screen.dart';
 import 'winr_branding.dart';
@@ -343,6 +344,14 @@ class WINR {
         await preferencesStorage.cacheGiveaway(response.giveaway!);
       }
 
+      // If backend says not claimed but local storage says claimed today, trust local
+      if (!(_cachedClaimedToday ?? false)) {
+        final localClaimed = await checkLocalClaimedToday(preferencesStorage);
+        if (localClaimed) {
+          _cachedClaimedToday = true;
+        }
+      }
+
       // Set up rewarded video provider if configured
       _setupRewardedVideoProvider();
 
@@ -374,6 +383,14 @@ class WINR {
       // Update cached data
       if (response.giveaway != null) {
         await _preferencesStorage!.cacheGiveaway(response.giveaway!);
+      }
+
+      // If backend says not claimed but local storage says claimed today, trust local
+      if (!(_cachedClaimedToday ?? false)) {
+        final localClaimed = await checkLocalClaimedToday(_preferencesStorage!);
+        if (localClaimed) {
+          _cachedClaimedToday = true;
+        }
       }
 
       _setupRewardedVideoProvider();
@@ -518,6 +535,34 @@ class WINR {
       Logger.instance.error('Failed to generate device fingerprint', e);
       return 'fallback_${DateTime.now().millisecondsSinceEpoch}';
     }
+  }
+
+  // MARK: - Internal State Sync
+  // These methods are used by WINRExperienceScreen within the SDK package.
+  // They are not part of the public API and should not be called by publishers.
+
+  /// @internal — Syncs the static cached claimed-today state after a claim.
+  /// Used by [WINRExperienceScreen] within this package.
+  static void syncClaimedToday(bool claimed) {
+    _cachedClaimedToday = claimed;
+  }
+
+  /// @internal — Persists claimed-today date to local storage so the state
+  /// survives app restarts within the same calendar day.
+  /// Used by [WINRExperienceScreen] within this package.
+  static Future<void> persistClaimedToday(PreferencesStorage storage) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10); // YYYY-MM-DD
+    await storage.setString(StorageKeys.claimedTodayDate, today);
+  }
+
+  /// @internal — Checks local storage for a same-day claim record.
+  /// Returns true if the user already claimed today (locally persisted).
+  /// Used by [WINRExperienceScreen] within this package.
+  static Future<bool> checkLocalClaimedToday(PreferencesStorage storage) async {
+    final stored = await storage.getString(StorageKeys.claimedTodayDate);
+    if (stored == null) return false;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return stored == today;
   }
 
   // MARK: - Testing Support

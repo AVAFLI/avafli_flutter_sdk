@@ -44,6 +44,7 @@ class StorageKeys {
   static const String cachedGiveaway = 'winr_cached_giveaway';
   static const String sdkConfig = 'winr_sdk_config';
   static const String pushToken = 'winr_push_token';
+  static const String claimedTodayDate = 'winr_claimed_today_date';
   
   // Prevent instantiation
   StorageKeys._();
