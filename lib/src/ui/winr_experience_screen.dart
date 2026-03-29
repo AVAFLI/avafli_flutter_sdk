@@ -490,10 +490,15 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         return;
       }
 
-      // If backend says not claimed, check local persistence as belt-and-suspenders
+      // If backend says not claimed, check local persistence + in-memory cache
+      // as belt-and-suspenders. The in-memory cache (`widget.cachedClaimedToday`)
+      // is the most reliable source during a single app session — it's set
+      // immediately on claim and survives SDK re-presentations. Without this
+      // check, a backend timezone mismatch or propagation delay can reset the
+      // UI to the unclaimed state after the user already claimed.
       if (backendClaimed != true) {
         final localClaimed = await WINR.checkLocalClaimedToday(widget.preferencesStorage);
-        if (localClaimed) {
+        if (localClaimed || widget.cachedClaimedToday == true) {
           backendClaimed = true;
         }
       }

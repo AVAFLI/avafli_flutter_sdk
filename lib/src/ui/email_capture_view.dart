@@ -95,7 +95,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.only(top: 20, left: 4, right: 4),
+        padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
         child: Column(
           children: [
             // Logo / Hero Media
@@ -109,11 +109,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                     )
                   : const SizedBox.shrink(),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
             // Title + subtitle
             Padding(
-              padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+              padding: const EdgeInsets.only(top: 8, left: 8, right: 8),
               child: Column(
                 children: [
                   Text(
@@ -147,11 +147,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Email field
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -251,7 +251,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
             // 18+ Age gate checkbox
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
@@ -290,7 +290,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
             // Marketing consent checkbox
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
@@ -328,7 +328,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
 
             // CTA button
             Padding(
-              padding: const EdgeInsets.only(top: 6, left: 24, right: 24),
+              padding: const EdgeInsets.only(top: 6, left: 8, right: 8),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
@@ -364,11 +364,11 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // Official Rules & Privacy Policy
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 2, bottom: 16),
               child: RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
