@@ -408,7 +408,7 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
                         ..onTap = () {
                           HapticFeedback.lightImpact();
                           widget.onOpenUrl
-                              ?.call('https://winfrastructure.us/privacy');
+                              ?.call('https://avafli-website.web.app/sdk/privacy');
                         },
                     ),
                   ],

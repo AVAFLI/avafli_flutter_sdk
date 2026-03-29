@@ -842,7 +842,7 @@ class _LegalLinks extends StatelessWidget {
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            _openUrl('https://winfrastructure.us/rules');
+            _openUrl('https://avafli-website.web.app/sdk/rules');
           },
           child: Text(
             'OFFICIAL RULES',
@@ -868,7 +868,7 @@ class _LegalLinks extends StatelessWidget {
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            _openUrl('https://winfrastructure.us/privacy');
+            _openUrl('https://avafli-website.web.app/sdk/privacy');
           },
           child: Text(
             'PRIVACY POLICY',
