@@ -54,10 +54,15 @@ class ConsoleAnalyticsAdapter implements AnalyticsAdapter {
         includeTimestamp ? '[${DateTime.now().toIso8601String()}] ' : '';
 
     developer.log(
-      '$timestamp🆔 User Identified: $userId',
+      '$timestamp🆔 User Identified: ${_redact(userId)}',
       name: 'WINR Analytics',
     );
   }
+
+  /// Redacts a user id for console logging — keeps only the last 4 chars so the
+  /// raw identifier (PII correlation key) is not leaked to logs.
+  static String _redact(String id) =>
+      id.length <= 4 ? '****' : '****${id.substring(id.length - 4)}';
 }
 
 /// Silent analytics adapter that does nothing.

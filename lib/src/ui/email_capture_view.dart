@@ -58,9 +58,12 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
     super.dispose();
   }
 
+  /// Normalized email: trim leading/trailing whitespace then lowercase.
+  String get _normalizedEmail => _emailController.text.trim().toLowerCase();
+
   bool get _isEmailValid {
     final pattern = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    return pattern.hasMatch(_emailController.text);
+    return pattern.hasMatch(_normalizedEmail);
   }
 
   String _formatPrize(double value) {
@@ -422,8 +425,9 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
   }
 
   void _handleSubmit() {
-    final trimmed = _emailController.text.trim();
-    if (trimmed.isEmpty) {
+    // Normalize before validation/submit: trim → lowercase.
+    final normalized = _normalizedEmail;
+    if (normalized.isEmpty) {
       setState(() => _emailError = 'Email is required');
       return;
     }
@@ -436,6 +440,6 @@ class _EmailCaptureViewState extends State<EmailCaptureView> {
       return;
     }
     setState(() => _emailError = null);
-    widget.onSubmit(trimmed, _isMarketingConsented);
+    widget.onSubmit(normalized, _isMarketingConsented);
   }
 }

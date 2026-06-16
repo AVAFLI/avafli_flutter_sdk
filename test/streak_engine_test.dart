@@ -23,14 +23,14 @@ void main() {
       expect(day2.value.currentDay, 2);
     });
 
-    test('streak caps at 6', () {
+    test('streak caps at 7', () {
       var state = engine.nextState(null, DateTime.utc(2026, 3, 1)).value;
       for (int i = 2; i <= 10; i++) {
         final result = engine.nextState(state, DateTime.utc(2026, 3, i));
         expect(result.isSuccess, isTrue);
         state = result.value;
       }
-      expect(state.currentDay, 6);
+      expect(state.currentDay, 7);
     });
 
     test('gap resets streak to 1', () {
@@ -56,11 +56,12 @@ void main() {
       expect(engine.baseEntries(4), 130);
       expect(engine.baseEntries(5), 240);
       expect(engine.baseEntries(6), 300);
+      expect(engine.baseEntries(7), 500); // 7-rung ladder, top rung
     });
 
     test('baseEntries clamps for out of range', () {
       expect(engine.baseEntries(0), 10);
-      expect(engine.baseEntries(7), 300);
+      expect(engine.baseEntries(8), 500); // clamps to top rung (day 7)
     });
 
     test('weekly progress increments in same week', () {

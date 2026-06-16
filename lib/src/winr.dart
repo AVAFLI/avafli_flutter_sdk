@@ -68,8 +68,15 @@ class WINR {
   static Completer<void>? _registrationCompleter;
 
   /// Package version and constants
-  static const String sdkVersion = '1.0.0';
-  static const String platformOS = 'flutter';
+  /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec field
+  /// 21: sdk_version format `v1.x.x`).
+  static const String sdkVersion = 'v1.0.0';
+
+  /// Real platform OS for the platform_os field (spec enum: iOS / Android /
+  /// Web). Derived at runtime — same pattern as
+  /// [WINRPushNotificationManager] which computes ios/android for push.
+  static String get platformOS =>
+      Platform.isIOS ? 'iOS' : (Platform.isAndroid ? 'Android' : 'Web');
 
   /// Configures the WINR SDK with the provided configuration.
   ///
@@ -112,7 +119,7 @@ class WINR {
 
       // Identify user and submit profile
       _configuration!.options.analyticsAdapter?.identify(config.user.id);
-      Logger.instance.debug('User set: ${config.user.id}');
+      Logger.instance.debug('User set: ${_redactId(config.user.id)}');
 
       // Register device in background
       unawaited(_registerDeviceIfNeeded());
@@ -312,6 +319,13 @@ class WINR {
       final deviceFingerprint = await _generateDeviceFingerprint();
 
       // Register with backend
+      // TODO(winr): user_timezone should be a proper IANA TZ DB identifier
+      // (e.g. "America/New_York"), per spec field 16. `DateTime.now()
+      // .timeZoneName` returns a locale abbreviation (e.g. "EST"), NOT IANA.
+      // dart:core has no IANA source; add the `flutter_timezone` plugin
+      // (FlutterTimezone.getLocalTimezone()) to send a real IANA id. Until then
+      // we send the abbreviation as a last resort — the backend maps common
+      // abbreviations, so this is lower risk.
       final request = RegisterDeviceRequest(
         apiKey: config.apiKey,
         deviceFingerprint: deviceFingerprint,
@@ -355,7 +369,8 @@ class WINR {
       // Set up rewarded video provider if configured
       _setupRewardedVideoProvider();
 
-      Logger.instance.info('Device registered successfully: ${response.uuid}');
+      Logger.instance
+          .info('Device registered successfully: ${_redactId(response.uuid)}');
     } catch (e) {
       Logger.instance.error('Device registration failed', e);
     } finally {
@@ -496,12 +511,16 @@ class WINR {
   }
 
   /// Submits user profile data if available.
+  ///
+  /// Optional name/phone fields are validated/normalized before submit (spec
+  /// fields 4–6). Invalid values are dropped (sent as null) rather than
+  /// rejecting the whole profile, since these are optional.
   static Future<void> _submitUserProfileIfNeeded(WINRUser user) async {
     try {
       final request = SubmitUserProfileRequest(
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
+        firstName: _validName(user.firstName),
+        lastName: _validName(user.lastName),
+        phone: _validPhone(user.phone),
         publisherUserId: user.id,
       );
 
@@ -510,6 +529,34 @@ class WINR {
     } catch (e) {
       Logger.instance.error('Failed to submit user profile', e);
     }
+  }
+
+  /// Validates a name against `^[a-zA-Z '-]{1,50}$`; returns the trimmed value
+  /// or null if blank/invalid (names are optional).
+  static String? _validName(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    return RegExp(r"^[a-zA-Z '-]{1,50}$").hasMatch(trimmed) ? trimmed : null;
+  }
+
+  /// Strips non-digits and validates a US mobile number against `^\+?1?\d{10}$`;
+  /// returns the digit-normalized value or null if invalid (phone is optional).
+  static String? _validPhone(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    return RegExp(r'^\+?1?\d{10}$').hasMatch(trimmed) && digits.length >= 10
+        ? digits
+        : null;
+  }
+
+  /// Redacts a user id / uuid for logging — keeps only the last 4 chars so logs
+  /// remain useful for correlation without leaking the full identifier.
+  static String _redactId(String id) {
+    if (id.length <= 4) return '****';
+    return '****${id.substring(id.length - 4)}';
   }
 
   /// Generates a unique device fingerprint.

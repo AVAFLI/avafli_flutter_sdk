@@ -506,10 +506,13 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       _backendClaimedToday = backendClaimed;
       _backendStreakDay = backendStreakDay;
 
-      // Check stored email
-      final storedEmail = await widget.secureStorage.getString('email');
+      // Use the stored user_uid (from the registration handshake) as the
+      // "already registered" sentinel. We do NOT persist the raw email locally
+      // (PII-High): once registration completes the backend keys everything off
+      // user_uid, so the presence of a uuid means email capture is done.
+      final storedUuid = await widget.secureStorage.getUserUuid();
 
-      if (storedEmail == null) {
+      if (storedUuid == null) {
         setState(() => _phase = _ExperiencePhase.emailCapture);
         return;
       }
@@ -582,7 +585,8 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   Future<void> _submitEmail(String email, bool marketingConsent) async {
     if (email.isEmpty) return;
 
-    await widget.secureStorage.setString('email', email);
+    // Do NOT persist the raw email locally (PII-High). The backend returns a
+    // user_uid on the handshake which we use as the registered sentinel.
 
     // Fire-and-forget backend submission
     widget.networkClient

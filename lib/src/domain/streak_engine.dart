@@ -25,10 +25,15 @@ abstract class StreakEngineProtocol {
 
 /// Implementation of the three-tier streak system.
 ///
-/// Handles daily streak progression (1-6 days), weekly bonus tracking,
-/// and monthly bonus tracking with proper UTC date handling.
+/// Handles daily streak progression (days 1-7, capped at 7), weekly bonus
+/// tracking, and monthly bonus tracking with proper UTC date handling.
+///
+/// The daily ladder has 7 rungs and matches the backend's
+/// `DEFAULT_LADDER = [10, 30, 60, 130, 240, 300, 500]`. The streak day is
+/// clamped to [1, 7]; day 7 yields the top rung (500 entries).
 class StreakEngine implements StreakEngineProtocol {
   /// Default streak ladder values (can be overridden by giveaway config).
+  /// 7 rungs, matching the backend DEFAULT_LADDER.
   static const List<int> defaultStreakLadder = [10, 30, 60, 130, 240, 300, 500];
 
   @override
@@ -135,7 +140,7 @@ class StreakEngine implements StreakEngineProtocol {
 
   int _calculateDailyStreak(int currentDay, int daysDifference) {
     if (daysDifference == 1) {
-      // Consecutive day - advance streak but cap at 6
+      // Consecutive day - advance streak but cap at 7 (matches 7-rung ladder).
       return (currentDay + 1).clamp(1, 7);
     } else {
       // Streak broken or gap - reset to 1
