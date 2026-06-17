@@ -67,6 +67,12 @@ class WINR {
   static bool _isRegistering = false;
   static Completer<void>? _registrationCompleter;
 
+  /// Set when the backend reports the publisher is suspended / its API key has
+  /// been revoked (typically a billing lapse). Cached from a failed device
+  /// registration so repeated [present] calls short-circuit without hitting
+  /// the network or pushing a screen. Reset on each [configure].
+  static bool _isSuspended = false;
+
   /// Package version and constants
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec field
   /// 21: sdk_version format `v1.x.x`).
@@ -88,6 +94,10 @@ class WINR {
     try {
       // Store configuration
       _configuration = config;
+
+      // Re-check suspension on every configure — a previously suspended
+      // publisher may have been reinstated since the last run.
+      _isSuspended = false;
 
       // Initialize logger
       Logger.instance.level = config.options.logging;
@@ -134,11 +144,24 @@ class WINR {
     }
   }
 
+  /// Whether the WINR experience is currently available to present.
+  ///
+  /// Returns `false` if the SDK has not been configured, or if the publisher
+  /// account is suspended / its API key has been revoked. Custom-UI
+  /// integrations can poll this after configuration completes to decide
+  /// whether to show their own launch entry point (instead of relying on the
+  /// [WINRError.serviceUnavailable] completion error from [present]).
+  static bool get isAvailable => _configuration != null && !_isSuspended;
+
   /// Presents the WINR experience screen.
   ///
   /// Shows the main engagement UI where users can claim their daily entries.
   /// Returns a [DailyEntryGrant] if the user successfully claims entries,
   /// or throws a [WINRException] if an error occurs.
+  ///
+  /// If the publisher account is suspended / its API key has been revoked,
+  /// this does NOT push any screen and instead throws a
+  /// [WINRException] wrapping [WINRError.serviceUnavailable].
   static Future<DailyEntryGrant> present(BuildContext context) async {
     final config = _configuration;
     if (config == null) {
@@ -147,8 +170,17 @@ class WINR {
 
     final user = config.user;
 
-    // Ensure registration is complete
+    // Ensure registration is complete — registration may flip _isSuspended.
     await _ensureRegistrationComplete();
+
+    // If the publisher is suspended, do not present anything. Surface the
+    // serviceUnavailable error so the host app can show its own message.
+    if (_isSuspended) {
+      Logger.instance.info('WINR present suppressed: publisher suspended');
+      config.options.analyticsAdapter
+          ?.track(WINRAnalyticsEvents.experienceDismissed);
+      throw const WINRException(WINRError.serviceUnavailable);
+    }
 
     // Track presentation
     config.options.analyticsAdapter
@@ -373,10 +405,23 @@ class WINR {
           .info('Device registered successfully: ${_redactId(response.uuid)}');
     } catch (e) {
       Logger.instance.error('Device registration failed', e);
+      // Cache the suspended state so repeat launches short-circuit cleanly.
+      _handleSuspensionIfNeeded(e);
     } finally {
       _isRegistering = false;
       _registrationCompleter?.complete();
       _registrationCompleter = null;
+    }
+  }
+
+  /// If [error] indicates the publisher is suspended / API key revoked, caches
+  /// that state so subsequent [present] calls short-circuit cleanly.
+  static void _handleSuspensionIfNeeded(Object error) {
+    if (error is WINRException &&
+        error.error == WINRError.serviceUnavailable) {
+      _isSuspended = true;
+      Logger.instance
+          .info('Publisher suspended — WINR experience disabled');
     }
   }
 
@@ -415,6 +460,11 @@ class WINR {
       // Rethrow auth errors so callers can handle stale token recovery
       if (e.error == WINRError.authenticationFailed) {
         Logger.instance.error('Auth failed during giveaway refresh', e);
+        rethrow;
+      }
+      // Rethrow suspension so the caller can cache it and short-circuit.
+      if (e.error == WINRError.serviceUnavailable) {
+        Logger.instance.error('Publisher suspended during giveaway refresh', e);
         rethrow;
       }
       Logger.instance.error('Failed to refresh giveaway data', e);
@@ -640,5 +690,6 @@ class WINR {
     _cachedTotalEntries = 0;
     _isRegistering = false;
     _registrationCompleter = null;
+    _isSuspended = false;
   }
 }

@@ -113,7 +113,8 @@ class NetworkClientImpl implements NetworkClient {
         // Don't retry on certain errors
         if (e.error == WINRError.invalidApiKey ||
             e.error == WINRError.underage ||
-            e.error == WINRError.ineligibleToday) {
+            e.error == WINRError.ineligibleToday ||
+            e.error == WINRError.serviceUnavailable) {
           rethrow;
         }
 
@@ -258,6 +259,14 @@ class NetworkClientImpl implements NetworkClient {
       case 401:
         throw const WINRException(WINRError.authenticationFailed);
       case 403:
+        // A suspended/revoked publisher surfaces as a `permission-denied`
+        // (403) callable error whose message mentions "suspended" or
+        // "revoked" (e.g. "API key suspended or revoked" / "Publisher
+        // account suspended"). Map it to serviceUnavailable so the SDK can
+        // degrade gracefully instead of looking like an auth failure.
+        if (_isSuspendedError(errorMessage)) {
+          throw const WINRException(WINRError.serviceUnavailable);
+        }
         if (errorMessage?.contains('geography') == true) {
           throw const WINRException(WINRError.geographyNotAllowed);
         }
@@ -278,6 +287,17 @@ class NetworkClientImpl implements NetworkClient {
         Logger.instance.error('Unexpected HTTP status: $statusCode');
         throw const WINRException(WINRError.unknown);
     }
+  }
+
+  /// Detects the backend "publisher suspended / API key revoked" error from
+  /// its message. The backend emits a `permission-denied` (403) callable error
+  /// with one of:
+  ///   - "API key suspended or revoked"
+  ///   - "Publisher account suspended"
+  static bool _isSuspendedError(String? message) {
+    if (message == null) return false;
+    final lowered = message.toLowerCase();
+    return lowered.contains('suspended') || lowered.contains('revoked');
   }
 }
 

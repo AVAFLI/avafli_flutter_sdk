@@ -35,6 +35,11 @@ enum WINRError {
   
   /// Internal server error occurred
   serverError('Server error occurred. Please try again later.'),
+
+  /// The WINR experience is no longer available for this publisher — the
+  /// publisher account has been suspended or its API key revoked (typically
+  /// due to a billing lapse). Surfaced from a failed device registration.
+  serviceUnavailable('The WINR experience is no longer available.'),
   
   /// Unknown or unexpected error
   unknown('An unexpected error occurred.'),
