@@ -150,8 +150,14 @@ class GetActiveGiveawayResponse {
   final int weeklyCurrent;
   final int monthlyCurrent;
   final int lifetimeCount;
+
+  /// Whether this user has confirmed an email + consent. The SDK uses this to
+  /// decide whether to show the email-capture screen — a registered device may
+  /// not yet have a confirmed email, in which case a claim would be blocked by
+  /// the backend consent gate.
+  final bool emailConsentStatus;
   final Map<String, dynamic>? sdkConfig;
-  
+
   const GetActiveGiveawayResponse({
     this.giveaway,
     this.claimedToday = false,
@@ -160,9 +166,10 @@ class GetActiveGiveawayResponse {
     this.weeklyCurrent = 0,
     this.monthlyCurrent = 0,
     this.lifetimeCount = 0,
+    this.emailConsentStatus = false,
     this.sdkConfig,
   });
-  
+
   factory GetActiveGiveawayResponse.fromJson(Map<String, dynamic> json) {
     return GetActiveGiveawayResponse(
       giveaway: json['giveaway'] != null
@@ -174,6 +181,7 @@ class GetActiveGiveawayResponse {
       weeklyCurrent: json['weeklyCurrent'] ?? 0,
       monthlyCurrent: json['monthlyCurrent'] ?? 0,
       lifetimeCount: json['lifetimeCount'] ?? 0,
+      emailConsentStatus: json['emailConsentStatus'] ?? false,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
     );
   }
@@ -258,31 +266,63 @@ class ClaimBonusEntriesResponse {
 }
 
 /// Submit email request.
-class SubmitEmailRequest extends PostRequest<SuccessResponse> {
+class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
   final String email;
   final bool hasConsent;
   final String? publisherUserId;
-  
+
   SubmitEmailRequest({
     required this.email,
     required this.hasConsent,
     this.publisherUserId,
   });
-  
+
   @override
   String get endpoint => '/submitEmail';
-  
+
   @override
   Map<String, dynamic> get body => {
     'email': email,
     'marketingConsent': hasConsent,
     if (publisherUserId != null) 'publisherUserId': publisherUserId,
   };
-  
+
   @override
-  SuccessResponse parseResponse(http.Response response) {
+  SubmitEmailResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
-    return SuccessResponse.fromJson(data);
+    return SubmitEmailResponse.fromJson(data);
+  }
+}
+
+/// Response from submitting an email.
+///
+/// When the email matched an existing account under this publisher (from
+/// another device/SDK), the backend adopts that canonical user so the streak
+/// follows the person — [adopted] is true and [token]/[refreshToken]/[uuid]
+/// carry the canonical user's credentials, which the SDK must switch to.
+class SubmitEmailResponse {
+  final bool success;
+  final bool adopted;
+  final String? uuid;
+  final String? token;
+  final String? refreshToken;
+
+  const SubmitEmailResponse({
+    this.success = true,
+    this.adopted = false,
+    this.uuid,
+    this.token,
+    this.refreshToken,
+  });
+
+  factory SubmitEmailResponse.fromJson(Map<String, dynamic> json) {
+    return SubmitEmailResponse(
+      success: json['success'] ?? true,
+      adopted: json['adopted'] ?? false,
+      uuid: json['uuid'] as String?,
+      token: json['token'] as String?,
+      refreshToken: json['refreshToken'] as String?,
+    );
   }
 }
 

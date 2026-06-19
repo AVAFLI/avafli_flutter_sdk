@@ -26,7 +26,12 @@ enum WINRError {
   
   /// Invalid email format provided
   invalidEmail('Invalid email format provided.'),
-  
+
+  /// A confirmed email is required before the user can enter. The backend
+  /// consent gate rejects claims until the user submits their email — the SDK
+  /// should (re-)present the email-capture screen rather than failing.
+  emailRequired('Please confirm your email to enter.'),
+
   /// Giveaway is not active or available
   giveawayNotAvailable('Giveaway is not available at this time.'),
   
@@ -64,10 +69,21 @@ enum WINRError {
 /// Use this when you need to throw a WINR-specific error that can
 /// be caught with a try-catch block.
 class WINRException implements Exception {
-  const WINRException(this.error);
-  
+  const WINRException(this.error, [this.serverMessage]);
+
   final WINRError error;
-  
+
+  /// The backend's actual error message, when one was returned. Lets the SDK
+  /// surface what really went wrong instead of a generic enum description —
+  /// e.g. a `failed-precondition` from the claim consent gate.
+  final String? serverMessage;
+
+  /// The best human-readable message: the server's text when present, else the
+  /// enum's default description.
+  String get displayMessage => serverMessage ?? error.message;
+
   @override
-  String toString() => error.toString();
+  String toString() => serverMessage == null
+      ? error.toString()
+      : 'WINRError.${error.name}: $serverMessage';
 }

@@ -45,7 +45,11 @@ class StorageKeys {
   static const String sdkConfig = 'winr_sdk_config';
   static const String pushToken = 'winr_push_token';
   static const String claimedTodayDate = 'winr_claimed_today_date';
-  
+  // Whether this user has confirmed an email + consent. Authoritative source is
+  // the backend (getActiveGiveaway.emailConsentStatus); cached here so the
+  // email-capture gate still works offline. Set true after a successful submit.
+  static const String emailConfirmed = 'winr_email_confirmed';
+
   // Prevent instantiation
   StorageKeys._();
 }

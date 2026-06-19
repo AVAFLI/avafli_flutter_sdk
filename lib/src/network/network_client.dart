@@ -236,26 +236,43 @@ class NetworkClientImpl implements NetworkClient {
   void _handleHttpError(http.Response response) {
     final statusCode = response.statusCode;
 
-    // Try to parse error details from response
+    // Parse the error message from the Firebase callable (onCall) envelope. On
+    // error the body is {"error":{"message":"...","status":"..."}} — so the
+    // message lives at error.message, NOT error (which is a Map). An earlier
+    // `data['error'] as String?` always silently failed, leaving every error
+    // unlabelled and every 400 mislabelled as "invalid API key".
     String? errorMessage;
     try {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
-        errorMessage = data['error'] as String?;
+        final err = data['error'];
+        if (err is Map<String, dynamic>) {
+          errorMessage = err['message'] as String?;
+        } else if (err is String) {
+          errorMessage = err;
+        }
       }
     } catch (_) {
       // Ignore JSON parsing errors
     }
 
+    final lower = errorMessage?.toLowerCase();
+
     switch (statusCode) {
       case 400:
-        if (errorMessage?.contains('underage') == true) {
+        // A 400 is invalid-argument / failed-precondition — never an API-key
+        // problem. Map the known cases, otherwise surface the backend's text.
+        if (lower?.contains('underage') == true || lower?.contains('13 or older') == true) {
           throw const WINRException(WINRError.underage);
         }
-        if (errorMessage?.contains('invalid email') == true) {
+        if (lower?.contains('email') == true &&
+            (lower!.contains('confirm') || lower.contains('required') || lower.contains('consent'))) {
+          throw WINRException(WINRError.emailRequired, errorMessage);
+        }
+        if (lower?.contains('valid email') == true || lower?.contains('invalid email') == true) {
           throw const WINRException(WINRError.invalidEmail);
         }
-        throw const WINRException(WINRError.invalidApiKey);
+        throw WINRException(WINRError.unknown, errorMessage);
       case 401:
         throw const WINRException(WINRError.authenticationFailed);
       case 403:
@@ -267,25 +284,28 @@ class NetworkClientImpl implements NetworkClient {
         if (_isSuspendedError(errorMessage)) {
           throw const WINRException(WINRError.serviceUnavailable);
         }
-        if (errorMessage?.contains('geography') == true) {
+        if (lower?.contains('geograph') == true || lower?.contains('location') == true) {
           throw const WINRException(WINRError.geographyNotAllowed);
         }
-        if (errorMessage?.contains('already claimed') == true) {
+        if (lower?.contains('already claimed') == true || lower?.contains('already entered') == true) {
           throw const WINRException(WINRError.ineligibleToday);
         }
-        throw const WINRException(WINRError.authenticationFailed);
+        throw WINRException(WINRError.authenticationFailed, errorMessage);
       case 404:
         throw const WINRException(WINRError.giveawayNotAvailable);
+      case 409:
+        // already-exists — the daily entry was already claimed.
+        throw WINRException(WINRError.ineligibleToday, errorMessage);
       case 429:
         throw const WINRException(WINRError.networkError); // Rate limited
       case 500:
       case 502:
       case 503:
       case 504:
-        throw const WINRException(WINRError.serverError);
+        throw WINRException(WINRError.serverError, errorMessage);
       default:
-        Logger.instance.error('Unexpected HTTP status: $statusCode');
-        throw const WINRException(WINRError.unknown);
+        Logger.instance.error('Unexpected HTTP status: $statusCode — $errorMessage');
+        throw WINRException(WINRError.unknown, errorMessage);
     }
   }
 

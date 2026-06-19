@@ -99,8 +99,6 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   String? _errorMessage;
 
   // Backend cache
-  bool? _backendClaimedToday;
-  int? _backendStreakDay;
   int _backendTotalEntries = 0;
 
   // Loading states
@@ -459,6 +457,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
       // Fetch giveaway from backend
       bool? backendClaimed = widget.cachedClaimedToday;
       int? backendStreakDay;
+      // Whether the backend confirms this user has a confirmed email + consent.
+      // null = we couldn't reach the backend (offline) and must fall back to the
+      // locally-cached flag.
+      bool? emailConfirmed;
 
       try {
         final response =
@@ -477,6 +479,10 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         backendClaimed = response.claimedToday;
         backendStreakDay = response.streakDay;
         _backendTotalEntries = response.totalEntries;
+        emailConfirmed = response.emailConsentStatus;
+        // Cache the consent state so the gate also works offline next time.
+        await widget.preferencesStorage
+            .setBool(StorageKeys.emailConfirmed, emailConfirmed);
         await widget.preferencesStorage.cacheGiveaway(response.giveaway!);
       } catch (e) {
         // Offline fallback
@@ -503,16 +509,17 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
         }
       }
 
-      _backendClaimedToday = backendClaimed;
-      _backendStreakDay = backendStreakDay;
+      // Decide whether to show email capture based on the user's REAL consent
+      // state, not just whether the device registered. A device gets a user_uid
+      // at registration (before any email), so a registered-but-no-email user
+      // would otherwise skip capture and then hit the backend's consent gate on
+      // claim (a 400). Authoritative signal is the backend's emailConsentStatus;
+      // offline, fall back to the locally-cached flag.
+      final emailDone = emailConfirmed ??
+          (await widget.preferencesStorage.getBool(StorageKeys.emailConfirmed) ??
+              false);
 
-      // Use the stored user_uid (from the registration handshake) as the
-      // "already registered" sentinel. We do NOT persist the raw email locally
-      // (PII-High): once registration completes the backend keys everything off
-      // user_uid, so the presence of a uuid means email capture is done.
-      final storedUuid = await widget.secureStorage.getUserUuid();
-
-      if (storedUuid == null) {
+      if (!emailDone) {
         setState(() => _phase = _ExperiencePhase.emailCapture);
         return;
       }
@@ -585,25 +592,48 @@ class _WINRExperienceScreenState extends State<WINRExperienceScreen> {
   Future<void> _submitEmail(String email, bool marketingConsent) async {
     if (email.isEmpty) return;
 
-    // Do NOT persist the raw email locally (PII-High). The backend returns a
-    // user_uid on the handshake which we use as the registered sentinel.
+    // Do NOT persist the raw email locally (PII-High). The backend keys
+    // everything off the user_uid handshake.
+    //
+    // AWAIT the submission (it used to be fire-and-forget): the backend consent
+    // gate blocks a claim until the email is on file, so advancing to the streak
+    // before this completes would race into a 400 on the very next claim.
+    setState(() => _phase = _ExperiencePhase.loading);
+    try {
+      final result = await widget.networkClient.send(SubmitEmailRequest(
+        email: email,
+        hasConsent: marketingConsent,
+        publisherUserId: widget.user.id,
+      ));
 
-    // Fire-and-forget backend submission
-    widget.networkClient
-        .send(SubmitEmailRequest(
-          email: email,
-          hasConsent: marketingConsent,
-          publisherUserId: widget.user.id,
-        ))
-        .then((_) {})
-        .catchError((Object e) {
+      // Cross-device streak unification: if this email already belonged to an
+      // existing user under this publisher (another device/SDK), the backend
+      // hands back that canonical user's credentials. Switch to them so the
+      // person keeps ONE streak per publisher across devices.
+      if (result.adopted && result.token != null && result.uuid != null) {
+        await widget.secureStorage.saveAuthToken(result.token!);
+        if (result.refreshToken != null) {
+          await widget.secureStorage.saveRefreshToken(result.refreshToken!);
+        }
+        await widget.secureStorage.saveUserUuid(result.uuid!);
+        widget.networkClient.setAuthToken(result.token!);
+        Logger.instance.info('Adopted existing account — streak unified across devices');
+      }
+
+      // Email is now confirmed; cache it for the offline gate.
+      await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
+    } catch (e) {
       Logger.instance.error('Email backend submit failed', e);
-    });
+      setState(() {
+        _errorMessage = e is WINRException ? e.displayMessage : e.toString();
+        _phase = _ExperiencePhase.error;
+      });
+      return;
+    }
 
-    _computeStreakAndShow(
-      backendClaimedToday: _backendClaimedToday,
-      backendStreakDay: _backendStreakDay,
-    );
+    // Re-load so the (possibly switched) canonical user's authoritative streak
+    // and claim status drive the UI.
+    await _loadExperience();
   }
 
   // ---------------------------------------------------------------------------
