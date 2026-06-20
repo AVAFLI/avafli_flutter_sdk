@@ -162,7 +162,7 @@ class WINR {
   /// If the publisher account is suspended / its API key has been revoked,
   /// this does NOT push any screen and instead throws a
   /// [WINRException] wrapping [WINRError.serviceUnavailable].
-  static Future<DailyEntryGrant> present(BuildContext context) async {
+  static Future<DailyEntryGrant?> present(BuildContext context) async {
     final config = _configuration;
     if (config == null) {
       throw const WINRException(WINRError.notConfigured);
@@ -212,14 +212,16 @@ class WINR {
 
       if (result != null) {
         return result;
-      } else {
-        // User dismissed without claiming
-        config.options.analyticsAdapter
-            ?.track(WINRAnalyticsEvents.experienceDismissed);
-        throw const WINRException(WINRError.invalidState);
       }
+      // User dismissed without claiming — this is NOT an error. Resolve with null
+      // so the host app's `await WINR.present(...)` completes normally instead of
+      // throwing (which previously bounced callers into their error/catch paths).
+      config.options.analyticsAdapter
+          ?.track(WINRAnalyticsEvents.experienceDismissed);
+      return null;
     }
-    throw const WINRException(WINRError.invalidState);
+    // Context was unmounted before we could present — nothing shown, not an error.
+    return null;
   }
 
   /// Returns a widget that can be embedded in your app.
