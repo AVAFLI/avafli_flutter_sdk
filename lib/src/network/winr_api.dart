@@ -431,7 +431,8 @@ class RegisterPushTokenRequest extends PostRequest<SuccessResponse> {
   
   @override
   Map<String, dynamic> get body => {
-    'pushToken': pushToken,
+    // Backend contract is {token, platform} — 'pushToken' is rejected.
+    'token': pushToken,
     'platform': platform,
   };
   

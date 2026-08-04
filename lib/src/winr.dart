@@ -262,6 +262,30 @@ class WINR {
         '${date.day.toString().padLeft(2, '0')}';
   }
 
+  // MARK: - Push reminders
+
+  /// Register the host app's Firebase Cloud Messaging token so the WINR
+  /// backend can send streak-reminder pushes through the publisher's own
+  /// Firebase project (configured in the publisher dashboard).
+  ///
+  /// Call whenever FirebaseMessaging hands you a token:
+  /// ```dart
+  /// FirebaseMessaging.instance.onTokenRefresh.listen(WINR.registerPushToken);
+  /// ```
+  /// No-ops silently if the SDK isn't configured yet.
+  static Future<void> registerPushToken(String fcmToken) async {
+    final networkClient = _networkClient;
+    if (networkClient == null || fcmToken.isEmpty) return;
+    try {
+      await networkClient.send(RegisterPushTokenRequest(
+        pushToken: fcmToken,
+        platform: Platform.isIOS ? 'ios' : 'android',
+      ));
+    } catch (e) {
+      Logger.instance.info('registerPushToken failed: $e');
+    }
+  }
+
   // MARK: - RTD Opt-out
 
   /// Right-To-Delete opt-out: tombstones the person on the backend
