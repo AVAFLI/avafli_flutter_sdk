@@ -54,7 +54,10 @@ class RegisterDeviceResponse {
   final int streakDay;
   final int totalEntries;
   final Map<String, dynamic>? sdkConfig;
-  
+
+  /// True when this device/person has opted out (RTD) — never auto-present.
+  final bool? optedOut;
+
   const RegisterDeviceResponse({
     required this.token,
     required this.refreshToken,
@@ -64,8 +67,9 @@ class RegisterDeviceResponse {
     this.streakDay = 1,
     this.totalEntries = 0,
     this.sdkConfig,
+    this.optedOut,
   });
-  
+
   factory RegisterDeviceResponse.fromJson(Map<String, dynamic> json) {
     return RegisterDeviceResponse(
       token: json['token'] ?? '',
@@ -78,6 +82,7 @@ class RegisterDeviceResponse {
       streakDay: json['streakDay'] ?? 1,
       totalEntries: json['totalEntries'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
+      optedOut: json['optedOut'] as bool?,
     );
   }
 }
@@ -158,6 +163,10 @@ class GetActiveGiveawayResponse {
   final bool emailConsentStatus;
   final Map<String, dynamic>? sdkConfig;
 
+  /// True when this person has opted out (RTD) — the SDK must never
+  /// auto-present.
+  final bool? optedOut;
+
   const GetActiveGiveawayResponse({
     this.giveaway,
     this.claimedToday = false,
@@ -168,6 +177,7 @@ class GetActiveGiveawayResponse {
     this.lifetimeCount = 0,
     this.emailConsentStatus = false,
     this.sdkConfig,
+    this.optedOut,
   });
 
   factory GetActiveGiveawayResponse.fromJson(Map<String, dynamic> json) {
@@ -183,18 +193,35 @@ class GetActiveGiveawayResponse {
       lifetimeCount: json['lifetimeCount'] ?? 0,
       emailConsentStatus: json['emailConsentStatus'] ?? false,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
+      optedOut: json['optedOut'] as bool?,
     );
   }
 }
 
-/// Claim daily entries request.
+/// Claim daily entries request (mirrors iOS `ClaimDailyEntriesRequest`).
 class ClaimDailyEntriesRequest extends PostRequest<ClaimDailyEntriesResponse> {
+  final String timezone;
+  final String platformOS;
+  final String sdkVersion;
+
+  ClaimDailyEntriesRequest({
+    String? timezone,
+    String? platformOS,
+    String? sdkVersion,
+  })  : timezone = timezone ?? DateTime.now().timeZoneName,
+        platformOS = platformOS ?? WINRRequestDefaults.platformOS,
+        sdkVersion = sdkVersion ?? WINRRequestDefaults.sdkVersion;
+
   @override
   String get endpoint => '/claimDailyEntries';
-  
+
   @override
-  Map<String, dynamic> get body => {};
-  
+  Map<String, dynamic> get body => {
+        'timezone': timezone,
+        'platformOS': platformOS,
+        'sdkVersion': sdkVersion,
+      };
+
   @override
   ClaimDailyEntriesResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
@@ -202,65 +229,90 @@ class ClaimDailyEntriesRequest extends PostRequest<ClaimDailyEntriesResponse> {
   }
 }
 
-/// Response from claiming daily entries.
+/// Default request metadata, kept in sync by [WINR.configure]. Lives here so
+/// request classes don't import the SDK facade (avoids an import cycle).
+class WINRRequestDefaults {
+  WINRRequestDefaults._();
+
+  static String platformOS = 'iOS';
+  static String sdkVersion = 'v2.0.0';
+}
+
+/// Response from claiming daily entries (mirrors iOS
+/// `ClaimDailyEntriesResponse`).
 class ClaimDailyEntriesResponse {
-  final int baseEntries;
-  final int bonusEntries;
-  final int newStreakDay;
-  final bool weeklyBonusEarned;
-  final bool monthlyBonusEarned;
-  
+  /// Base entries from the daily ladder.
+  final int entries;
+  final int streakDay;
+  final int totalEntries;
+  final int? weeklyBonusEntries;
+  final int? monthlyBonusEntries;
+  final MilestoneAward? milestone;
+  final int? monthlyCurrent;
+  final int? weeklyCurrent;
+  final int? lifetimeCount;
+  final MilestoneAward? monthlyMilestone;
+
   const ClaimDailyEntriesResponse({
-    required this.baseEntries,
-    this.bonusEntries = 0,
-    required this.newStreakDay,
-    this.weeklyBonusEarned = false,
-    this.monthlyBonusEarned = false,
+    required this.entries,
+    required this.streakDay,
+    required this.totalEntries,
+    this.weeklyBonusEntries,
+    this.monthlyBonusEntries,
+    this.milestone,
+    this.monthlyCurrent,
+    this.weeklyCurrent,
+    this.lifetimeCount,
+    this.monthlyMilestone,
   });
-  
+
   factory ClaimDailyEntriesResponse.fromJson(Map<String, dynamic> json) {
     return ClaimDailyEntriesResponse(
-      baseEntries: json['entries'] ?? json['baseEntries'] ?? 0,
-      bonusEntries: json['bonusEntries'] ?? 0,
-      newStreakDay: json['streakDay'] ?? json['newStreakDay'] ?? 1,
-      weeklyBonusEarned: json['weeklyBonusEarned'] ?? false,
-      monthlyBonusEarned: json['monthlyBonusEarned'] ?? false,
+      entries: json['entries'] ?? json['baseEntries'] ?? 0,
+      streakDay: json['streakDay'] ?? json['newStreakDay'] ?? 1,
+      totalEntries: json['totalEntries'] ?? 0,
+      weeklyBonusEntries: (json['weeklyBonusEntries'] as num?)?.toInt(),
+      monthlyBonusEntries: (json['monthlyBonusEntries'] as num?)?.toInt(),
+      milestone: json['milestone'] is Map<String, dynamic>
+          ? MilestoneAward.fromJson(json['milestone'])
+          : null,
+      monthlyCurrent: (json['monthlyCurrent'] as num?)?.toInt(),
+      weeklyCurrent: (json['weeklyCurrent'] as num?)?.toInt(),
+      lifetimeCount: (json['lifetimeCount'] as num?)?.toInt(),
+      monthlyMilestone: json['monthlyMilestone'] is Map<String, dynamic>
+          ? MilestoneAward.fromJson(json['monthlyMilestone'])
+          : null,
     );
   }
-  
+
   /// Converts to a DailyEntryGrant.
   DailyEntryGrant toEntryGrant() {
-    return DailyEntryGrant(
-      baseEntries: baseEntries,
-      bonusEntries: bonusEntries,
-    );
+    var bonus = 0;
+    bonus += weeklyBonusEntries ?? 0;
+    bonus += monthlyBonusEntries ?? 0;
+    bonus += milestone?.bonusEntries ?? 0;
+    bonus += monthlyMilestone?.bonusEntries ?? 0;
+    return DailyEntryGrant(baseEntries: entries, bonusEntries: bonus);
   }
 }
 
-/// Claim bonus entries (from rewarded video) request.
-class ClaimBonusEntriesRequest extends PostRequest<ClaimBonusEntriesResponse> {
-  @override
-  String get endpoint => '/claimBonusEntries';
-  
-  @override
-  Map<String, dynamic> get body => {};
-  
-  @override
-  ClaimBonusEntriesResponse parseResponse(http.Response response) {
-    final data = parseJsonResponse(response);
-    return ClaimBonusEntriesResponse.fromJson(data);
-  }
-}
-
-/// Response from claiming bonus entries.
-class ClaimBonusEntriesResponse {
+/// Milestone award returned when a user hits a streak milestone day.
+class MilestoneAward {
+  final int day;
   final int bonusEntries;
-  
-  const ClaimBonusEntriesResponse({required this.bonusEntries});
-  
-  factory ClaimBonusEntriesResponse.fromJson(Map<String, dynamic> json) {
-    return ClaimBonusEntriesResponse(
-      bonusEntries: json['bonusEntries'] ?? 0,
+  final String? badge;
+
+  const MilestoneAward({
+    required this.day,
+    required this.bonusEntries,
+    this.badge,
+  });
+
+  factory MilestoneAward.fromJson(Map<String, dynamic> json) {
+    return MilestoneAward(
+      day: (json['day'] as num?)?.toInt() ?? 0,
+      bonusEntries: (json['bonusEntries'] as num?)?.toInt() ?? 0,
+      badge: json['badge'] as String?,
     );
   }
 }
@@ -394,10 +446,26 @@ class RegisterPushTokenRequest extends PostRequest<SuccessResponse> {
 class DeleteUserDataRequest extends PostRequest<SuccessResponse> {
   @override
   String get endpoint => '/deleteUserData';
-  
+
   @override
   Map<String, dynamic> get body => {};
-  
+
+  @override
+  SuccessResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return SuccessResponse.fromJson(data);
+  }
+}
+
+/// Opt-out request (RTD — Right To Delete). Tombstones the person on the
+/// backend and permanently silences the experience on this device.
+class OptOutRequest extends PostRequest<SuccessResponse> {
+  @override
+  String get endpoint => '/optOut';
+
+  @override
+  Map<String, dynamic> get body => {};
+
   @override
   SuccessResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);

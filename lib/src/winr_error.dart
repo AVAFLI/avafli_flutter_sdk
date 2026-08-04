@@ -45,6 +45,11 @@ enum WINRError {
   /// publisher account has been suspended or its API key revoked (typically
   /// due to a billing lapse). Surfaced from a failed device registration.
   serviceUnavailable('The WINR experience is no longer available.'),
+
+  /// The user opted out (RTD — Right To Delete). The experience is
+  /// permanently silenced on this device: never auto-presented, and manual
+  /// [WINR.present] refuses too.
+  optedOut('User has opted out of the WINR experience.'),
   
   /// Unknown or unexpected error
   unknown('An unexpected error occurred.'),

@@ -1,5 +1,4 @@
 import 'services/analytics/analytics_adapter.dart';
-import 'rewards/rewarded_video_provider.dart';
 
 /// Optional behavior toggles for the WINR SDK.
 ///
@@ -20,9 +19,6 @@ class WINROptions {
   /// Custom analytics adapter for tracking events.
   final AnalyticsAdapter? analyticsAdapter;
 
-  /// Rewarded video provider for bonus entries.
-  final RewardedVideoProvider? rewardedVideoProvider;
-
   /// Whether to enable push notification reminders.
   final bool enablePushReminders;
 
@@ -30,7 +26,6 @@ class WINROptions {
   const WINROptions({
     this.logging = LoggingLevel.error,
     this.analyticsAdapter,
-    this.rewardedVideoProvider,
     this.enablePushReminders = true,
   });
 
@@ -38,13 +33,11 @@ class WINROptions {
   WINROptions copyWith({
     LoggingLevel? logging,
     AnalyticsAdapter? analyticsAdapter,
-    RewardedVideoProvider? rewardedVideoProvider,
     bool? enablePushReminders,
   }) {
     return WINROptions(
       logging: logging ?? this.logging,
       analyticsAdapter: analyticsAdapter ?? this.analyticsAdapter,
-      rewardedVideoProvider: rewardedVideoProvider ?? this.rewardedVideoProvider,
       enablePushReminders: enablePushReminders ?? this.enablePushReminders,
     );
   }
