@@ -101,7 +101,7 @@ final success = await WINR.configure(config);
 | --------- | ---- | -------- | ----------- |
 | `apiKey` | `String` | ✅ | Your WINR API key from the dashboard |
 | `bundleId` | `String` | ✅ | App bundle ID (e.g., com.example.myapp) |
-| `environment` | `WINREnvironment` | ✅ | `.production`, `.staging`, or `.qa` |
+| `environment` | `WINREnvironment` | — | `.production` (default) |
 | `user` | `WINRUser` | ✅ | The authenticated user |
 | `options` | `WINROptions?` | — | Optional behavior toggles |
 

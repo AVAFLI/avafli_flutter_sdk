@@ -48,7 +48,6 @@ class WINRAnalyticsEvents {
   
   // Claim events
   static const String dailyEntriesClaimed = 'winr_daily_entries_claimed';
-  static const String bonusEntriesClaimed = 'winr_bonus_entries_claimed';
   static const String claimFailed = 'winr_claim_failed';
   
   // Email capture events
@@ -56,15 +55,8 @@ class WINRAnalyticsEvents {
   static const String emailCaptureCompleted = 'winr_email_capture_completed';
   static const String emailCaptureFailed = 'winr_email_capture_failed';
   
-  // Rewarded video events
-  static const String rewardedVideoStarted = 'winr_rewarded_video_started';
-  static const String rewardedVideoCompleted = 'winr_rewarded_video_completed';
-  static const String rewardedVideoFailed = 'winr_rewarded_video_failed';
-  
   // Streak events
   static const String streakBroken = 'winr_streak_broken';
-  static const String weeklyBonusEarned = 'winr_weekly_bonus_earned';
-  static const String monthlyBonusEarned = 'winr_monthly_bonus_earned';
   
   // Error events
   static const String error = 'winr_error';

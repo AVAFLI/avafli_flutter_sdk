@@ -1,7 +1,7 @@
 /// Represents the entries granted to a user for a daily claim.
 /// 
 /// Contains both base entries (from the daily streak) and any bonus entries
-/// (from weekly/monthly bonuses or rewarded videos).
+/// (from streak milestones and other bonus sources).
 class DailyEntryGrant {
   /// Base entries earned from the daily streak
   final int baseEntries;

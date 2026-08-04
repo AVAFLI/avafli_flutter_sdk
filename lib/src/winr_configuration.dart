@@ -21,7 +21,7 @@ class WINRConfiguration {
   /// Your WINR API key from the publisher dashboard. Required.
   final String apiKey;
 
-  /// Target environment (production or staging). Required.
+  /// Target environment. Defaults to production.
   final WINREnvironment environment;
 
   /// The authenticated user. Required.
@@ -30,12 +30,12 @@ class WINRConfiguration {
   /// Your app's bundle identifier. Must match what's registered in the WINR dashboard.
   final String bundleId;
 
-  /// Optional behavior toggles (logging, analytics, push, rewarded video).
+  /// Optional behavior toggles (logging, analytics, push).
   final WINROptions options;
 
   /// Creates a new [WINRConfiguration].
   ///
-  /// [apiKey], [environment], [bundleId], and [user] are required.
+  /// [apiKey], [bundleId], and [user] are required.
   /// [options] defaults to [WINROptions()] if not provided.
   const WINRConfiguration({
     required this.apiKey,
@@ -48,7 +48,7 @@ class WINRConfiguration {
   /// Default branding (server-driven overrides are merged at runtime).
   WINRBranding get branding => WINRBranding.defaultBranding();
 
-  /// Base URL for the Cloud Functions backend based on environment.
+  /// Base URL for the Cloud Functions backend.
   String get baseURL {
     return 'https://us-central1-winr-9c11f.cloudfunctions.net';
   }
