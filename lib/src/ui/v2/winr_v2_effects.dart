@@ -1,15 +1,18 @@
-// Motion for the V2 experience, matched to the Figma prototype GIFs:
-// confetti fields/bursts, the draw-on white checkmark, and the pulsing glow on
-// the active streak tile. Everything is drawn natively (no GIFs) so it stays
-// crisp at any scale and respects the publisher accent.
+// Motion for the V2 experience: Joe's ACTUAL Figma animation files (bundled
+// GIFs, played via [WINRV2GifView]) for the Day 2+ reveal beat, plus natively
+// drawn confetti/checkmark/glow used by the modals and toast bar.
 //
 // Mirrors the iOS SDK's WINRV2Effects.swift — the confetti particle math is a
 // 1:1 port so both platforms animate identically.
 
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import 'winr_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Confetti
@@ -282,6 +285,188 @@ class _CheckmarkPainter extends CustomPainter {
       oldDelegate.circleProgress != circleProgress ||
       oldDelegate.checkProgress != checkProgress ||
       oldDelegate.lineWidth != lineWidth;
+}
+
+// ---------------------------------------------------------------------------
+// Bundled GIF playback (Joe's Figma animation files)
+// ---------------------------------------------------------------------------
+
+/// A decoded GIF: frames plus the per-frame start times from the file's own
+/// delay table (port of iOS `WINRV2GifAsset`, built on Flutter's multi-frame
+/// `ui.Codec`). Decoding the 47-frame tile GIF takes hundreds of
+/// milliseconds, so decoded assets are cached in memory (keyed by asset name)
+/// and prewarmed at drawer-open, BEFORE the reveal beat needs them.
+class WINRV2GifAsset {
+  final List<ui.Image> frames;
+
+  /// Cumulative start time (seconds) of each frame.
+  final List<double> starts;
+  final double duration;
+
+  WINRV2GifAsset._(this.frames, this.starts, this.duration);
+
+  /// Frame for [time] seconds into playback. Past the end: the LAST frame
+  /// (one-shot playback stops there) unless [loops].
+  ui.Image frameAt(double time, {bool loops = false}) {
+    var t = time;
+    if (loops && duration > 0) t = t % duration;
+    if (t >= duration) return frames.last;
+    var index = 0;
+    for (var i = 0; i < starts.length; i++) {
+      if (starts[i] <= t) index = i;
+    }
+    return frames[index];
+  }
+
+  // Cache ---------------------------------------------------------------
+
+  static final Map<String, Future<WINRV2GifAsset>> _loads = {};
+  static final Map<String, WINRV2GifAsset> _cache = {};
+
+  /// Synchronous cache hit — non-null once a [load]/[prewarm] has finished,
+  /// so a reveal-beat mount can paint frame 0 on its very first build.
+  static WINRV2GifAsset? cached(String name) => _cache[name];
+
+  /// Decode into the cache ahead of time so a later mount plays instantly.
+  static void prewarm(String name) {
+    // Errors are swallowed here; a mount retries via [load].
+    load(name).then((_) {}, onError: (Object _, StackTrace __) {});
+  }
+
+  /// Cached load; kicks off (or joins) the decode on a miss.
+  static Future<WINRV2GifAsset> load(String name) {
+    return _loads.putIfAbsent(name, () async {
+      try {
+        final asset = await _decode(name);
+        _cache[name] = asset;
+        return asset;
+      } catch (_) {
+        _loads.remove(name); // Allow a retry after a failed decode.
+        rethrow;
+      }
+    });
+  }
+
+  static Future<WINRV2GifAsset> _decode(String name) async {
+    ByteData data;
+    try {
+      // Host apps see this package's assets under the packages/ prefix…
+      data = await rootBundle.load('packages/${WINRV2Assets.package}/$name');
+    } catch (_) {
+      // …while the SDK's own tests/tooling see the raw key.
+      data = await rootBundle.load(name);
+    }
+    // Downsample like iOS (maxPixelSize 600): the 1500×1500 tile burst only
+    // ever renders at ~200 logical px, and full-size frames would be huge.
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      targetWidth: 600,
+      allowUpscaling: false,
+    );
+    final frames = <ui.Image>[];
+    final starts = <double>[];
+    var t = 0.0;
+    for (var i = 0; i < codec.frameCount; i++) {
+      final frame = await codec.getNextFrame();
+      frames.add(frame.image);
+      starts.add(t);
+      // Honor the file's own delay table; floor pathological 0-delay frames
+      // (same 20ms floor as iOS).
+      t += math.max(frame.duration.inMicroseconds / 1e6, 0.02);
+    }
+    codec.dispose();
+    if (frames.isEmpty) {
+      throw StateError('WINRV2GifAsset: $name decoded no frames');
+    }
+    return WINRV2GifAsset._(frames, starts, t);
+  }
+}
+
+/// Plays a bundled GIF ONCE, starting exactly when the widget mounts,
+/// honoring the file's own per-frame delays (port of iOS `WINRV2GifView`).
+/// When the last frame's delay elapses the ticker stops there and
+/// [onFinished] fires — the host removes the widget. [loops] opts into
+/// continuous looping instead.
+class WINRV2GifView extends StatefulWidget {
+  final String name;
+  final bool loops;
+  final VoidCallback? onFinished;
+
+  const WINRV2GifView(
+    this.name, {
+    super.key,
+    this.loops = false,
+    this.onFinished,
+  });
+
+  @override
+  State<WINRV2GifView> createState() => _WINRV2GifViewState();
+}
+
+class _WINRV2GifViewState extends State<WINRV2GifView>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  WINRV2GifAsset? _asset;
+  double _elapsed = 0;
+  bool _finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mount IS the beat: the playback clock starts NOW, even if the frames
+    // are still decoding (prewarming makes that a non-event) — a slow decode
+    // skips ahead to the right frame rather than stretching the beat.
+    _ticker = createTicker(_tick)..start();
+    final hit = WINRV2GifAsset.cached(widget.name);
+    if (hit != null) {
+      _asset = hit;
+    } else {
+      WINRV2GifAsset.load(widget.name).then((asset) {
+        if (!mounted || _asset != null || _finished) return;
+        setState(() => _asset = asset);
+      }, onError: (Object _, StackTrace __) {
+        // Undecodable asset: finish immediately so a one-shot overlay still
+        // cleans itself up instead of sitting invisible forever.
+        if (!mounted || _finished) return;
+        _ticker.stop();
+        setState(() => _finished = true);
+        widget.onFinished?.call();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  void _tick(Duration elapsed) {
+    final t = elapsed.inMicroseconds / 1e6;
+    final asset = _asset;
+    if (asset != null && !widget.loops && t >= asset.duration) {
+      // Deterministic end of playback: the codec's own delay table says the
+      // last frame is over. Stop on it and tell the host.
+      _ticker.stop();
+      setState(() {
+        _elapsed = asset.duration;
+        _finished = true;
+      });
+      widget.onFinished?.call();
+      return;
+    }
+    setState(() => _elapsed = t);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = _asset;
+    if (asset == null) return const SizedBox.expand();
+    return RawImage(
+      image: asset.frameAt(_elapsed, loops: widget.loops),
+      fit: BoxFit.contain,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

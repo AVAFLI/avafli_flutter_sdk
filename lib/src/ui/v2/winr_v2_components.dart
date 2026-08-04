@@ -304,8 +304,8 @@ class WINRV2PrizeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Counts up when the total changes (the Day 2+ reveal
-                    // counts up from the pre-claim total) and pops a small
-                    // star burst as it lands.
+                    // counts up from the pre-claim total) and pops Joe's
+                    // one-shot confetti-burst GIF as it lands.
                     WINRV2CountUpText(value: totalEntries, accent: accent),
                     Text(
                       'Total Entries',
@@ -582,7 +582,7 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
 }
 
 /// A single 106x134 streak day tile (completed / active / locked states).
-class WINRV2StreakTile extends StatelessWidget {
+class WINRV2StreakTile extends StatefulWidget {
   final Color accent;
   final int day;
   final int entries;
@@ -598,7 +598,20 @@ class WINRV2StreakTile extends StatelessWidget {
     this.visitMode = false,
   });
 
-  String get _noun => visitMode ? 'VISIT' : 'DAY';
+  @override
+  State<WINRV2StreakTile> createState() => _WINRV2StreakTileState();
+}
+
+class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
+  /// One-shot: Joe's explosion GIF has played; rest on the static check.
+  bool _burstFinished = false;
+
+  Color get accent => widget.accent;
+  int get day => widget.day;
+  int get entries => widget.entries;
+  WINRV2TileState get state => widget.state;
+
+  String get _noun => widget.visitMode ? 'VISIT' : 'DAY';
 
   bool get _hasAccentBackground =>
       state == WINRV2TileState.active || state == WINRV2TileState.ready;
@@ -607,18 +620,29 @@ class WINRV2StreakTile extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (state) {
       case WINRV2TileState.active:
-        // Active-tile motion: breathing glow + confetti specks scattered
-        // around the tile.
+        // Joe's ACTUAL Figma animation: the explosion GIF mounts exactly
+        // when the tile flips to active (the reveal beat), plays ONCE at
+        // ~150% of the tile so it overflows the bounds like an explosion,
+        // then is REMOVED — the tile rests on the same small check as
+        // completed tiles. The breathing glow stays underneath.
         return Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            const Positioned(
-              width: 152,
-              height: 176,
-              child: WINRV2Confetti(count: 12, speed: 0.7),
-            ),
             WINRV2PulseGlow(accent: accent, child: _card()),
+            if (!_burstFinished)
+              Positioned(
+                width: 200,
+                height: 200,
+                child: IgnorePointer(
+                  child: WINRV2GifView(
+                    WINRV2Assets.tileBurst,
+                    onFinished: () {
+                      if (mounted) setState(() => _burstFinished = true);
+                    },
+                  ),
+                ),
+              ),
           ],
         );
       case WINRV2TileState.ready:
@@ -746,11 +770,18 @@ class WINRV2StreakTile extends StatelessWidget {
           child: WINRV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
         );
       case WINRV2TileState.active:
-        return const SizedBox(
-          width: 20,
-          height: 20,
-          child: WINRV2AnimatedCheckmark(lineWidth: 2.5),
-        );
+        // During the burst the GIF paints the check; the slot keeps its size
+        // so the card layout matches other states. Once the one-shot burst
+        // finishes, the tile rests on the same small static check as
+        // completed tiles.
+        if (_burstFinished) {
+          return const SizedBox(
+            width: 20,
+            height: 20,
+            child: WINRV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
+          );
+        }
+        return const SizedBox(width: 20, height: 20);
       case WINRV2TileState.ready:
         // Joe's frames: the current tile pre-check shows ONLY the glowing
         // number — no icon. The enclosing 24x24 slot keeps its size so the
@@ -1176,8 +1207,8 @@ class WINRV2LegalLinks extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// The stats-strip total, ported from iOS `WINRV2CountUpText`: counts up
-/// smoothly (~0.7s ease-out) when the value changes and pops a brief star
-/// burst as it lands on the new total.
+/// smoothly (~0.7s ease-out) when the value changes and pops Joe's one-shot
+/// confetti-burst GIF as it lands on the new total.
 class WINRV2CountUpText extends StatefulWidget {
   final int value;
   final Color accent;
@@ -1197,7 +1228,6 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
   late final AnimationController _controller;
   late int _from;
   bool _burst = false;
-  Timer? _burstTimer;
 
   @override
   void initState() {
@@ -1209,11 +1239,8 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
       value: 1,
     )..addStatusListener((status) {
         if (status != AnimationStatus.completed) return;
+        // The GIF's onFinished removes the burst overlay.
         setState(() => _burst = true);
-        _burstTimer = Timer(const Duration(milliseconds: 900), () {
-          if (!mounted) return;
-          setState(() => _burst = false);
-        });
       });
   }
 
@@ -1224,14 +1251,12 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
     // Restart the ramp from whatever number is currently displayed.
     final eased = Curves.easeOutCubic.transform(_controller.value);
     _from = (_from + (oldWidget.value - _from) * eased).round();
-    _burstTimer?.cancel();
     _burst = false;
     _controller.forward(from: 0);
   }
 
   @override
   void dispose() {
-    _burstTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -1260,11 +1285,16 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
           },
         ),
         if (_burst)
-          const Positioned(
+          Positioned(
             width: 54,
-            height: 40,
+            height: 44,
             child: IgnorePointer(
-              child: WINRV2Confetti(count: 8, speed: 1.4),
+              child: WINRV2GifView(
+                WINRV2Assets.confettiBurst,
+                onFinished: () {
+                  if (mounted) setState(() => _burst = false);
+                },
+              ),
             ),
           ),
       ],

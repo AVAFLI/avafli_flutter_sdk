@@ -35,6 +35,7 @@ import '../../winr_configuration.dart';
 import '../../winr_error.dart';
 import 'winr_v2_claim.dart';
 import 'winr_v2_components.dart';
+import 'winr_v2_effects.dart';
 import 'winr_v2_screens.dart';
 import 'winr_v2_theme.dart';
 import 'winr_v2_winner.dart';
@@ -225,6 +226,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _drawerAppeared = true);
     });
+    // Decode Joe's Figma reveal GIFs NOW so mounting them at the reveal beat
+    // (drawer settle + 0.8s) plays instantly from frame 0.
+    WINRV2GifAsset.prewarm(WINRV2Assets.tileBurst);
+    WINRV2GifAsset.prewarm(WINRV2Assets.confettiBurst);
     _load();
   }
 
