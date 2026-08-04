@@ -908,6 +908,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           key: const ValueKey('winner-form'),
           accent: _accent,
           logoUrl: _logoUrl,
+          rulesUrl: _rulesUrl,
           initialForm: _claimFormPrefill,
           isSubmitting: _isSubmittingClaim,
           submitError: _claimSubmitError,

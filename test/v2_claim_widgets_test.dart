@@ -83,11 +83,15 @@ void main() {
     // email, the claim is keyed to the account server-side.
     expect(find.text('On file with your winning entry'), findsOneWidget);
     expect(find.text('United States'), findsOneWidget);
+    expect(
+      find.text('Your information is secure and encrypted.'),
+      findsOneWidget,
+    );
 
     // Incomplete form: SUBMIT is disabled.
-    await tester.ensureVisible(find.text('SUBMIT'));
+    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
     await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('SUBMIT'), warnIfMissed: false);
+    await tester.tap(find.text('SUBMIT PRIZE CLAIM'), warnIfMissed: false);
     expect(submitted, isNull);
 
     // Fill the required fields (first/last are prefilled; text fields run
@@ -105,13 +109,35 @@ void main() {
     await tester.tap(find.text('Alabama').last);
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('SUBMIT'));
+    // Still gated: all three consents must be affirmed.
+    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
     await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('SUBMIT'));
+    await tester.tap(find.text('SUBMIT PRIZE CLAIM'), warnIfMissed: false);
+    expect(submitted, isNull);
+
+    // Tick the three consent checkboxes (tap the 24pt box at the row's left
+    // edge — the underlined rules/privacy spans open a URL instead).
+    for (final key in const [
+      ValueKey('consent-accuracy'),
+      ValueKey('consent-likeness'),
+      ValueKey('consent-rules'),
+    ]) {
+      await tester.ensureVisible(find.byKey(key));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tapAt(tester.getTopLeft(find.byKey(key)) + const Offset(12, 12));
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('SUBMIT PRIZE CLAIM'));
     expect(submitted, isNotNull);
     expect(submitted!.isValid, isTrue);
     expect(submitted!.state, 'Alabama');
     expect(submitted!.zip, '11737');
+    expect(submitted!.confirmsAccuracy, isTrue);
+    expect(submitted!.authorizesLikeness, isTrue);
+    expect(submitted!.agreesToRules, isTrue);
   });
 
   testWidgets('claim form surfaces inline submit error', (tester) async {

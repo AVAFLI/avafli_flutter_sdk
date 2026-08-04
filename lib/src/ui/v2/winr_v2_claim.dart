@@ -11,8 +11,10 @@
 // (functions/src/prizeclaim.ts) and `SubmitPrizeClaimRequest.photoBase64`
 // stays wired for future use.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'winr_v2_components.dart';
 import 'winr_v2_theme.dart';
@@ -41,6 +43,13 @@ class WINRPrizeClaimForm {
   /// Always null on Flutter — see the photo note at the top of this file.
   String? photoBase64;
 
+  /// Explicit consents (Joe's "review and agree" checkboxes). All three are
+  /// REQUIRED — the likeness release in particular must be an affirmative
+  /// user action for the publicity authorization to hold up.
+  bool confirmsAccuracy;
+  bool authorizesLikeness;
+  bool agreesToRules;
+
   WINRPrizeClaimForm({
     this.firstName = '',
     this.lastName = '',
@@ -51,6 +60,9 @@ class WINRPrizeClaimForm {
     this.state = '',
     this.zip = '',
     this.photoBase64,
+    this.confirmsAccuracy = false,
+    this.authorizesLikeness = false,
+    this.agreesToRules = false,
   });
 
   static bool isValidZip(String zip) {
@@ -58,15 +70,19 @@ class WINRPrizeClaimForm {
     return z.length == 5 && RegExp(r'^\d{5}$').hasMatch(z);
   }
 
-  /// SUBMIT enables when every required field is present and the zip is a
-  /// 5-digit US code. Phone, apartment, and photo are optional.
+  /// SUBMIT enables when every required field is present, the zip is a
+  /// 5-digit US code, and all three consents are affirmed. Phone, apartment,
+  /// and photo are optional.
   bool get isValid =>
       firstName.trim().isNotEmpty &&
       lastName.trim().isNotEmpty &&
       street.trim().isNotEmpty &&
       city.trim().isNotEmpty &&
       state.trim().isNotEmpty &&
-      isValidZip(zip);
+      isValidZip(zip) &&
+      confirmsAccuracy &&
+      authorizesLikeness &&
+      agreesToRules;
 
   /// "First L." — the public display name on the winner card.
   String get displayName {
@@ -366,6 +382,10 @@ class WINRV2ClaimFormView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
+  /// Destination of the Official Rules / Privacy Policy consent links (the
+  /// same URL the dashboard legal links open). Null → the links are inert.
+  final String? rulesUrl;
+
   /// Host-app-provided identity prefill (first/last name, phone).
   final WINRPrizeClaimForm initialForm;
   final bool isSubmitting;
@@ -380,6 +400,7 @@ class WINRV2ClaimFormView extends StatefulWidget {
     super.key,
     required this.accent,
     required this.logoUrl,
+    this.rulesUrl,
     required this.initialForm,
     required this.isSubmitting,
     required this.submitError,
@@ -401,6 +422,14 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
   late final TextEditingController _zip;
   String _state = '';
 
+  // Joe's "review and agree" consents — all three required before SUBMIT.
+  bool _confirmsAccuracy = false;
+  bool _authorizesLikeness = false;
+  bool _agreesToRules = false;
+
+  late final TapGestureRecognizer _rulesTap;
+  late final TapGestureRecognizer _privacyTap;
+
   @override
   void initState() {
     super.initState();
@@ -413,6 +442,11 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
     _city = TextEditingController(text: form.city);
     _zip = TextEditingController(text: form.zip);
     _state = form.state;
+    _confirmsAccuracy = form.confirmsAccuracy;
+    _authorizesLikeness = form.authorizesLikeness;
+    _agreesToRules = form.agreesToRules;
+    _rulesTap = TapGestureRecognizer()..onTap = _openRules;
+    _privacyTap = TapGestureRecognizer()..onTap = _openRules;
     for (final c in [_firstName, _lastName, _phone, _street, _apt, _city, _zip]) {
       c.addListener(() => setState(() {}));
     }
@@ -423,7 +457,19 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
     for (final c in [_firstName, _lastName, _phone, _street, _apt, _city, _zip]) {
       c.dispose();
     }
+    _rulesTap.dispose();
+    _privacyTap.dispose();
     super.dispose();
+  }
+
+  /// Official Rules / Privacy Policy destination — the same URL the
+  /// dashboard's legal links open.
+  void _openRules() {
+    final url = widget.rulesUrl;
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   WINRPrizeClaimForm get _form => WINRPrizeClaimForm(
@@ -435,6 +481,9 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
         city: _city.text,
         state: _state,
         zip: _zip.text,
+        confirmsAccuracy: _confirmsAccuracy,
+        authorizesLikeness: _authorizesLikeness,
+        agreesToRules: _agreesToRules,
       );
 
   @override
@@ -590,6 +639,8 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
                       fixedText: form.country,
                       disabled: true,
                     ),
+                    const SizedBox(height: 24),
+                    _consentSection(),
                   ],
                 ),
               ),
@@ -613,13 +664,104 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: WINRV2PillButton(
                   accent: widget.accent,
-                  title: 'SUBMIT',
+                  title: 'SUBMIT PRIZE CLAIM',
                   isLoading: widget.isSubmitting,
                   enabled: form.isValid,
                   onTap: () => widget.onSubmit(_form),
                 ),
               ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Container(
+                  height: 46,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0x0FFFFFFF), // white 6%
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock, size: 16, color: widget.accent),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Your information is secure and encrypted.',
+                        style: WINRV2Font.inter(
+                          13,
+                          weight: FontWeight.w500,
+                          color: const Color(0xD9FFFFFF), // white 85%
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 34),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Joe's "review and agree" consents — all three required before SUBMIT.
+  Widget _consentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _WINRClaimConsentRow(
+          key: const ValueKey('consent-accuracy'),
+          accent: widget.accent,
+          isOn: _confirmsAccuracy,
+          onToggle: () =>
+              setState(() => _confirmsAccuracy = !_confirmsAccuracy),
+          label: const TextSpan(
+            text: 'I confirm my information is accurate.',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _WINRClaimConsentRow(
+          key: const ValueKey('consent-likeness'),
+          accent: widget.accent,
+          isOn: _authorizesLikeness,
+          onToggle: () =>
+              setState(() => _authorizesLikeness = !_authorizesLikeness),
+          label: const TextSpan(
+            text: "I authorize this app's publisher and its promotional "
+                'partners to use my name, city, profile photo, and likeness '
+                'for winner announcements and promotional purposes.',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _WINRClaimConsentRow(
+          key: const ValueKey('consent-rules'),
+          accent: widget.accent,
+          isOn: _agreesToRules,
+          onToggle: () => setState(() => _agreesToRules = !_agreesToRules),
+          label: TextSpan(
+            children: [
+              const TextSpan(text: 'I agree to the '),
+              TextSpan(
+                text: 'Official Rules',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Colors.white,
+                ),
+                recognizer: _rulesTap,
+              ),
+              const TextSpan(text: ' and '),
+              TextSpan(
+                text: 'Privacy Policy',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Colors.white,
+                ),
+                recognizer: _privacyTap,
+              ),
+              const TextSpan(text: '.'),
             ],
           ),
         ),
@@ -677,6 +819,65 @@ class _WINRV2ClaimFormViewState extends State<WINRV2ClaimFormView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A single consent checkbox row (accent square check + wrapping label).
+/// Tapping anywhere on the row toggles; the underlined Official Rules /
+/// Privacy Policy spans open their URL instead via their tap recognizers.
+class _WINRClaimConsentRow extends StatelessWidget {
+  final Color accent;
+  final bool isOn;
+  final VoidCallback onToggle;
+  final TextSpan label;
+
+  const _WINRClaimConsentRow({
+    super.key,
+    required this.accent,
+    required this.isOn,
+    required this.onToggle,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: isOn,
+      child: GestureDetector(
+        onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isOn ? accent : const Color(0x12FFFFFF), // white 7%
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: isOn ? accent : const Color(0x66FFFFFF), // white 40%
+                  width: 1.5,
+                ),
+              ),
+              child: isOn
+                  ? const Icon(Icons.check, size: 15, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: WINRV2Font.inter(14, height: 1.3),
+                  children: [label],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

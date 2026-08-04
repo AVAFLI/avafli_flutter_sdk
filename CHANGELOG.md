@@ -7,7 +7,8 @@
   winner (`prizeClaim.status == "pending"` on `getActiveGiveaway`), the drawer
   opens on the winner splash instead of the dashboard: CONGRATULATIONS! +
   prize strip → single-page claim form (name, address, 50-state picker,
-  optional phone; email stays locked to the account) → `submitPrizeClaim` →
+  optional phone, three required consent checkboxes — accuracy, likeness
+  release, rules+privacy; email stays locked to the account) → `submitPrizeClaim` →
   confirmation with the gold OFFICIAL WINNER card and RETURN TO APP. Appears
   automatically; no integration work. The daily auto-claim still fires
   silently while the flow is up, and an already-submitted claim shows the

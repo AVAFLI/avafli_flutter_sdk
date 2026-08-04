@@ -14,6 +14,9 @@ WINRPrizeClaimForm _validForm() => WINRPrizeClaimForm(
       city: 'Brooklyn',
       state: 'New York',
       zip: '11737',
+      confirmsAccuracy: true,
+      authorizesLikeness: true,
+      agreesToRules: true,
     );
 
 void main() {
@@ -36,6 +39,12 @@ void main() {
       expect((_validForm()..street = '   ').isValid, isFalse);
       expect((_validForm()..city = '   ').isValid, isFalse);
       expect((_validForm()..state = '   ').isValid, isFalse);
+    });
+
+    test('all three consents are required', () {
+      expect((_validForm()..confirmsAccuracy = false).isValid, isFalse);
+      expect((_validForm()..authorizesLikeness = false).isValid, isFalse);
+      expect((_validForm()..agreesToRules = false).isValid, isFalse);
     });
 
     test('zip validation', () {
