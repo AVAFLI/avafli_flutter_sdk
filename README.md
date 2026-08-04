@@ -13,10 +13,10 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 
 **Key capabilities:**
 - **Daily entry sweepstakes** — Users earn entries every day they engage
-- **Bonus entries via rewarded video** — Monetize attention with opt-in ads
+- **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
-- **Server-driven UI** — Branding, prizes, and copy update without app releases
-- **GDPR/CCPA compliant** — Built-in consent flows and user data deletion
+- **Server-driven branding** — Logo, prize image, and primary color update without app releases
+- **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out, and user data deletion
 - **Analytics forwarding** — Route SDK events to your existing analytics stack
 
 ## Quick Start
@@ -37,7 +37,11 @@ final config = WINRConfiguration(
 );
 await WINR.configure(config);
 
-// 2. Present the experience
+// 2. Attach the SDK navigator key so the experience can auto-open on the
+//    first app-open of each day
+MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
+
+// 3. (Optional) Present the experience manually at any time
 await WINR.present(context);
 ```
 
@@ -47,7 +51,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^1.0.0
+  winr_flutter_sdk: ^2.0.0
 ```
 
 Then run:
@@ -106,17 +110,19 @@ final success = await WINR.configure(config);
 
 ## Present the Experience
 
-Launch the full-screen WINR experience:
+The V2 experience presents itself automatically once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3), and the RTD opt-out.
+
+You can also launch the bottom-drawer experience manually:
 
 ```dart
 final grant = await WINR.present(context);
 
-if (grant.total > 0) {
+if (grant != null) {
   print('${grant.baseEntries} base + ${grant.bonusEntries} bonus = ${grant.total} total');
 }
 ```
 
-The method returns a `DailyEntryGrant` with the entries earned during the session.
+The method returns a `DailyEntryGrant` when entries were claimed during the session, or `null` if the user dismissed without a new claim.
 
 ## Push Notifications
 
@@ -153,12 +159,13 @@ Set `enablePushReminders: true` in `WINROptions` during configuration.
 
 ## Customization
 
-All branding, themes, and copy are managed server-side through the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard):
+The V2 experience is hardcoded to the WINR design; publishers customize exactly three things through the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard):
 
-- **Colors & Branding** — Primary colors, logos, backgrounds
-- **Copy & Messaging** — Headlines, CTAs, legal text
-- **Prize Configuration** — Active giveaways, entry mechanics
-- **Push Notifications** — Reminder schedules and messaging
+- **Logo** — Shown in the drawer header
+- **Prize image** — Art for the dashboard prize card
+- **Primary color** — Accent for CTAs, streak tiles, and highlights
+
+Plus prize configuration (active giveaways, ladder, milestones) and push reminder schedules.
 
 Changes apply instantly across all app installations without requiring an app update.
 
@@ -185,11 +192,9 @@ await WINR.configure(WINRConfiguration(
 ```
 
 **Events emitted by the SDK:**
-- `winr.session_started` — User opened the WINR experience
-- `winr.entry_granted` — Daily entries awarded
-- `winr.bonus_entry_granted` — Bonus entries earned via rewarded video
-- `winr.session_completed` — User closed the WINR experience
-- `winr.push_registered` — Device registered for push reminders
+- `winr_experience_presented` — User opened the WINR experience
+- `winr_daily_entry_claimed` — Daily entries awarded
+- `winr_experience_dismissed` — User closed the WINR experience without a new claim
 
 ## GDPR / Delete User Data
 
@@ -208,7 +213,8 @@ This permanently removes all user data, entries, preferences, and consent record
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
-| `WINR.present(context)` | `Future<DailyEntryGrant>` | Launch the full-screen WINR experience |
+| `WINR.present(context)` | `Future<DailyEntryGrant?>` | Launch the WINR bottom-drawer experience |
+| `WINR.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
 | `WINR.deleteUserData()` | `Future<void>` | Permanently delete all user data |
 
 ### Push Notifications
