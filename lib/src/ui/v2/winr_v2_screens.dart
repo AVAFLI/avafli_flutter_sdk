@@ -495,6 +495,12 @@ class WINRV2DashboardView extends StatelessWidget {
                     accent: accent,
                     nextEntries: _nextEntries,
                     visitMode: _visitMode,
+                    // Delta A: once today's claim is revealed (or the user
+                    // reopens in a claimed state) the bar celebrates the
+                    // entries that were just added instead of pitching
+                    // tomorrow. Pre-reveal keeps the come-back copy.
+                    claimed: claimedToday && !_preReveal,
+                    claimedEntries: pendingClaimEntries ?? entriesToday,
                   ),
                   const SizedBox(height: 15),
                   Padding(

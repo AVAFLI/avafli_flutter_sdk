@@ -169,9 +169,19 @@ bool winrV2ShowsValueLine(String description, int value) =>
     !description.contains('\$${winrV2FormatInt(value)}') &&
     !description.contains('\$$value');
 
-/// Day 2+ prize card: white stats strip (streak + total entries) over the
-/// prize image. The image is publisher-configurable (prizeImageUrl); default
-/// is the bundled cash pile with "WIN $X,XXX" overlaid.
+/// The white-strip headline (Day-1 capture + winner splash):
+/// cash → "$1,000.00 CASH PRIZE"; other → "Win a $500 Amazon Gift Card".
+/// Mirrors iOS `WINRV2PrizeText.stripHeadline`.
+String winrV2StripHeadline(String description, int value) =>
+    winrV2IsCashPrize(description)
+        ? '\$${winrV2FormatInt(value)}.00 CASH PRIZE'
+        : 'Win ${winrV2Article(description)} $description';
+
+/// Day 2+ prize card (Joe's Aug-2026 dark full-bleed revision): the prize art
+/// fills the WHOLE card, a solid black stats strip (streak + total entries)
+/// sits inside the top edge, and the prize-derived headline rides the bottom
+/// over a black→transparent scrim. The image is publisher-configurable
+/// (prizeImageUrl); default is the bundled cash pile.
 class WINRV2PrizeCard extends StatelessWidget {
   final Color accent;
   final int streakDay;
@@ -192,21 +202,56 @@ class WINRV2PrizeCard extends StatelessWidget {
     this.visitMode = false,
   });
 
+  /// Cash prizes render Joe's right-aligned "WIN $1,000 / CASH PRIZE" lockup;
+  /// other prizes render "Win a {Prize}" + "$X.00 VALUE!".
+  bool get _isCashPrize => winrV2IsCashPrize(prizeDescription);
+
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [_statsStrip(), _promo()],
+      child: SizedBox(
+        height: 200,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _hero(),
+            Align(alignment: Alignment.topCenter, child: _statsStrip()),
+            Align(alignment: Alignment.bottomCenter, child: _headline()),
+          ],
+        ),
       ),
     );
   }
 
+  /// The prize art fills the whole card (publisher image, else the bundled
+  /// cash pile).
+  Widget _hero() {
+    final url = prizeImageUrl;
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const ColoredBox(color: WINRV2Colors.deepCharcoal),
+        loadingBuilder: (context, child, progress) => progress == null
+            ? child
+            : const ColoredBox(color: WINRV2Colors.deepCharcoal),
+      );
+    }
+    return Image.asset(
+      WINRV2Assets.cashHero,
+      package: WINRV2Assets.package,
+      fit: BoxFit.cover,
+    );
+  }
+
+  /// Solid black strip inside the top of the card: accent title + white sub.
   Widget _statsStrip() {
     return Container(
       height: 46,
-      color: Colors.white,
+      color: Colors.black,
       child: Row(
         children: [
           Expanded(
@@ -234,7 +279,6 @@ class WINRV2PrizeCard extends StatelessWidget {
                       style: WINRV2Font.inter(
                         12,
                         weight: FontWeight.w500,
-                        color: WINRV2Colors.gunmetal,
                         height: 1.1,
                       ),
                     ),
@@ -282,7 +326,6 @@ class WINRV2PrizeCard extends StatelessWidget {
                       style: WINRV2Font.inter(
                         12,
                         weight: FontWeight.w500,
-                        color: WINRV2Colors.gunmetal,
                         height: 1.1,
                       ),
                     ),
@@ -296,148 +339,89 @@ class WINRV2PrizeCard extends StatelessWidget {
     );
   }
 
-  Widget _promo() {
-    final url = prizeImageUrl;
-    if (url != null && url.isNotEmpty) {
-      // Publisher-supplied prize art fills the card as-is.
-      return SizedBox(
-        height: 150,
-        width: double.infinity,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              const ColoredBox(color: WINRV2Colors.gunmetal),
-          loadingBuilder: (context, child, progress) => progress == null
-              ? child
-              : const ColoredBox(color: WINRV2Colors.gunmetal),
-        ),
-      );
-    }
-
-    // Default: bundled cash pile fading up into white, with the prize-derived
-    // headline over the fade (Figma cash card).
-    final isCash = winrV2IsCashPrize(prizeDescription);
-    return SizedBox(
-      height: 150,
+  /// Prize headline over the bottom scrim.
+  Widget _headline() {
+    return Container(
       width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ClipRect(
-            child: OverflowBox(
-              maxHeight: double.infinity,
-              alignment: Alignment.topCenter,
-              child: Transform.translate(
-                offset: const Offset(0, 14),
-                child: Image.asset(
-                  WINRV2Assets.cashHero,
-                  package: WINRV2Assets.package,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              ),
-            ),
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0, 0.3, 0.62],
-                colors: [
-                  Color(0xFFFFFFFF),
-                  Color(0x8CFFFFFF),
-                  Color(0x00FFFFFF),
-                ],
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: isCash ? _cashLockup() : _prizeLockup(),
-          ),
-        ],
+      padding: const EdgeInsets.only(left: 14, right: 14, top: 34, bottom: 10),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0, 0.45, 1],
+          colors: [
+            Color(0x00000000),
+            Color(0x8C000000), // black 55%
+            Color(0xE6000000), // black 90%
+          ],
+        ),
       ),
+      child: _isCashPrize ? _cashLockup() : _prizeLockup(),
     );
   }
 
   Widget _cashLockup() {
-    // Figma cash lockup: "WIN $1,000" (Black 54) over "CASH PRIZE" (Black 19),
-    // right-aligned.
-    return Padding(
-      padding: const EdgeInsets.only(left: 14, right: 14, top: 4),
-      child: SizedBox(
-        width: double.infinity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                'WIN \$${winrV2FormatInt(prizeValue)}',
-                maxLines: 1,
-                style: WINRV2Font.inter(
-                  54,
-                  weight: FontWeight.w900,
-                  color: WINRV2Colors.gunmetal,
-                  letterSpacing: -2.7,
-                  height: 1.0,
-                ),
-              ),
+    // "WIN $1,000" (Black 44) over "CASH PRIZE" (Black 19), right-aligned.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'WIN \$${winrV2FormatInt(prizeValue)}',
+            maxLines: 1,
+            style: WINRV2Font.inter(
+              44,
+              weight: FontWeight.w900,
+              letterSpacing: -2.2,
+              height: 1.0,
             ),
-            Transform.translate(
-              offset: const Offset(0, -6),
-              child: Text(
-                'CASH PRIZE',
-                style: WINRV2Font.inter(
-                  19,
-                  weight: FontWeight.w900,
-                  color: WINRV2Colors.gunmetal,
-                  letterSpacing: -0.57,
-                  height: 1.0,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        Transform.translate(
+          offset: const Offset(0, -5),
+          child: Text(
+            'CASH PRIZE',
+            style: WINRV2Font.inter(
+              19,
+              weight: FontWeight.w900,
+              letterSpacing: -0.57,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _prizeLockup() {
-    // "WIN A $500 AMAZON GIFT CARD" + "$500.00 Value!"
-    final article = winrV2Article(prizeDescription).toUpperCase();
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 12, top: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    // Centered "Win a {Prize}" + accent "$X.00 VALUE!".
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Win ${winrV2Article(prizeDescription)} $prizeDescription',
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: WINRV2Font.inter(
+            28,
+            weight: FontWeight.w900,
+            letterSpacing: -1.0,
+            height: 1.0,
+          ),
+        ),
+        if (winrV2ShowsValueLine(prizeDescription, prizeValue))
           Text(
-            'WIN $article ${prizeDescription.toUpperCase()}',
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
+            '\$${winrV2FormatInt(prizeValue)}.00 VALUE!',
             style: WINRV2Font.inter(
-              30,
+              15,
               weight: FontWeight.w900,
-              color: WINRV2Colors.gunmetal,
-              letterSpacing: -1.1,
-              height: 1.0,
+              color: accent,
             ),
           ),
-          if (winrV2ShowsValueLine(prizeDescription, prizeValue))
-            Text(
-              '\$${winrV2FormatInt(prizeValue)}.00 Value!',
-              style: WINRV2Font.inter(
-                15,
-                weight: FontWeight.w700,
-                color: WINRV2Colors.gunmetal,
-              ),
-            ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -861,11 +845,19 @@ class WINRV2ComeBackBar extends StatelessWidget {
   final int nextEntries;
   final bool visitMode;
 
+  /// Post-reveal / claimed-today variant (Joe's Aug-2026 frames): the bar
+  /// celebrates "{N} ENTRIES ADDED / You're on a roll!" instead of pitching
+  /// tomorrow. Pre-reveal and unclaimed states keep the come-back pitch.
+  final bool claimed;
+  final int claimedEntries;
+
   const WINRV2ComeBackBar({
     super.key,
     required this.accent,
     required this.nextEntries,
     this.visitMode = false,
+    this.claimed = false,
+    this.claimedEntries = 0,
   });
 
   @override
@@ -877,38 +869,107 @@ class WINRV2ComeBackBar extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.calendar_today, size: 26, color: accent),
-              const SizedBox(width: 14),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    visitMode
-                        ? 'Come back again to receive:'
-                        : 'Come back tomorrow to\nkeep your streak alive and receive:',
-                    textAlign: TextAlign.center,
-                    style: WINRV2Font.inter(12, height: 1.2),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    '${winrV2FormatInt(nextEntries)} ENTRIES',
-                    style: WINRV2Font.inter(
-                      16,
-                      weight: FontWeight.w900,
-                      color: accent,
-                      height: 1.1,
-                    ),
-                  ),
-                ],
+          // Animated swap on the CLAIM reveal: the come-back pitch fades out,
+          // the claimed celebration springs in (mirrors iOS's scale+opacity
+          // transition).
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.8, end: 1).animate(animation),
+                child: child,
               ),
-            ],
+            ),
+            child: claimed
+                ? _claimedContent(key: const ValueKey('claimed'))
+                : _comeBackContent(key: const ValueKey('come-back')),
           ),
           // Celebratory sprinkles drifting over the reward line.
           const ClipRect(
             child: WINRV2Confetti(count: 10, speed: 0.55),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _comeBackContent({required Key key}) {
+    return Row(
+      key: key,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.calendar_today, size: 26, color: accent),
+        const SizedBox(width: 14),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              visitMode
+                  ? 'Come back again to receive:'
+                  : 'Come back tomorrow to\nkeep your streak alive and receive:',
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(12, height: 1.2),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              '${winrV2FormatInt(nextEntries)} ENTRIES',
+              style: WINRV2Font.inter(
+                16,
+                weight: FontWeight.w900,
+                color: accent,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _claimedContent({required Key key}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 38,
+            height: 38,
+            child: WINRV2AnimatedCheckmark(lineWidth: 3.5),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${winrV2FormatInt(claimedEntries)} ENTRIES ADDED',
+                    maxLines: 1,
+                    style: WINRV2Font.inter(
+                      20,
+                      weight: FontWeight.w900,
+                      color: accent,
+                      letterSpacing: -0.6,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+                Text(
+                  'You’re on a roll!',
+                  style: WINRV2Font.inter(
+                    13,
+                    weight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

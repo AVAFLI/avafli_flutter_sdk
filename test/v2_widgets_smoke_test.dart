@@ -112,6 +112,10 @@ void main() {
     expect(find.text('Total Entries'), findsOneWidget);
     expect(find.text('DAILY PROGRESS'), findsWidgets);
     expect(find.text('GOT IT'), findsOneWidget);
+    // Delta A: any claimed-today dashboard state celebrates the added
+    // entries in the black bar instead of pitching tomorrow.
+    expect(find.text('60 ENTRIES ADDED'), findsOneWidget);
+    expect(find.text('You’re on a roll!'), findsOneWidget);
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
@@ -168,7 +172,9 @@ void main() {
       totalEntries: 40,
       entriesToday: 30,
       ladder: const [10, 30, 60],
-      claimedToday: true,
+      // Unclaimed keeps the come-back pitch (Delta A only swaps the bar once
+      // today's entries are claimed AND revealed).
+      claimedToday: false,
       onInfo: () {},
       onClose: () {},
     )));
