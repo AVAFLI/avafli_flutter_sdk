@@ -58,6 +58,10 @@ class RegisterDeviceResponse {
   /// True when this device/person has opted out (RTD) — never auto-present.
   final bool? optedOut;
 
+  /// Present only when this person is the drawn winner of one of this
+  /// publisher's giveaways (winner prize-claim flow).
+  final PrizeClaimBlock? prizeClaim;
+
   const RegisterDeviceResponse({
     required this.token,
     required this.refreshToken,
@@ -68,6 +72,7 @@ class RegisterDeviceResponse {
     this.totalEntries = 0,
     this.sdkConfig,
     this.optedOut,
+    this.prizeClaim,
   });
 
   factory RegisterDeviceResponse.fromJson(Map<String, dynamic> json) {
@@ -83,6 +88,9 @@ class RegisterDeviceResponse {
       totalEntries: json['totalEntries'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
+      prizeClaim: json['prizeClaim'] is Map<String, dynamic>
+          ? PrizeClaimBlock.fromJson(json['prizeClaim'])
+          : null,
     );
   }
 }
@@ -167,6 +175,12 @@ class GetActiveGiveawayResponse {
   /// auto-present.
   final bool? optedOut;
 
+  /// Present only when this person is the drawn winner of one of this
+  /// publisher's giveaways and the winner record is still claimable.
+  /// `status == "pending"` drives the winner splash → claim form flow;
+  /// `"submitted"` means the form was already sent (normal dashboard shows).
+  final PrizeClaimBlock? prizeClaim;
+
   const GetActiveGiveawayResponse({
     this.giveaway,
     this.claimedToday = false,
@@ -178,6 +192,7 @@ class GetActiveGiveawayResponse {
     this.emailConsentStatus = false,
     this.sdkConfig,
     this.optedOut,
+    this.prizeClaim,
   });
 
   factory GetActiveGiveawayResponse.fromJson(Map<String, dynamic> json) {
@@ -194,6 +209,9 @@ class GetActiveGiveawayResponse {
       emailConsentStatus: json['emailConsentStatus'] ?? false,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
+      prizeClaim: json['prizeClaim'] is Map<String, dynamic>
+          ? PrizeClaimBlock.fromJson(json['prizeClaim'])
+          : null,
     );
   }
 }
@@ -313,6 +331,128 @@ class MilestoneAward {
       day: (json['day'] as num?)?.toInt() ?? 0,
       bonusEntries: (json['bonusEntries'] as num?)?.toInt() ?? 0,
       badge: json['badge'] as String?,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Prize Claim (winner flow)
+// ---------------------------------------------------------------------------
+
+/// FIXED API contract, mirroring `PrizeClaimBlock` in the backend's types.ts
+/// and the iOS SDK's `PrizeClaimBlock` (WINRAPI.swift).
+class PrizeClaimBlock {
+  /// "pending" | "submitted"
+  final String status;
+  final String giveawayId;
+  final String prizeDescription;
+  final double prizeValue;
+
+  /// Present when submitted.
+  final String? claimNumber;
+
+  /// ISO date, when submitted.
+  final String? submittedAt;
+
+  const PrizeClaimBlock({
+    required this.status,
+    required this.giveawayId,
+    required this.prizeDescription,
+    required this.prizeValue,
+    this.claimNumber,
+    this.submittedAt,
+  });
+
+  bool get isPending => status == 'pending';
+
+  /// Lenient decode: a malformed block (null/missing prize fields from an
+  /// older winner doc) must degrade gracefully, never fail the whole
+  /// giveaway response and take the dashboard down with it (mirrors iOS).
+  factory PrizeClaimBlock.fromJson(Map<String, dynamic> json) {
+    return PrizeClaimBlock(
+      status: json['status'] ?? '',
+      giveawayId: json['giveawayId'] ?? '',
+      prizeDescription: json['prizeDescription'] ?? 'Your prize',
+      prizeValue: (json['prizeValue'] as num?)?.toDouble() ?? 0,
+      claimNumber: json['claimNumber'] as String?,
+      submittedAt: json['submittedAt'] as String?,
+    );
+  }
+}
+
+/// Submit prize claim request (mirrors iOS `SubmitPrizeClaimRequest` — the
+/// exact backend field names from functions/src/prizeclaim.ts).
+class SubmitPrizeClaimRequest extends PostRequest<SubmitPrizeClaimResponse> {
+  final String giveawayId;
+  final String firstName;
+  final String lastName;
+  final String? phone;
+  final String street;
+  final String? apt;
+  final String city;
+  final String state;
+  final String zip;
+  final String country;
+  final String? photoBase64;
+  final String? story;
+
+  SubmitPrizeClaimRequest({
+    required this.giveawayId,
+    required this.firstName,
+    required this.lastName,
+    this.phone,
+    required this.street,
+    this.apt,
+    required this.city,
+    required this.state,
+    required this.zip,
+    required this.country,
+    this.photoBase64,
+    this.story,
+  });
+
+  @override
+  String get endpoint => '/submitPrizeClaim';
+
+  @override
+  Map<String, dynamic> get body => {
+        'giveawayId': giveawayId,
+        'firstName': firstName,
+        'lastName': lastName,
+        'street': street,
+        'city': city,
+        'state': state,
+        'zip': zip,
+        'country': country,
+        if (phone != null && phone!.isNotEmpty) 'phone': phone,
+        if (apt != null && apt!.isNotEmpty) 'apt': apt,
+        if (photoBase64 != null) 'photoBase64': photoBase64,
+        if (story != null && story!.isNotEmpty) 'story': story,
+      };
+
+  @override
+  SubmitPrizeClaimResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return SubmitPrizeClaimResponse.fromJson(data);
+  }
+}
+
+/// Response from submitting a prize claim.
+class SubmitPrizeClaimResponse {
+  final String claimNumber;
+
+  /// ISO date.
+  final String submittedAt;
+
+  const SubmitPrizeClaimResponse({
+    required this.claimNumber,
+    required this.submittedAt,
+  });
+
+  factory SubmitPrizeClaimResponse.fromJson(Map<String, dynamic> json) {
+    return SubmitPrizeClaimResponse(
+      claimNumber: json['claimNumber'] ?? '',
+      submittedAt: json['submittedAt'] ?? '',
     );
   }
 }

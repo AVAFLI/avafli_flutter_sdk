@@ -295,6 +295,14 @@ class NetworkClientImpl implements NetworkClient {
         if (lower?.contains('already claimed') == true || lower?.contains('already entered') == true) {
           throw const WINRException(WINRError.ineligibleToday);
         }
+        // Prize-claim rejection ("Not the winner") is a real permission-denied
+        // from the backend, not a stale token — mapping it to
+        // authenticationFailed would trigger the token-refresh retry loop and
+        // eventually swallow the message into a generic networkError. Surface
+        // it as-is so the winner flow can fall back to the dashboard.
+        if (lower?.contains('not the winner') == true) {
+          throw WINRException(WINRError.unknown, errorMessage);
+        }
         throw WINRException(WINRError.authenticationFailed, errorMessage);
       case 404:
         throw const WINRException(WINRError.giveawayNotAvailable);

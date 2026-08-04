@@ -32,6 +32,8 @@ import '../../storage/storage.dart';
 import '../../winr.dart';
 import '../../winr_configuration.dart';
 import '../../winr_error.dart';
+import 'winr_v2_claim.dart';
+import 'winr_v2_components.dart';
 import 'winr_v2_screens.dart';
 import 'winr_v2_theme.dart';
 import 'winr_v2_winner.dart';
@@ -45,8 +47,17 @@ enum _V2Phase {
   streak,
   dailyConfirmed,
   howItWorks,
+
+  /// This person is the drawn winner and hasn't submitted their claim yet —
+  /// the drawer shows the winner splash → claim form → confirmation flow
+  /// instead of the dashboard. Takes precedence on open.
+  winnerClaim,
   error,
 }
+
+/// Sub-screen of the winner claim flow (`_phase == winnerClaim`) — mirrors
+/// iOS `WinnerClaimStep`.
+enum _WinnerClaimStep { splash, form, confirmation }
 
 class WINRV2Experience extends StatefulWidget {
   final WINRConfiguration configuration;
@@ -122,6 +133,32 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// One-shot guard for the "already claimed on another device" re-sync.
   bool _didResyncAfterAlreadyClaimed = false;
 
+  // ── Winner prize claim (mirrors iOS WINRExperienceViewModel) ──
+
+  /// The pending prize-claim block driving the winner flow.
+  PrizeClaimBlock? _prizeClaim;
+
+  /// Which screen of the winner claim flow is showing.
+  _WinnerClaimStep _winnerClaimStep = _WinnerClaimStep.splash;
+
+  /// Spinner state for the claim form's SUBMIT pill.
+  bool _isSubmittingClaim = false;
+
+  /// Transport-level submit failure surfaced inline on the form ("Not the
+  /// winner"/"Already submitted" instead fall back to the dashboard silently).
+  String? _claimSubmitError;
+
+  /// The submitted form, kept for the confirmation screen's winner card.
+  WINRPrizeClaimForm? _submittedClaimForm;
+
+  /// Confirmation payload from the backend.
+  String _claimNumber = '';
+  String _claimSubmittedAt = '';
+
+  /// Set after a "Not the winner"/"Already submitted" rejection so the next
+  /// load skips the winner flow and lands on the normal dashboard.
+  bool _suppressWinnerClaim = false;
+
   bool _showWinnerModal = false;
   bool _drawerAppeared = false;
   bool _isDismissing = false;
@@ -193,6 +230,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // may already be cached, but claimedToday can change between opens.
     var backendClaimedToday = _backendClaimedToday;
     var backendStreakDay = _backendStreakDay;
+    PrizeClaimBlock? pendingPrizeClaim;
 
     try {
       final response =
@@ -205,14 +243,27 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         return;
       }
 
-      if (response.giveaway == null) {
+      // Winner prize claim: a PENDING block takes precedence over the
+      // dashboard on open (routed below, once the caches are synced).
+      // A "submitted" block is ignored — the normal dashboard shows.
+      final claim = response.prizeClaim;
+      if (claim != null && claim.isPending && !_suppressWinnerClaim) {
+        pendingPrizeClaim = claim;
+      }
+
+      // Check if backend returned no active giveaway. (A pending prize claim
+      // can outlive its giveaway — the winner flow still shows.)
+      if (response.giveaway == null && pendingPrizeClaim == null) {
         _giveaway = null;
         await storage.remove(StorageKeys.cachedGiveaway);
         _setPhase(_V2Phase.noActiveGiveaway);
         return;
       }
 
-      _giveaway = response.giveaway;
+      if (response.giveaway != null) {
+        _giveaway = response.giveaway;
+        await storage.cacheGiveaway(response.giveaway!);
+      }
       backendClaimedToday = response.claimedToday;
       backendStreakDay = response.streakDay;
       _backendMonthlyCurrent = response.monthlyCurrent;
@@ -225,8 +276,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       if (response.emailConsentStatus) {
         await storage.setBool(StorageKeys.emailConfirmed, true);
       }
-
-      await storage.cacheGiveaway(response.giveaway!);
     } catch (e) {
       // Offline fallback: use cached giveaway.
       _giveaway ??= await storage.getCachedGiveaway();
@@ -235,6 +284,28 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
     _backendClaimedToday = backendClaimedToday;
     _backendStreakDay = backendStreakDay;
+
+    // Winner prize claim takes precedence over auto-claim/dashboard on open —
+    // but the daily auto-claim still fires silently in the background so the
+    // winner's entries keep accruing. Routed BEFORE the email gate.
+    if (pendingPrizeClaim != null) {
+      final hasConsent = await _hasEmailConsent;
+      if (!mounted) return;
+      setState(() {
+        _prizeClaim = pendingPrizeClaim;
+        _winnerClaimStep = _WinnerClaimStep.splash;
+        _claimSubmitError = null;
+        _phase = _V2Phase.winnerClaim;
+      });
+      widget.configuration.options.analyticsAdapter?.track(
+        'winr_winner_claim_shown',
+        {'giveaway_id': pendingPrizeClaim.giveawayId},
+      );
+      if (backendClaimedToday != true && hasConsent) {
+        _silentDailyClaim();
+      }
+      return;
+    }
 
     if (_giveaway == null) {
       _setPhase(_V2Phase.noActiveGiveaway);
@@ -513,6 +584,114 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   }
 
   // -------------------------------------------------------------------------
+  // Winner prize claim
+  // -------------------------------------------------------------------------
+
+  /// Prefill for the claim form (host-app-provided identity) — mirrors iOS
+  /// `claimFormPrefill`.
+  WINRPrizeClaimForm get _claimFormPrefill => WINRPrizeClaimForm(
+        firstName: widget.configuration.user.firstName,
+        lastName: widget.configuration.user.lastName,
+        phone: widget.configuration.user.phone ?? '',
+      );
+
+  /// Fire-and-forget daily claim while the winner flow is on screen — the
+  /// winner still accrues their streak entries, but nothing is revealed.
+  void _silentDailyClaim() {
+    unawaited(() async {
+      try {
+        final response =
+            await widget.networkClient.send(ClaimDailyEntriesRequest());
+        _backendClaimedToday = true;
+        _backendStreakDay = response.streakDay;
+        _backendTotalEntries = response.totalEntries;
+        _claimedToday = true;
+        WINR.syncClaimedToday(true);
+        await WINR.persistClaimedToday(widget.preferencesStorage);
+        Logger.instance.debug(
+            'Silent daily claim during winner flow: +${response.entries}');
+      } catch (e) {
+        Logger.instance
+            .debug('Silent daily claim declined during winner flow: $e');
+      }
+    }());
+  }
+
+  /// Splash CONTINUE → the claim form.
+  void _winnerClaimContinue() {
+    if (_phase != _V2Phase.winnerClaim) return;
+    setState(() => _winnerClaimStep = _WinnerClaimStep.form);
+  }
+
+  /// SUBMIT on the claim form. Success → confirmation screen. A backend
+  /// "Not the winner"/"Already submitted" rejection falls back to the normal
+  /// dashboard silently (logged); transport failures surface inline.
+  Future<void> _submitPrizeClaim(WINRPrizeClaimForm form) async {
+    final claim = _prizeClaim;
+    if (_phase != _V2Phase.winnerClaim || claim == null || _isSubmittingClaim) {
+      return;
+    }
+    if (!form.isValid) return;
+    setState(() {
+      _claimSubmitError = null;
+      _isSubmittingClaim = true;
+    });
+
+    try {
+      final response = await widget.networkClient.send(SubmitPrizeClaimRequest(
+        giveawayId: claim.giveawayId,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim().isEmpty ? null : form.phone.trim(),
+        street: form.street.trim(),
+        apt: form.apt.trim().isEmpty ? null : form.apt.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        zip: form.zip.trim(),
+        country: form.country,
+        photoBase64: form.photoBase64,
+        story: null,
+      ));
+      if (!mounted) return;
+      setState(() {
+        _isSubmittingClaim = false;
+        _submittedClaimForm = form;
+        _claimNumber = response.claimNumber;
+        _claimSubmittedAt = response.submittedAt;
+        _winnerClaimStep = _WinnerClaimStep.confirmation;
+      });
+      widget.configuration.options.analyticsAdapter?.track(
+        'winr_prize_claim_submitted',
+        {
+          'giveaway_id': claim.giveawayId,
+          'claim_number': response.claimNumber,
+        },
+      );
+    } catch (e) {
+      _isSubmittingClaim = false;
+      final message =
+          e is WINRException ? (e.serverMessage ?? e.toString()) : '$e';
+      if (message.contains('Not the winner') ||
+          message.contains('Already submitted')) {
+        // Stale/duplicate winner state — never trap the user in the claim
+        // flow. Fall back to the normal dashboard silently.
+        Logger.instance.info(
+            'Prize claim rejected ($message) — falling back to dashboard');
+        _suppressWinnerClaim = true;
+        _setPhase(_V2Phase.loading);
+        await _load();
+        return;
+      }
+      Logger.instance.error('Prize claim submit failed', e);
+      if (!mounted) return;
+      setState(() {
+        _claimSubmitError =
+            'Something went wrong. Please check your connection and try again.';
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Navigation helpers
   // -------------------------------------------------------------------------
 
@@ -688,6 +867,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           ],
         );
 
+      case _V2Phase.winnerClaim:
+        return _winnerClaimContent();
+
       case _V2Phase.howItWorks:
         return WINRV2HowItWorksView(
           accent: _accent,
@@ -699,5 +881,56 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onClose: _requestDismiss,
         );
     }
+  }
+
+  /// Winner splash → claim form → confirmation, cross-faded between steps
+  /// (mirrors iOS's easeInOut step animation on `WINRV2WinnerClaimFlow`).
+  Widget _winnerClaimContent() {
+    final claim = _prizeClaim;
+    if (claim == null) return const WINRV2LoadingView();
+
+    final Widget step;
+    switch (_winnerClaimStep) {
+      case _WinnerClaimStep.splash:
+        step = WINRV2WinnerSplashView(
+          key: const ValueKey('winner-splash'),
+          accent: _accent,
+          logoUrl: _logoUrl,
+          prizeHeadline: winrV2StripHeadline(
+            claim.prizeDescription,
+            claim.prizeValue.toInt(),
+          ),
+          onContinue: _winnerClaimContinue,
+          onClose: _requestDismiss,
+        );
+      case _WinnerClaimStep.form:
+        step = WINRV2ClaimFormView(
+          key: const ValueKey('winner-form'),
+          accent: _accent,
+          logoUrl: _logoUrl,
+          initialForm: _claimFormPrefill,
+          isSubmitting: _isSubmittingClaim,
+          submitError: _claimSubmitError,
+          onSubmit: (form) => unawaited(_submitPrizeClaim(form)),
+          onClose: _requestDismiss,
+        );
+      case _WinnerClaimStep.confirmation:
+        step = WINRV2ClaimConfirmationView(
+          key: const ValueKey('winner-confirmation'),
+          accent: _accent,
+          logoUrl: _logoUrl,
+          form: _submittedClaimForm,
+          claimNumber: _claimNumber,
+          submittedAt: _claimSubmittedAt,
+          onDone: _requestDismiss,
+        );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      child: step,
+    );
   }
 }
