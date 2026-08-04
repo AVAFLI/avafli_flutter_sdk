@@ -8,10 +8,11 @@
 // Entries are granted automatically when the drawer opens (auto-claim).
 // Day 1 (streakDay <= 1, right after email capture): the "You're in!"
 // celebration modal is the reveal, and its GOT IT closes the experience.
-// Day 2+: no modal — the dashboard holds YESTERDAY's numbers behind a
-// "CLAIM N ENTRIES" pill; tapping it is the reveal (tile check + confetti +
-// totals advance in place). "Already claimed" is silent (claimed dashboard)
-// with a one-shot re-load to sync totals.
+// Day 2+: no modal — the dashboard mounts pinned to YESTERDAY's numbers and
+// the celebration (tile check + confetti + totals advance in place) fires on
+// its own a beat later (Joe's Slice prototype); the pill reads GOT IT the
+// whole time. "Already claimed" is silent (claimed dashboard) with a one-shot
+// re-load to sync totals.
 
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -58,6 +59,12 @@ enum _V2Phase {
 /// Sub-screen of the winner claim flow (`_phase == winnerClaim`) — mirrors
 /// iOS `WinnerClaimStep`.
 enum _WinnerClaimStep { splash, form, confirmation }
+
+/// Delay between the Day 2+ claim response being staged and the celebration
+/// firing on its own — long enough for the drawer spring to settle so the
+/// state flip reads as its own beat, short enough to feel immediate.
+/// Mirrors iOS `WINRExperienceViewModel.autoRevealDelay`.
+const winrV2AutoRevealDelay = Duration(milliseconds: 800);
 
 class WINRV2Experience extends StatefulWidget {
   final WINRConfiguration configuration;
@@ -111,23 +118,38 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
   //
-  // The auto-claim on open grants entries server-side immediately, but the UI
-  // holds the previous day's numbers until the user taps "CLAIM N ENTRIES".
-  // That tap flips `_claimRevealed` — the day tile checks off with confetti,
-  // the streak label and totals advance, and the pill becomes "GOT IT".
+  // The auto-claim on open grants entries server-side immediately, and the
+  // celebration plays ON ITS OWN moments after the drawer settles (Joe's
+  // Slice Day 2+ prototype): the dashboard mounts pinned to the previous
+  // day's numbers, then the day tile checks off with confetti, the streak
+  // label and totals advance, and the bar flips to "N ENTRIES ADDED".
+  // The pill reads "GOT IT" the whole time — there is no claim tap.
 
-  /// The grant held back for the reveal (null when nothing is pending).
+  /// The grant staged for the auto-reveal (null when nothing is pending).
   DailyEntryGrant? _pendingRevealGrant;
 
-  /// Whether the user has tapped CLAIM and seen the in-place celebration.
+  /// Whether the in-place celebration has played.
   bool _claimRevealed = false;
 
-  /// Total entries as of before today's claim, for pre-reveal display.
+  /// Total entries as of before today's claim, for the pre-reveal frame.
   int? _preClaimTotalEntries;
 
   void _revealClaim() {
     if (_pendingRevealGrant == null || _claimRevealed) return;
     setState(() => _claimRevealed = true);
+  }
+
+  /// Schedules the automatic celebration once the claim response is staged.
+  /// Armed from the claim SUCCESS path — not a widget lifecycle callback,
+  /// because the dashboard is usually already built when the claim lands.
+  /// Idempotent — the guards here and in [_revealClaim] make double-fires
+  /// harmless.
+  void _scheduleAutoReveal() {
+    if (_pendingRevealGrant == null || _claimRevealed) return;
+    unawaited(Future<void>.delayed(winrV2AutoRevealDelay, () {
+      if (!mounted) return;
+      _revealClaim();
+    }));
   }
 
   /// One-shot guard for the "already claimed on another device" re-sync.
@@ -524,8 +546,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // - Day 1 (brand-new or restarted streak, typically right after email
       //   capture): the "You're in!" celebration modal is the reveal.
       // - Day 2+: no modal. Land on the dashboard pinned to yesterday's
-      //   numbers with a "CLAIM N ENTRIES" pill; the tap reveals the
-      //   celebration in place (Joe's Slice Day 2+ flow).
+      //   numbers; the celebration reveals itself in place a beat later
+      //   (Joe's Slice Day 2+ flow) — armed below, not from a widget
+      //   lifecycle callback, because the dashboard is usually already
+      //   built when the claim lands.
       setState(() {
         _streakState = updatedStreak;
         _claimedToday = true;
@@ -542,6 +566,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         }
         _isClaiming = false;
       });
+      // No-op on Day 1 (no pending reveal grant is staged).
+      _scheduleAutoReveal();
     } catch (e) {
       _isClaiming = false;
       final isAlreadyClaimed =
@@ -829,7 +855,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onWinnerTap: () => setState(() => _showWinnerModal = true),
           pendingClaimEntries: _pendingRevealGrant?.total,
           revealed: _claimRevealed,
-          onClaim: _revealClaim,
         );
 
       case _V2Phase.dailyConfirmed:

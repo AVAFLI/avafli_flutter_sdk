@@ -361,12 +361,12 @@ class WINRV2DashboardView extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onWinnerTap;
 
-  /// Reveal flow (Day 2+): the claim already succeeded server-side, but the UI
-  /// holds yesterday's numbers until the user taps "CLAIM N ENTRIES" — that tap
-  /// is the celebration (tile check + confetti + totals update), no modal.
+  /// Reveal flow (Day 2+): the claim already succeeded server-side; the UI
+  /// mounts pinned to yesterday's numbers and the celebration (tile check +
+  /// confetti + totals update, bar → "N ENTRIES ADDED") fires on its own a
+  /// beat later — Joe's Slice prototype has no claim tap and no modal.
   final int? pendingClaimEntries;
   final bool revealed;
-  final VoidCallback? onClaim;
 
   const WINRV2DashboardView({
     super.key,
@@ -384,7 +384,6 @@ class WINRV2DashboardView extends StatelessWidget {
     this.onWinnerTap,
     this.pendingClaimEntries,
     this.revealed = true,
-    this.onClaim,
   });
 
   bool get _visitMode => giveaway?.isVisitMode ?? false;
@@ -472,7 +471,7 @@ class WINRV2DashboardView extends StatelessWidget {
                     child: WINRV2PrizeCard(
                       accent: accent,
                       // Pre-reveal the streak label still reads yesterday's
-                      // day; the CLAIM tap advances it to today.
+                      // day; the auto-reveal advances it to today.
                       streakDay: _preReveal
                           ? (streakDay - 1 > 1 ? streakDay - 1 : 1)
                           : streakDay,
@@ -505,25 +504,12 @@ class WINRV2DashboardView extends StatelessWidget {
                   const SizedBox(height: 15),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),
-                    // CLAIM ⇄ GOT IT cross-fades on the reveal.
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
-                      switchInCurve: Curves.easeOutBack,
-                      switchOutCurve: Curves.easeIn,
-                      child: _preReveal
-                          ? WINRV2PillButton(
-                              key: const ValueKey('claim'),
-                              accent: accent,
-                              title:
-                                  'CLAIM ${winrV2FormatInt(pendingClaimEntries!)} ENTRIES',
-                              onTap: onClaim ?? onClose,
-                            )
-                          : WINRV2PillButton(
-                              key: const ValueKey('got-it'),
-                              accent: accent,
-                              title: 'GOT IT',
-                              onTap: onClose,
-                            ),
+                    // Always GOT IT (Slice prototype) — the celebration
+                    // plays on its own; the pill only ever closes.
+                    child: WINRV2PillButton(
+                      accent: accent,
+                      title: 'GOT IT',
+                      onTap: onClose,
                     ),
                   ),
                   const SizedBox(height: 6),

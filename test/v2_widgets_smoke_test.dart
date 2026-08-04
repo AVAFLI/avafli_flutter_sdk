@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart'
+    show winrV2AutoRevealDelay;
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_winner.dart';
@@ -121,43 +123,54 @@ void main() {
     expect(find.text('EVERY DAY!'), findsOneWidget);
   });
 
-  testWidgets('dashboard Day 2+ pre-reveal holds yesterday, CLAIM reveals',
+  testWidgets('dashboard Day 2+ auto-reveals — no CLAIM tap, pill stays GOT IT',
       (tester) async {
     var revealed = false;
+    late StateSetter rebuild;
     await tester.pumpWidget(_host(StatefulBuilder(
-      builder: (context, setState) => WINRV2DashboardView(
-        accent: accent,
-        logoUrl: null,
-        rulesUrl: null,
-        giveaway: _giveaway(),
-        streakDay: 3,
-        // Pre-reveal shows the pre-claim total; post-reveal the fresh total.
-        totalEntries: revealed ? 100 : 40,
-        entriesToday: 60,
-        ladder: const [10, 30, 60, 130, 240, 300, 500],
-        claimedToday: true,
-        onInfo: () {},
-        onClose: () {},
-        pendingClaimEntries: 60,
-        revealed: revealed,
-        onClaim: () => setState(() => revealed = true),
-      ),
+      builder: (context, setState) {
+        rebuild = setState;
+        return WINRV2DashboardView(
+          accent: accent,
+          logoUrl: null,
+          rulesUrl: null,
+          giveaway: _giveaway(),
+          streakDay: 3,
+          // Pre-reveal shows the pre-claim total; post-reveal the fresh total.
+          totalEntries: revealed ? 100 : 40,
+          entriesToday: 60,
+          ladder: const [10, 30, 60, 130, 240, 300, 500],
+          claimedToday: true,
+          onInfo: () {},
+          onClose: () {},
+          pendingClaimEntries: 60,
+          revealed: revealed,
+        );
+      },
     )));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(seconds: 1));
+    // Mirror the experience controller: the claim SUCCESS path arms the
+    // celebration to fire on its own after winrV2AutoRevealDelay (800ms).
+    Future<void>.delayed(
+        winrV2AutoRevealDelay, () => rebuild(() => revealed = true));
 
-    // Pinned to yesterday: streak label N-1, CLAIM pill, no GOT IT.
+    // While the arm delay runs, the dashboard is pinned to yesterday:
+    // streak label N-1, come-back bar, and the pill already reads GOT IT —
+    // there is no CLAIM pill at any point.
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('2 DAY STREAK'), findsOneWidget);
-    expect(find.text('CLAIM 60 ENTRIES'), findsOneWidget);
-    expect(find.text('GOT IT'), findsNothing);
+    expect(find.text('GOT IT'), findsOneWidget);
+    expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
+    expect(find.text('60 ENTRIES ADDED'), findsNothing);
 
-    // Tapping CLAIM is the reveal: label advances, pill becomes GOT IT.
-    await tester.ensureVisible(find.text('CLAIM 60 ENTRIES'));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('CLAIM 60 ENTRIES'));
+    // Pump past the 800ms delay: the celebration fires by itself — the
+    // streak label advances, the bar flips to "N ENTRIES ADDED", and the
+    // pill is still GOT IT.
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('3 DAY STREAK'), findsOneWidget);
+    expect(find.text('60 ENTRIES ADDED'), findsOneWidget);
+    expect(find.text('You’re on a roll!'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
   });
