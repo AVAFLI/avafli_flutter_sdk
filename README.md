@@ -157,6 +157,12 @@ FirebaseMessaging.instance.onTokenRefresh.listen((token) {
 });
 ```
 
+Or the one-line equivalent:
+
+```dart
+FirebaseMessaging.instance.onTokenRefresh.listen(WINR.registerPushToken);
+```
+
 ### 3. Upload FCM Service Account Key
 
 Upload your FCM service account key via the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard) to enable push notifications.
