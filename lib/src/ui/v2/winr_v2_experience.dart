@@ -61,11 +61,12 @@ enum _V2Phase {
 /// iOS `WinnerClaimStep`.
 enum _WinnerClaimStep { splash, form, confirmation }
 
-/// Delay between the Day 2+ claim response being staged and the celebration
-/// firing on its own — long enough for the drawer spring to settle so the
-/// state flip reads as its own beat, short enough to feel immediate.
-/// Mirrors iOS `WINRExperienceViewModel.autoRevealDelay`.
-const winrV2AutoRevealDelay = Duration(milliseconds: 800);
+/// Tiny mount-settle delay before the Day 2+ celebration fires — just enough
+/// for Flutter to render the staged "before" frame so every transition and
+/// count has something to animate from. Visually imperceptible; the drawer's
+/// slide-up covers it.
+/// Mirrors iOS `WINRExperienceViewModel.mountRevealDelay`.
+const winrV2MountRevealDelay = Duration(milliseconds: 150);
 
 class WINRV2Experience extends StatefulWidget {
   final WINRConfiguration configuration;
@@ -119,14 +120,16 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
   //
-  // The auto-claim on open grants entries server-side immediately, and the
-  // celebration plays ON ITS OWN moments after the drawer settles (Joe's
-  // Slice Day 2+ prototype): the dashboard mounts pinned to the previous
-  // day's numbers, then the day tile checks off with confetti, the streak
-  // label and totals advance, and the bar flips to "N ENTRIES ADDED".
+  // The dashboard's FIRST VISIBLE FRAME is the celebration (the CTO's final
+  // spec): toast bar, streak flip, counting total, and tile confetti all
+  // fire in one beat at mount. Because the claim round-trip lands AFTER the
+  // dashboard mounts, the grant is PREDICTED client-side from the pre-claim
+  // status (WINRV2Ladder mirrors the backend's math exactly) and the real
+  // response reconciles silently — identical numbers in the normal case.
   // The pill reads "GOT IT" the whole time — there is no claim tap.
 
-  /// The grant staged for the auto-reveal (null when nothing is pending).
+  /// The grant staged for the celebration (null when nothing is pending).
+  /// Predicted at load; replaced by the real grant when the claim lands.
   DailyEntryGrant? _pendingRevealGrant;
 
   /// Whether the in-place celebration has played.
@@ -140,14 +143,12 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     setState(() => _claimRevealed = true);
   }
 
-  /// Schedules the automatic celebration once the claim response is staged.
-  /// Armed from the claim SUCCESS path — not a widget lifecycle callback,
-  /// because the dashboard is usually already built when the claim lands.
-  /// Idempotent — the guards here and in [_revealClaim] make double-fires
-  /// harmless.
-  void _scheduleAutoReveal() {
+  /// Fires the celebration one imperceptible beat after the dashboard
+  /// mounts, making the first visible frame the celebrating one. Idempotent
+  /// — the guards here and in [_revealClaim] make double-fires harmless.
+  void _armCelebrationReveal() {
     if (_pendingRevealGrant == null || _claimRevealed) return;
-    unawaited(Future<void>.delayed(winrV2AutoRevealDelay, () {
+    unawaited(Future<void>.delayed(winrV2MountRevealDelay, () {
       if (!mounted) return;
       _revealClaim();
     }));
@@ -226,9 +227,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _drawerAppeared = true);
     });
-    // Decode Joe's Figma reveal GIFs NOW so mounting them at the reveal beat
-    // (drawer settle + 0.8s) plays instantly from frame 0.
-    WINRV2GifAsset.prewarm(WINRV2Assets.tileBurst);
+    // Decode the confetti-burst GIF NOW so mounting it at the reveal beat
+    // (dashboard mount) plays instantly from frame 0.
     WINRV2GifAsset.prewarm(WINRV2Assets.confettiBurst);
     _load();
   }
@@ -345,15 +345,38 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       return;
     }
 
+    // Day 2+ auto-claim: stage the PREDICTED grant BEFORE the dashboard
+    // state is set, so the celebration is the dashboard's first visible
+    // frame — the claim round-trip lands later and reconciles silently.
+    // (Day 1 keeps its "You're in!" modal from the claim response.)
+    if (backendClaimedToday == false &&
+        backendStreakDay != null &&
+        backendStreakDay >= 2 &&
+        _backendTotalEntries != null) {
+      final predicted = WINRV2Ladder.entries(
+        day: backendStreakDay,
+        ladder: _displayLadder,
+        milestones: _giveaway?.milestones,
+      );
+      _pendingRevealGrant = DailyEntryGrant(baseEntries: predicted);
+      _claimRevealed = false;
+      _preClaimTotalEntries = _backendTotalEntries;
+    }
+
     await _computeStreakAndMoveToDashboard(
       backendClaimedToday: backendClaimedToday,
       backendStreakDay: backendStreakDay,
     );
 
+    // Day 2+: the celebration IS the first visible frame — the reveal flips
+    // one imperceptible beat after the dashboard mounts so every transition
+    // has a "before" frame to animate from. (No-op without a staged grant.)
+    _armCelebrationReveal();
+
     // V2 experience: entries are granted automatically when the drawer
     // opens — no tap required. Registered + consented + not-yet-claimed →
-    // claim now. Failures are silent (the dashboard just shows the
-    // unclaimed state).
+    // claim now, in the background of the already-playing celebration.
+    // Failures are silent (the dashboard settles to the unclaimed state).
     if (_phase == _V2Phase.streak && !_claimedToday) {
       await _claimDailyEntries(auto: true);
     }
@@ -550,11 +573,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // V2 auto-claim routing:
       // - Day 1 (brand-new or restarted streak, typically right after email
       //   capture): the "You're in!" celebration modal is the reveal.
-      // - Day 2+: no modal. Land on the dashboard pinned to yesterday's
-      //   numbers; the celebration reveals itself in place a beat later
-      //   (Joe's Slice Day 2+ flow) — armed below, not from a widget
-      //   lifecycle callback, because the dashboard is usually already
-      //   built when the claim lands.
+      // - Day 2+: the celebration already played at mount off the PREDICTED
+      //   grant — reconcile the staged numbers with the real response. In
+      //   the normal case they're identical, so nothing visibly changes; a
+      //   mismatch silently corrects the readouts. `_claimRevealed` is NOT
+      //   reset — the celebration never replays.
       setState(() {
         _streakState = updatedStreak;
         _claimedToday = true;
@@ -565,14 +588,15 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           _phase = _V2Phase.dailyConfirmed;
         } else {
           _pendingRevealGrant = grant;
-          _claimRevealed = false;
           _preClaimTotalEntries = response.totalEntries - grant.total;
           _phase = _V2Phase.streak;
         }
         _isClaiming = false;
       });
-      // No-op on Day 1 (no pending reveal grant is staged).
-      _scheduleAutoReveal();
+      // Safety net: if no prediction was staged pre-mount (e.g. the status
+      // fetch was offline), the mount found nothing pending — fire the
+      // reveal now. No-op on Day 1 or when the reveal already played.
+      _armCelebrationReveal();
     } catch (e) {
       _isClaiming = false;
       final isAlreadyClaimed =
@@ -591,6 +615,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         await WINR.persistClaimedToday(widget.preferencesStorage);
         if (!mounted) return;
         setState(() {
+          // Roll back the predicted celebration NUMBERS — the prediction was
+          // built on a stale total. The reveal state itself stays (no
+          // animation replay); the re-load silently corrects the total.
+          _pendingRevealGrant = null;
+          _preClaimTotalEntries = null;
           _streakState = updatedStreak;
           _claimedToday = true;
           _phase = _V2Phase.streak;
@@ -608,6 +637,12 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       Logger.instance.info('Auto-claim declined: $e');
       if (!mounted) return;
       setState(() {
+        // Roll back the predicted celebration — nothing was granted. The
+        // dashboard settles to the calm unclaimed state and the total
+        // readout reverts silently (no animation replay).
+        _pendingRevealGrant = null;
+        _preClaimTotalEntries = null;
+        _claimRevealed = false;
         _claimedToday = false;
         _phase = _V2Phase.streak;
       });
@@ -840,15 +875,21 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         );
 
       case _V2Phase.streak:
-        // Pinned from the FIRST frame: while today is unclaimed OR the
-        // reveal hasn't played, show yesterday's numbers. Without the
+        // Staged "before" frame: while the reveal hasn't played, show
+        // yesterday's numbers (on a celebration open this frame lasts one
+        // imperceptible beat — winrV2MountRevealDelay). Without the
         // claimedToday clause there's a flash of the raw post-claim server
         // state during the network round-trip, and elements flip at
         // different times.
         final preReveal =
             !_claimRevealed && (_pendingRevealGrant != null || !_claimedToday);
-        final postClaimTotal =
-            _streakState?.totalEntriesEarned ?? _backendTotalEntries ?? 0;
+        // A staged celebration counts up to the PREDICTED post-claim total —
+        // the real claim response reconciles this silently (normally a
+        // no-op, since WINRV2Ladder mirrors the backend's math).
+        final grant = _pendingRevealGrant;
+        final postClaimTotal = (grant != null && _preClaimTotalEntries != null)
+            ? _preClaimTotalEntries! + grant.total
+            : _streakState?.totalEntriesEarned ?? _backendTotalEntries ?? 0;
         return WINRV2DashboardView(
           accent: _accent,
           logoUrl: _logoUrl,

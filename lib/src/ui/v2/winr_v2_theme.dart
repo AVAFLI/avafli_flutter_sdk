@@ -112,9 +112,8 @@ class WINRV2Assets {
   static const String trophy = 'assets/images/trophy.png';
   static const String winnerModalBg = 'assets/images/winner-modal-bg.png';
 
-  /// Joe's Figma reveal-beat animations (one-shot GIFs played by
-  /// `WINRV2GifView`; same files the iOS SDK bundles).
-  static const String tileBurst = 'assets/images/tile-burst.gif';
+  /// Joe's Figma reveal-beat confetti explosion (one-shot GIF played by
+  /// `WINRV2GifView`; same file the iOS SDK bundles).
   static const String confettiBurst = 'assets/images/confetti-burst.gif';
 
   static Image image(String name, {BoxFit fit = BoxFit.contain}) {

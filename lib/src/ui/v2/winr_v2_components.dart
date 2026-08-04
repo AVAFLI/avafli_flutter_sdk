@@ -603,8 +603,10 @@ class WINRV2StreakTile extends StatefulWidget {
 }
 
 class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
-  /// One-shot: Joe's explosion GIF has played; rest on the static check.
-  bool _burstFinished = false;
+  /// One-shot: the confetti-burst GIF plays over the tile when it flips
+  /// ready → active at the reveal beat, then removes itself. A tile that
+  /// MOUNTS as active (already-claimed reopen) never bursts.
+  bool _bursting = false;
 
   Color get accent => widget.accent;
   int get day => widget.day;
@@ -617,28 +619,42 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
       state == WINRV2TileState.active || state == WINRV2TileState.ready;
 
   @override
+  void didUpdateWidget(WINRV2StreakTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state == WINRV2TileState.active &&
+        oldWidget.state != WINRV2TileState.active) {
+      _bursting = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     switch (state) {
       case WINRV2TileState.active:
-        // Joe's ACTUAL Figma animation: the explosion GIF mounts exactly
-        // when the tile flips to active (the reveal beat), plays ONCE at
-        // ~150% of the tile so it overflows the bounds like an explosion,
-        // then is REMOVED — the tile rests on the same small check as
-        // completed tiles. The breathing glow stays underneath.
+        // Joe's settled active tile: breathing glow, drifting confetti
+        // field, and the small check drawing into the icon slot. At the
+        // reveal beat the confetti-burst GIF explodes once on top at ~150%
+        // of the tile — overflowing the bounds like an explosion — then is
+        // removed via the GIF's onFinished (see [_bursting]).
         return Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
+            const Positioned(
+              width: 152,
+              height: 176,
+              child: WINRV2Confetti(count: 12, speed: 0.7),
+            ),
             WINRV2PulseGlow(accent: accent, child: _card()),
-            if (!_burstFinished)
+            if (_bursting)
               Positioned(
                 width: 200,
                 height: 200,
                 child: IgnorePointer(
                   child: WINRV2GifView(
-                    WINRV2Assets.tileBurst,
+                    WINRV2Assets.confettiBurst,
                     onFinished: () {
-                      if (mounted) setState(() => _burstFinished = true);
+                      if (mounted) setState(() => _bursting = false);
                     },
                   ),
                 ),
@@ -770,18 +786,11 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
           child: WINRV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
         );
       case WINRV2TileState.active:
-        // During the burst the GIF paints the check; the slot keeps its size
-        // so the card layout matches other states. Once the one-shot burst
-        // finishes, the tile rests on the same small static check as
-        // completed tiles.
-        if (_burstFinished) {
-          return const SizedBox(
-            width: 20,
-            height: 20,
-            child: WINRV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
-          );
-        }
-        return const SizedBox(width: 20, height: 20);
+        return const SizedBox(
+          width: 20,
+          height: 20,
+          child: WINRV2AnimatedCheckmark(lineWidth: 2.5),
+        );
       case WINRV2TileState.ready:
         // Joe's frames: the current tile pre-check shows ONLY the glowing
         // number — no icon. The enclosing 24x24 slot keeps its size so the
@@ -874,12 +883,12 @@ class WINRV2ComeBackBar extends StatefulWidget {
   final int nextEntries;
   final bool visitMode;
 
-  /// Joe's Slice sequence: the bar RESTS on the come-back pitch. When the
-  /// auto-reveal fires ([claimed] flips true), "{N} ENTRIES ADDED / You're
-  /// on a roll!" SLIDES in horizontally, holds ~2.6s, then SLIDES back out
-  /// to the pitch — the pitch is the final state. A claimed-at-mount reopen
-  /// (same-day dashboard reopen) rests on the pitch directly, no toast.
-  final bool claimed;
+  /// Celebration open (Day 2+ auto-claim): the bar's FIRST visible frame is
+  /// the "YOU'RE ON A ROLL!" toast. It holds ~2.5s, then slides ONCE
+  /// (carousel: out left, in from right) to the resting pitch — the pitch is
+  /// NEVER visible before the toast on a celebration open. Non-celebration
+  /// opens (already-claimed reopen, no grant) rest on the pitch, no toast.
+  final bool celebrating;
   final int claimedEntries;
 
   const WINRV2ComeBackBar({
@@ -887,7 +896,7 @@ class WINRV2ComeBackBar extends StatefulWidget {
     required this.accent,
     required this.nextEntries,
     this.visitMode = false,
-    this.claimed = false,
+    this.celebrating = false,
     this.claimedEntries = 0,
   });
 
@@ -896,25 +905,22 @@ class WINRV2ComeBackBar extends StatefulWidget {
 }
 
 class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
-  /// Whether the "N ENTRIES ADDED" toast is currently on screen (the hold
-  /// window). The pitch is the resting state before AND after.
-  bool _showToast = false;
+  /// Whether the toast is on screen (the hold window). Seeded from
+  /// [WINRV2ComeBackBar.celebrating] so the toast is the bar's FIRST frame —
+  /// no pitch flash, no slide-in. Only the toast → pitch handoff animates.
+  late bool _showToast;
   Timer? _holdTimer;
 
   @override
-  void didUpdateWidget(WINRV2ComeBackBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.claimed == oldWidget.claimed) return;
-    _holdTimer?.cancel();
-    if (widget.claimed) {
-      // Fresh reveal: celebrate, hold, then slide back to the pitch.
-      setState(() => _showToast = true);
-      _holdTimer = Timer(const Duration(milliseconds: 2600), () {
+  void initState() {
+    super.initState();
+    _showToast = widget.celebrating;
+    if (_showToast) {
+      // Hold the toast a beat, then slide once to the resting pitch.
+      _holdTimer = Timer(const Duration(milliseconds: 2500), () {
         if (!mounted) return;
         setState(() => _showToast = false);
       });
-    } else {
-      setState(() => _showToast = false);
     }
   }
 
@@ -945,7 +951,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
                 final incoming =
-                    child.key == ValueKey(_showToast ? 'claimed' : 'come-back');
+                    child.key == ValueKey(_showToast ? 'toast' : 'come-back');
                 return FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
@@ -958,7 +964,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                 );
               },
               child: _showToast
-                  ? _claimedContent(key: const ValueKey('claimed'))
+                  ? _toastContent(key: const ValueKey('toast'))
                   : _comeBackContent(key: const ValueKey('come-back')),
             ),
           ),
@@ -1026,7 +1032,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
     );
   }
 
-  Widget _claimedContent({required Key key}) {
+  Widget _toastContent({required Key key}) {
     return Padding(
       key: key,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1046,7 +1052,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '${winrV2FormatInt(widget.claimedEntries)} ENTRIES ADDED',
+                    'YOU’RE ON A ROLL!',
                     maxLines: 1,
                     style: WINRV2Font.inter(
                       20,
@@ -1057,12 +1063,17 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                     ),
                   ),
                 ),
-                Text(
-                  'You’re on a roll!',
-                  style: WINRV2Font.inter(
-                    13,
-                    weight: FontWeight.w700,
-                    height: 1.1,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Your ${winrV2FormatInt(widget.claimedEntries)} entries '
+                    'have been added automatically.',
+                    maxLines: 1,
+                    style: WINRV2Font.inter(
+                      13,
+                      weight: FontWeight.w700,
+                      height: 1.1,
+                    ),
                   ),
                 ),
               ],

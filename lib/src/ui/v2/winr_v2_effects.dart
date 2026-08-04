@@ -293,9 +293,9 @@ class _CheckmarkPainter extends CustomPainter {
 
 /// A decoded GIF: frames plus the per-frame start times from the file's own
 /// delay table (port of iOS `WINRV2GifAsset`, built on Flutter's multi-frame
-/// `ui.Codec`). Decoding the 47-frame tile GIF takes hundreds of
-/// milliseconds, so decoded assets are cached in memory (keyed by asset name)
-/// and prewarmed at drawer-open, BEFORE the reveal beat needs them.
+/// `ui.Codec`). Decoding takes long enough to miss a beat, so decoded assets
+/// are cached in memory (keyed by asset name) and prewarmed at drawer-open,
+/// BEFORE the reveal beat needs them.
 class WINRV2GifAsset {
   final List<ui.Image> frames;
 
@@ -356,8 +356,8 @@ class WINRV2GifAsset {
       // …while the SDK's own tests/tooling see the raw key.
       data = await rootBundle.load(name);
     }
-    // Downsample like iOS (maxPixelSize 600): the 1500×1500 tile burst only
-    // ever renders at ~200 logical px, and full-size frames would be huge.
+    // Downsample cap like iOS (maxPixelSize 600) — these overlays only ever
+    // render at ~200 logical px, so full-size frames would be dead weight.
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(),
       targetWidth: 600,

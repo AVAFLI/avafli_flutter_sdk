@@ -361,10 +361,11 @@ class WINRV2DashboardView extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onWinnerTap;
 
-  /// Reveal flow (Day 2+): the claim already succeeded server-side; the UI
-  /// mounts pinned to yesterday's numbers and the celebration (tile check +
-  /// confetti + totals update, bar → "N ENTRIES ADDED") fires on its own a
-  /// beat later — Joe's Slice prototype has no claim tap and no modal.
+  /// Reveal flow (Day 2+): the celebration is the dashboard's FIRST VISIBLE
+  /// FRAME. The experience stages a PREDICTED grant before this view mounts,
+  /// the UI renders one imperceptible pinned "before" frame, and the reveal
+  /// (tile flip + confetti burst + count-up; the bar opens ON the toast)
+  /// fires ~0.15s after mount — no claim tap, no modal.
   final int? pendingClaimEntries;
   final bool revealed;
 
@@ -498,11 +499,11 @@ class WINRV2DashboardView extends StatelessWidget {
                     accent: accent,
                     nextEntries: _nextEntries,
                     visitMode: _visitMode,
-                    // Delta A: once today's claim is revealed (or the user
-                    // reopens in a claimed state) the bar celebrates the
-                    // entries that were just added instead of pitching
-                    // tomorrow. Pre-reveal keeps the come-back copy.
-                    claimed: claimedToday && !_preReveal,
+                    // Celebration open: the bar's FIRST visible frame is
+                    // the "YOU'RE ON A ROLL!" toast, which holds a beat and
+                    // slides once to the resting pitch. Non-celebration
+                    // opens rest on the pitch with no toast.
+                    celebrating: pendingClaimEntries != null,
                     claimedEntries: pendingClaimEntries ?? entriesToday,
                   ),
                   const SizedBox(height: 15),

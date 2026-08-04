@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart'
+    show WINRV2GifView;
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart'
-    show winrV2AutoRevealDelay;
+    show winrV2MountRevealDelay;
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_winner.dart';
@@ -114,21 +116,23 @@ void main() {
     expect(find.text('Total Entries'), findsOneWidget);
     expect(find.text('DAILY PROGRESS'), findsWidgets);
     expect(find.text('GOT IT'), findsOneWidget);
-    // Joe's Slice sequence: a dashboard that MOUNTS already claimed
-    // (same-day reopen) rests on the come-back pitch — no toast replay.
-    expect(find.text('60 ENTRIES ADDED'), findsNothing);
-    expect(find.text('You’re on a roll!'), findsNothing);
+    // Non-celebration open (same-day reopen, no staged grant): the bar rests
+    // on the come-back pitch — the toast never shows.
+    expect(find.text('YOU’RE ON A ROLL!'), findsNothing);
     expect(
       find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
       findsOneWidget,
     );
+    // A tile that MOUNTS already active never replays the confetti burst.
+    expect(find.byType(WINRV2GifView), findsNothing);
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
   });
 
-  testWidgets('dashboard Day 2+ auto-reveals — no CLAIM tap, pill stays GOT IT',
-      (tester) async {
+  testWidgets(
+      'dashboard Day 2+ celebration is the FIRST visible frame — toast '
+      'before pitch, no CLAIM tap, pill stays GOT IT', (tester) async {
     var revealed = false;
     late StateSetter rebuild;
     await tester.pumpWidget(_host(StatefulBuilder(
@@ -140,7 +144,9 @@ void main() {
           rulesUrl: null,
           giveaway: _giveaway(),
           streakDay: 3,
-          // Pre-reveal shows the pre-claim total; post-reveal the fresh total.
+          // The controller stages a PREDICTED grant pre-mount: the readout
+          // holds the pre-claim total for one imperceptible beat, then
+          // counts up to the predicted post-claim total.
           totalEntries: revealed ? 100 : 40,
           entriesToday: 60,
           ladder: const [10, 30, 60, 130, 240, 300, 500],
@@ -152,37 +158,48 @@ void main() {
         );
       },
     )));
-    // Mirror the experience controller: the claim SUCCESS path arms the
-    // celebration to fire on its own after winrV2AutoRevealDelay (800ms).
+    // Mirror the experience controller: the predicted grant is staged BEFORE
+    // the dashboard mounts and the reveal fires on its own
+    // winrV2MountRevealDelay (150ms) after mount.
     Future<void>.delayed(
-        winrV2AutoRevealDelay, () => rebuild(() => revealed = true));
+        winrV2MountRevealDelay, () => rebuild(() => revealed = true));
 
-    // While the arm delay runs, the dashboard is pinned to yesterday:
-    // streak label N-1, come-back bar, and the pill already reads GOT IT —
-    // there is no CLAIM pill at any point.
-    await tester.pump(const Duration(milliseconds: 400));
+    // FIRST visible frame: the bar opens ON the "YOU'RE ON A ROLL!" toast —
+    // the pitch is NEVER shown before it — while the streak label holds the
+    // staged "before" numbers for one beat. The pill reads GOT IT; there is
+    // no CLAIM pill at any point, and no burst GIF yet (the tile is still
+    // ready, pre-flip).
+    await tester.pump();
+    expect(find.text('YOU’RE ON A ROLL!'), findsOneWidget);
+    expect(find.text('Your 60 entries have been added automatically.'),
+        findsOneWidget);
+    expect(
+      find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
+      findsNothing,
+    );
     expect(find.text('2 DAY STREAK'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
-    expect(find.text('60 ENTRIES ADDED'), findsNothing);
+    expect(find.byType(WINRV2GifView), findsNothing);
 
-    // Pump past the 800ms delay: the celebration fires by itself — the
-    // streak label advances, "N ENTRIES ADDED" SLIDES into the bar and
-    // holds, and the pill is still GOT IT.
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.pump(const Duration(seconds: 1));
+    // ~150ms later the reveal flips in place: the streak label advances and
+    // the tile flips ready → active, mounting the one-shot confetti-burst
+    // GIF overlay. The toast is still holding — it slides ONCE, later.
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
     expect(find.text('3 DAY STREAK'), findsOneWidget);
-    expect(find.text('60 ENTRIES ADDED'), findsOneWidget);
-    expect(find.text('You’re on a roll!'), findsOneWidget);
+    expect(find.byType(WINRV2GifView), findsWidgets);
+    expect(find.text('YOU’RE ON A ROLL!'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
 
-    // After the ~2.6s hold the toast slides back out: the bar's FINAL
-    // resting state is the come-back pitch, not the ADDED toast.
-    await tester.pump(const Duration(seconds: 2));
+    // After the ~2.5s hold the toast slides once to the resting pitch — the
+    // pitch is the bar's FINAL state, and the toast never returns.
+    await tester.pump(const Duration(seconds: 3));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('60 ENTRIES ADDED'), findsNothing);
-    expect(find.text('You’re on a roll!'), findsNothing);
+    expect(find.text('YOU’RE ON A ROLL!'), findsNothing);
+    expect(find.text('Your 60 entries have been added automatically.'),
+        findsNothing);
     expect(
       find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
       findsOneWidget,
