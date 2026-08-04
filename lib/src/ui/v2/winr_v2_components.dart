@@ -3,6 +3,8 @@
 //
 // Mirrors the iOS SDK's WINRV2Components.swift.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -754,10 +756,10 @@ class WINRV2StreakTile extends StatelessWidget {
           child: WINRV2AnimatedCheckmark(lineWidth: 2.5),
         );
       case WINRV2TileState.ready:
-        // White flame (mirrors iOS "winr-flame"): the day is lit but the
-        // check is withheld until the CLAIM reveal.
-        return const Icon(Icons.local_fire_department,
-            size: 20, color: Colors.white);
+        // Joe's frames: the current tile pre-check shows ONLY the glowing
+        // number — no icon. The enclosing 24x24 slot keeps its size so the
+        // check can draw into place without the card resizing.
+        return const SizedBox(width: 20, height: 20);
       case WINRV2TileState.locked:
         return Icon(Icons.lock, size: 18, color: _labelColor);
     }
@@ -840,14 +842,16 @@ class WINRV2PowerUpTile extends StatelessWidget {
 // Confirmation ("come back tomorrow") bar
 // ---------------------------------------------------------------------------
 
-class WINRV2ComeBackBar extends StatelessWidget {
+class WINRV2ComeBackBar extends StatefulWidget {
   final Color accent;
   final int nextEntries;
   final bool visitMode;
 
-  /// Post-reveal / claimed-today variant (Joe's Aug-2026 frames): the bar
-  /// celebrates "{N} ENTRIES ADDED / You're on a roll!" instead of pitching
-  /// tomorrow. Pre-reveal and unclaimed states keep the come-back pitch.
+  /// Joe's Slice sequence: the bar RESTS on the come-back pitch. When the
+  /// auto-reveal fires ([claimed] flips true), "{N} ENTRIES ADDED / You're
+  /// on a roll!" SLIDES in horizontally, holds ~2.6s, then SLIDES back out
+  /// to the pitch — the pitch is the final state. A claimed-at-mount reopen
+  /// (same-day dashboard reopen) rests on the pitch directly, no toast.
   final bool claimed;
   final int claimedEntries;
 
@@ -861,6 +865,40 @@ class WINRV2ComeBackBar extends StatelessWidget {
   });
 
   @override
+  State<WINRV2ComeBackBar> createState() => _WINRV2ComeBackBarState();
+}
+
+class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
+  /// Whether the "N ENTRIES ADDED" toast is currently on screen (the hold
+  /// window). The pitch is the resting state before AND after.
+  bool _showToast = false;
+  Timer? _holdTimer;
+
+  @override
+  void didUpdateWidget(WINRV2ComeBackBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.claimed == oldWidget.claimed) return;
+    _holdTimer?.cancel();
+    if (widget.claimed) {
+      // Fresh reveal: celebrate, hold, then slide back to the pitch.
+      setState(() => _showToast = true);
+      _holdTimer = Timer(const Duration(milliseconds: 2600), () {
+        if (!mounted) return;
+        setState(() => _showToast = false);
+      });
+    } else {
+      setState(() => _showToast = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Teardown-safe: never fire the hold timer after the bar is gone.
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 71,
@@ -869,23 +907,31 @@ class WINRV2ComeBackBar extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
-          // Animated swap on the CLAIM reveal: the come-back pitch fades out,
-          // the claimed celebration springs in (mirrors iOS's scale+opacity
-          // transition).
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            switchInCurve: Curves.easeOutBack,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.8, end: 1).animate(animation),
-                child: child,
-              ),
+          // Horizontal SLIDE swap (not a crossfade), mirroring iOS: the pitch
+          // enters/exits at the leading edge, the ADDED toast at the trailing
+          // edge.
+          ClipRect(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final fromTrailing = child.key == const ValueKey('claimed');
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(fromTrailing ? 1 : -1, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: _showToast
+                  ? _claimedContent(key: const ValueKey('claimed'))
+                  : _comeBackContent(key: const ValueKey('come-back')),
             ),
-            child: claimed
-                ? _claimedContent(key: const ValueKey('claimed'))
-                : _comeBackContent(key: const ValueKey('come-back')),
           ),
           // Celebratory sprinkles drifting over the reward line.
           const ClipRect(
@@ -895,6 +941,8 @@ class WINRV2ComeBackBar extends StatelessWidget {
       ),
     );
   }
+
+  Color get accent => widget.accent;
 
   Widget _comeBackContent({required Key key}) {
     return Row(
@@ -906,16 +954,36 @@ class WINRV2ComeBackBar extends StatelessWidget {
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              visitMode
-                  ? 'Come back again to receive:'
-                  : 'Come back tomorrow to\nkeep your streak alive and receive:',
+            // "Come back tomorrow"/"Come back again" is BOLD, the rest
+            // regular — per Joe's banner lockup.
+            Text.rich(
+              TextSpan(
+                children: widget.visitMode
+                    ? [
+                        TextSpan(
+                          text: 'Come back again',
+                          style: WINRV2Font.inter(12,
+                              weight: FontWeight.w700, height: 1.2),
+                        ),
+                        const TextSpan(text: ' to receive:'),
+                      ]
+                    : [
+                        TextSpan(
+                          text: 'Come back tomorrow',
+                          style: WINRV2Font.inter(12,
+                              weight: FontWeight.w700, height: 1.2),
+                        ),
+                        const TextSpan(
+                            text:
+                                ' to\nkeep your streak alive and receive:'),
+                      ],
+              ),
               textAlign: TextAlign.center,
               style: WINRV2Font.inter(12, height: 1.2),
             ),
             const SizedBox(height: 1),
             Text(
-              '${winrV2FormatInt(nextEntries)} ENTRIES',
+              '${winrV2FormatInt(widget.nextEntries)} ENTRIES',
               style: WINRV2Font.inter(
                 16,
                 weight: FontWeight.w900,
@@ -949,7 +1017,7 @@ class WINRV2ComeBackBar extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '${winrV2FormatInt(claimedEntries)} ENTRIES ADDED',
+                    '${winrV2FormatInt(widget.claimedEntries)} ENTRIES ADDED',
                     maxLines: 1,
                     style: WINRV2Font.inter(
                       20,

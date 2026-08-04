@@ -114,10 +114,14 @@ void main() {
     expect(find.text('Total Entries'), findsOneWidget);
     expect(find.text('DAILY PROGRESS'), findsWidgets);
     expect(find.text('GOT IT'), findsOneWidget);
-    // Delta A: any claimed-today dashboard state celebrates the added
-    // entries in the black bar instead of pitching tomorrow.
-    expect(find.text('60 ENTRIES ADDED'), findsOneWidget);
-    expect(find.text('You’re on a roll!'), findsOneWidget);
+    // Joe's Slice sequence: a dashboard that MOUNTS already claimed
+    // (same-day reopen) rests on the come-back pitch — no toast replay.
+    expect(find.text('60 ENTRIES ADDED'), findsNothing);
+    expect(find.text('You’re on a roll!'), findsNothing);
+    expect(
+      find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
+      findsOneWidget,
+    );
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
@@ -163,16 +167,26 @@ void main() {
     expect(find.text('60 ENTRIES ADDED'), findsNothing);
 
     // Pump past the 800ms delay: the celebration fires by itself — the
-    // streak label advances, the bar flips to "N ENTRIES ADDED", and the
-    // pill is still GOT IT.
+    // streak label advances, "N ENTRIES ADDED" SLIDES into the bar and
+    // holds, and the pill is still GOT IT.
     await tester.pump(const Duration(milliseconds: 500));
-    await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('3 DAY STREAK'), findsOneWidget);
     expect(find.text('60 ENTRIES ADDED'), findsOneWidget);
     expect(find.text('You’re on a roll!'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
+
+    // After the ~2.6s hold the toast slides back out: the bar's FINAL
+    // resting state is the come-back pitch, not the ADDED toast.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('60 ENTRIES ADDED'), findsNothing);
+    expect(find.text('You’re on a roll!'), findsNothing);
+    expect(
+      find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('dashboard visit mode swaps copy', (tester) async {
