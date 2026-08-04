@@ -303,26 +303,10 @@ class WINRV2PrizeCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Implicitly animates when the total changes (the Day 2+
-                    // CLAIM reveal counts up from the pre-claim total).
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(
-                        begin: totalEntries.toDouble(),
-                        end: totalEntries.toDouble(),
-                      ),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, _) => Text(
-                        winrV2FormatInt(value.round()),
-                        style: WINRV2Font.inter(
-                          15,
-                          weight: FontWeight.w900,
-                          color: accent,
-                          letterSpacing: -0.3,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
+                    // Counts up when the total changes (the Day 2+ reveal
+                    // counts up from the pre-claim total) and pops a small
+                    // star burst as it lands.
+                    WINRV2CountUpText(value: totalEntries, accent: accent),
                     Text(
                       'Total Entries',
                       style: WINRV2Font.inter(
@@ -638,9 +622,21 @@ class WINRV2StreakTile extends StatelessWidget {
           ],
         );
       case WINRV2TileState.ready:
-        // Pre-reveal: glow draws the eye to CLAIM, but the confetti and
-        // checkmark are saved for the reveal moment.
-        return WINRV2PulseGlow(accent: accent, child: _card());
+        // Pre-reveal the tile is CALM — a static glow only. Every moving
+        // element (pulse, confetti, check draw) is saved for the single
+        // celebration moment so nothing animates early.
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.75),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: _card(),
+        );
       case WINRV2TileState.completed:
       case WINRV2TileState.locked:
         return _card();
@@ -907,21 +903,23 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
-          // Horizontal SLIDE swap (not a crossfade), mirroring iOS: the pitch
-          // enters/exits at the leading edge, the ADDED toast at the trailing
-          // edge.
+          // Carousel: every state slides IN from the right and OUT to the
+          // left — one continuous forward direction, never a rewind. The
+          // outgoing child's animation runs 1→0, so an off-screen-LEFT
+          // `begin` drives it out the leading edge.
           ClipRect(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
-                final fromTrailing = child.key == const ValueKey('claimed');
+                final incoming =
+                    child.key == ValueKey(_showToast ? 'claimed' : 'come-back');
                 return FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
                     position: Tween<Offset>(
-                      begin: Offset(fromTrailing ? 1 : -1, 0),
+                      begin: Offset(incoming ? 1 : -1, 0),
                       end: Offset.zero,
                     ).animate(animation),
                     child: child,
@@ -1169,6 +1167,107 @@ class WINRV2LegalLinks extends StatelessWidget {
         title,
         style: WINRV2Font.inter(12, color: WINRV2Colors.textSecondary),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Counting total readout
+// ---------------------------------------------------------------------------
+
+/// The stats-strip total, ported from iOS `WINRV2CountUpText`: counts up
+/// smoothly (~0.7s ease-out) when the value changes and pops a brief star
+/// burst as it lands on the new total.
+class WINRV2CountUpText extends StatefulWidget {
+  final int value;
+  final Color accent;
+
+  const WINRV2CountUpText({
+    super.key,
+    required this.value,
+    required this.accent,
+  });
+
+  @override
+  State<WINRV2CountUpText> createState() => _WINRV2CountUpTextState();
+}
+
+class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late int _from;
+  bool _burst = false;
+  Timer? _burstTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _from = widget.value;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+      value: 1,
+    )..addStatusListener((status) {
+        if (status != AnimationStatus.completed) return;
+        setState(() => _burst = true);
+        _burstTimer = Timer(const Duration(milliseconds: 900), () {
+          if (!mounted) return;
+          setState(() => _burst = false);
+        });
+      });
+  }
+
+  @override
+  void didUpdateWidget(WINRV2CountUpText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value == oldWidget.value) return;
+    // Restart the ramp from whatever number is currently displayed.
+    final eased = Curves.easeOutCubic.transform(_controller.value);
+    _from = (_from + (oldWidget.value - _from) * eased).round();
+    _burstTimer?.cancel();
+    _burst = false;
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _burstTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final eased = Curves.easeOutCubic.transform(_controller.value);
+            final shown = (_from + (widget.value - _from) * eased).round();
+            return Text(
+              winrV2FormatInt(shown),
+              style: WINRV2Font.inter(
+                15,
+                weight: FontWeight.w900,
+                color: widget.accent,
+                letterSpacing: -0.3,
+                height: 1.1,
+              ),
+            );
+          },
+        ),
+        if (_burst)
+          const Positioned(
+            width: 54,
+            height: 40,
+            child: IgnorePointer(
+              child: WINRV2Confetti(count: 8, speed: 1.4),
+            ),
+          ),
+      ],
     );
   }
 }
