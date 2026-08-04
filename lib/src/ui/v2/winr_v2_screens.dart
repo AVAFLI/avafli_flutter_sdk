@@ -388,7 +388,11 @@ class WINRV2DashboardView extends StatelessWidget {
 
   bool get _visitMode => giveaway?.isVisitMode ?? false;
 
-  bool get _preReveal => pendingClaimEntries != null && !revealed;
+  // Pinned while today is unclaimed OR the reveal hasn't played — matching
+  // the experience controller. Without the claimedToday clause the current
+  // tile animates at claim-response time, ~1s BEFORE the count-up/toast beat.
+  bool get _preReveal =>
+      !revealed && (pendingClaimEntries != null || !claimedToday);
 
   int _ladderValue(int day) => WINRV2Ladder.entries(
         day: day,

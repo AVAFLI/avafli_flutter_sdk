@@ -835,7 +835,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         );
 
       case _V2Phase.streak:
-        final preReveal = _pendingRevealGrant != null && !_claimRevealed;
+        // Pinned from the FIRST frame: while today is unclaimed OR the
+        // reveal hasn't played, show yesterday's numbers. Without the
+        // claimedToday clause there's a flash of the raw post-claim server
+        // state during the network round-trip, and elements flip at
+        // different times.
+        final preReveal =
+            !_claimRevealed && (_pendingRevealGrant != null || !_claimedToday);
         final postClaimTotal =
             _streakState?.totalEntriesEarned ?? _backendTotalEntries ?? 0;
         return WINRV2DashboardView(
