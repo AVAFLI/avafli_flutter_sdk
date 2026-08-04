@@ -54,13 +54,10 @@ Add the SDK to your `pubspec.yaml` as a git dependency:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk:
-    git:
-      url: https://github.com/AVAFLI/winr_flutter_sdk.git
-      ref: main
+  winr_flutter_sdk: ^2.0.0
 ```
 
-> **pub.dev:** The package is not yet published to pub.dev — `winr_flutter_sdk: ^2.0.0` will not resolve until it is.
+> Published on [pub.dev](https://pub.dev/packages/winr_flutter_sdk). A git dependency on this repo also works if you need an unreleased revision.
 
 Then run:
 
