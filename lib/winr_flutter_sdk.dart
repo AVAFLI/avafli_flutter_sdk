@@ -1,32 +1,35 @@
 /// WINR Flutter SDK
-/// 
-/// A comprehensive sweepstakes and engagement SDK for Flutter applications.
-/// 
+///
+/// A sweepstakes and engagement SDK for Flutter applications.
+///
 /// This SDK provides:
-/// - Daily streak engagement system
-/// - Rewarded video integrations
+/// - Daily streak engagement system (V2 auto-open bottom-drawer experience)
 /// - Email capture and age verification
 /// - Push notification support
 /// - Analytics integration
-/// - GDPR compliance features
-/// - Customizable UI themes and branding
-/// 
+/// - GDPR / RTD compliance features
+///
 /// Example usage:
 /// ```dart
 /// import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
-/// 
-/// // Configure the SDK with user
+///
+/// // Configure the SDK with user (call once at app launch)
 /// await WINR.configure(WINRConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
 ///   environment: WINREnvironment.production,
+///   bundleId: 'com.example.myapp',
 ///   user: WINRUser(
 ///     id: 'user123',
 ///     firstName: 'Jane',
 ///     lastName: 'Doe',
 ///   ),
 /// ));
-/// 
-/// // Present the experience
+///
+/// // Attach the SDK navigator key so the experience can auto-open on the
+/// // first app-open of the day:
+/// MaterialApp(navigatorKey: WINR.navigatorKey, ...);
+///
+/// // Or present manually:
 /// WINR.present(context);
 /// ```
 library winr_flutter_sdk;
@@ -42,22 +45,13 @@ export 'src/winr_branding.dart';
 
 // Domain Models
 export 'src/domain/giveaway.dart';
+export 'src/domain/sdk_config.dart';
 export 'src/domain/streak_engine.dart';
 export 'src/domain/streak_state.dart';
 export 'src/domain/daily_entry_grant.dart';
-
-// UI Components
-export 'src/ui/winr_experience_screen.dart';
-export 'src/ui/winr_experience_card.dart';
-export 'src/ui/how_it_works_view.dart';
-export 'src/ui/skeleton_views.dart';
-export 'src/ui/winr_theme.dart';
 
 // Analytics
 export 'src/services/analytics/analytics_adapter.dart';
 
 // Push Notifications
 export 'src/services/push_notification_manager.dart';
-
-// Rewards
-export 'src/rewards/rewarded_video_provider.dart';

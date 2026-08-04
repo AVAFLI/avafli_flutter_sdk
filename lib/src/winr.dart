@@ -3,29 +3,22 @@ import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/giveaway.dart';
 import 'domain/daily_entry_grant.dart';
-import 'domain/sdk_copy.dart';
-import 'domain/sdk_media.dart';
+import 'domain/sdk_config.dart';
 import 'domain/streak_engine.dart';
-import 'domain/streak_state.dart';
 import 'network/network_client.dart';
 import 'network/winr_api.dart';
-import 'rewards/ad_provider_factory.dart';
-import 'rewards/rewarded_video_provider.dart';
 import 'services/analytics/analytics_adapter.dart';
 import 'services/logger.dart';
 import 'services/push_notification_manager.dart';
 import 'storage/preferences_storage.dart';
 import 'storage/secure_storage.dart';
 import 'storage/storage.dart';
-import 'ui/winr_experience_card.dart';
-import 'ui/winr_experience_screen.dart';
-import 'winr_branding.dart';
+import 'ui/v2/winr_v2_experience.dart';
 import 'winr_configuration.dart';
-import 'winr_environment.dart';
 import 'winr_error.dart';
 import 'winr_user.dart';
 
@@ -36,14 +29,17 @@ import 'winr_user.dart';
 ///
 /// Example usage:
 /// ```dart
-/// // Configure the SDK with user
+/// // Configure the SDK with user (call once at app launch)
 /// await WINR.configure(WINRConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
 ///   environment: WINREnvironment.production,
 ///   user: WINRUser(id: 'user123', firstName: 'Jane', lastName: 'Doe'),
 /// ));
 ///
-/// // Present the experience
+/// // For the once-a-day auto-open, attach the SDK's navigator key:
+/// MaterialApp(navigatorKey: WINR.navigatorKey, ...)
+///
+/// // Or present manually at any time:
 /// final result = await WINR.present(context);
 /// ```
 class WINR {
@@ -52,16 +48,21 @@ class WINR {
   static SecureStorage? _secureStorage;
   static PreferencesStorage? _preferencesStorage;
   static StreakEngine? _streakEngine;
-  static RewardedVideoProvider? _rewardedVideoProvider;
 
   // Cached data
   static Giveaway? _cachedGiveaway;
-  static StreakState? _cachedStreakState;
-  static Map<String, dynamic>? _cachedSdkConfig;
-  static SdkCopy? _cachedSdkCopy;
-  static SdkMedia? _cachedSdkMedia;
+  static Map<String, dynamic>? _cachedSdkConfigRaw;
+  static WinrSdkConfig? _cachedSdkConfig;
   static bool? _cachedClaimedToday;
-  static int _cachedTotalEntries = 0;
+  static int? _cachedStreakDay;
+
+  /// Backend truth for whether this person has confirmed email + consent
+  /// (drives the unregistered impression cap for auto-present).
+  static bool? _cachedEmailConsent;
+
+  /// RTD opt-out — from the backend or the local persisted flag. Once true
+  /// the experience is never auto-presented and [present] refuses.
+  static bool _cachedOptedOut = false;
 
   // Registration state
   static bool _isRegistering = false;
@@ -73,21 +74,45 @@ class WINR {
   /// the network or pushing a screen. Reset on each [configure].
   static bool _isSuspended = false;
 
-  /// Package version and constants
-  /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec field
-  /// 21: sdk_version format `v1.x.x`).
-  static const String sdkVersion = '1.0.0';
+  /// Whether the experience route is currently on screen (don't stack).
+  static bool _isPresenting = false;
+
+  static _WinrLifecycleObserver? _lifecycleObserver;
+
+  /// Navigator key for the V2 auto-open flow. Attach it to your app's
+  /// `MaterialApp(navigatorKey: WINR.navigatorKey)` so the SDK can present the
+  /// experience on the first app-open of the day. Without it, auto-open is
+  /// silently skipped and only manual [present] works.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
+  /// Package version and constants.
+  /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
+  /// field 21: sdk_version format `v1.x.x`).
+  static const String sdkVersion = '2.0.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
-  /// Web). Derived at runtime — same pattern as
-  /// [WINRPushNotificationManager] which computes ios/android for push.
+  /// Web). Derived at runtime.
   static String get platformOS =>
       Platform.isIOS ? 'iOS' : (Platform.isAndroid ? 'Android' : 'Web');
 
+  // Auto-present persistence (per-bundle keys so app reinstalls of a different
+  // publisher app on the same device don't cross-contaminate). Key names match
+  // the iOS SDK.
+  static String get _lastAutoPresentKey =>
+      'winr_last_auto_present_${_configuration?.bundleId ?? ''}';
+  static String get _unregisteredImpressionsKey =>
+      'winr_unregistered_impressions_${_configuration?.bundleId ?? ''}';
+  static String get _optedOutKey =>
+      'winr_opted_out_${_configuration?.bundleId ?? ''}';
+
   /// Configures the WINR SDK with the provided configuration.
   ///
-  /// This must be called before any other SDK methods. It initializes
-  /// the networking, storage, and other core components.
+  /// This must be called before any other SDK methods. It initializes the
+  /// networking, storage, and other core components, registers the device in
+  /// the background, and then attempts the once-a-day auto-present of the V2
+  /// experience (kill switch, unregistered impression cap, and RTD opt-out
+  /// respected).
   ///
   /// Returns `true` if configuration was successful, `false` otherwise.
   static Future<bool> configure(WINRConfiguration config) async {
@@ -102,6 +127,10 @@ class WINR {
       // Initialize logger
       Logger.instance.level = config.options.logging;
       Logger.instance.info('WINR SDK configured for ${config.environment}');
+
+      // Keep request metadata in sync (used by claim requests).
+      WINRRequestDefaults.platformOS = platformOS;
+      WINRRequestDefaults.sdkVersion = 'v$sdkVersion';
 
       // Initialize storage
       _secureStorage = SecureStorage();
@@ -119,6 +148,11 @@ class WINR {
       // Set up token refresh handler
       _networkClient!.setRefreshHandler(_refreshTokenIfNeeded);
 
+      // Restore the persisted RTD flag so an opted-out user stays suppressed
+      // even before (or without) a network round-trip.
+      final prefs = await SharedPreferences.getInstance();
+      _cachedOptedOut = prefs.getBool(_optedOutKey) ?? false;
+
       // Initialize push notification manager
       if (config.options.enablePushReminders) {
         WINRPushNotificationManager.instance.setNetworkClient(_networkClient!);
@@ -131,8 +165,16 @@ class WINR {
       _configuration!.options.analyticsAdapter?.identify(config.user.id);
       Logger.instance.debug('User set: ${_redactId(config.user.id)}');
 
-      // Register device in background
-      unawaited(_registerDeviceIfNeeded());
+      // Register device in background, then attempt the once-a-day
+      // auto-present.
+      unawaited(_registerDeviceIfNeeded().then((_) => _autoPresentIfEligible()));
+
+      // Auto-present on subsequent foregrounds too (covers the "app stayed in
+      // memory overnight" case — a new day should re-open the experience).
+      if (_lifecycleObserver == null) {
+        _lifecycleObserver = _WinrLifecycleObserver();
+        WidgetsBinding.instance.addObserver(_lifecycleObserver!);
+      }
 
       // Submit user profile in background
       unawaited(_submitUserProfileIfNeeded(config.user));
@@ -153,22 +195,111 @@ class WINR {
   /// [WINRError.serviceUnavailable] completion error from [present]).
   static bool get isAvailable => _configuration != null && !_isSuspended;
 
-  /// Presents the WINR experience screen.
+  // MARK: - Auto-present (V2 experience: open once per day on app open)
+
+  /// Presents the experience automatically, at most once per calendar day,
+  /// when all conditions allow. Called after registration completes and on
+  /// each app foreground. All short-circuits are silent by design.
+  static Future<void> _autoPresentIfEligible() async {
+    final config = _configuration;
+    if (config == null || _isSuspended || _cachedOptedOut) return;
+
+    // Kill switch: sdkConfig.experience.autoOpenEnabled (default true).
+    final experience = _cachedSdkConfig?.experience;
+    if (!(experience?.autoOpenEnabled ?? true)) return;
+    if (_cachedGiveaway == null) return;
+
+    // Once per day.
+    final today = _dayString(DateTime.now());
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(_lastAutoPresentKey) == today) return;
+
+    // Unregistered users (no confirmed email) see the auto-open at most N
+    // times (default 3 per the MVP decision), then the SDK goes quiet until
+    // they register or the publisher opens it manually.
+    var pendingImpressionCount = false;
+    if (_cachedEmailConsent != true) {
+      final cap = experience?.unregisteredImpressionCap ?? 3;
+      final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
+      if (seen >= cap) {
+        Logger.instance.debug(
+            'Auto-present skipped: unregistered impression cap ($cap) reached');
+        return;
+      }
+      pendingImpressionCount = true;
+    }
+
+    // Don't stack on top of an already-presented experience, and require a
+    // navigator (host must attach WINR.navigatorKey to its MaterialApp).
+    if (_isPresenting) return;
+    final navigator = navigatorKey.currentState;
+    final context = navigatorKey.currentContext;
+    if (navigator == null || context == null) {
+      Logger.instance.debug(
+          'Auto-present skipped: WINR.navigatorKey not attached to a MaterialApp');
+      return;
+    }
+
+    if (pendingImpressionCount) {
+      await prefs.setInt(_unregisteredImpressionsKey,
+          (prefs.getInt(_unregisteredImpressionsKey) ?? 0) + 1);
+    }
+    await prefs.setString(_lastAutoPresentKey, today);
+    Logger.instance
+        .info('Auto-presenting WINR experience (first open of the day)');
+    // Re-fetch the navigator context after the awaits above.
+    final presentContext = navigatorKey.currentContext;
+    if (presentContext == null || !presentContext.mounted) return;
+    unawaited(present(presentContext));
+  }
+
+  static String _dayString(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // MARK: - RTD Opt-out
+
+  /// Right-To-Delete opt-out: tombstones the person on the backend
+  /// (identity-wide, PII anonymized, email suppressed) and permanently
+  /// silences the experience on this device. Wire this to the opt-out action
+  /// in your privacy-policy flow.
+  static Future<void> optOut() async {
+    final networkClient = _networkClient;
+    if (networkClient == null) {
+      throw const WINRException(WINRError.notConfigured);
+    }
+    await networkClient.send(OptOutRequest());
+    markOptedOut();
+    Logger.instance.info(
+        'User opted out of WINR (RTD) — experience permanently silenced');
+  }
+
+  /// @internal — Records the RTD flag (from the backend or [optOut]) so the
+  /// suppression holds on future launches even offline.
+  static void markOptedOut() {
+    _cachedOptedOut = true;
+    unawaited(SharedPreferences.getInstance()
+        .then((prefs) => prefs.setBool(_optedOutKey, true)));
+  }
+
+  /// Presents the WINR experience (the V2 bottom drawer) over the host app.
   ///
-  /// Shows the main engagement UI where users can claim their daily entries.
-  /// Returns a [DailyEntryGrant] if the user successfully claims entries,
-  /// or throws a [WINRException] if an error occurs.
+  /// The experience can be opened at any time — users can always view it, but
+  /// entries are granted automatically at most once per day. Returns the
+  /// [DailyEntryGrant] when entries were claimed during this presentation, or
+  /// `null` if the user dismissed without a (new) claim.
   ///
   /// If the publisher account is suspended / its API key has been revoked,
-  /// this does NOT push any screen and instead throws a
-  /// [WINRException] wrapping [WINRError.serviceUnavailable].
+  /// this does NOT push any screen and instead throws a [WINRException]
+  /// wrapping [WINRError.serviceUnavailable]. If the person opted out (RTD),
+  /// throws [WINRError.optedOut].
   static Future<DailyEntryGrant?> present(BuildContext context) async {
     final config = _configuration;
     if (config == null) {
       throw const WINRException(WINRError.notConfigured);
     }
-
-    final user = config.user;
 
     // Ensure registration is complete — registration may flip _isSuspended.
     await _ensureRegistrationComplete();
@@ -177,87 +308,69 @@ class WINR {
     // serviceUnavailable error so the host app can show its own message.
     if (_isSuspended) {
       Logger.instance.info('WINR present suppressed: publisher suspended');
-      config.options.analyticsAdapter
-          ?.track(WINRAnalyticsEvents.experienceDismissed);
       throw const WINRException(WINRError.serviceUnavailable);
     }
+
+    // RTD: an opted-out person never sees the experience again — not even via
+    // a manual present() from the host app.
+    if (_cachedOptedOut) {
+      Logger.instance.info('WINR present suppressed: user opted out (RTD)');
+      throw const WINRException(WINRError.optedOut);
+    }
+
+    if (_isPresenting) return null;
 
     // Track presentation
     config.options.analyticsAdapter
         ?.track(WINRAnalyticsEvents.experiencePresented);
 
-    // Create and show the experience screen
-    if (context.mounted) {
-      final result = await Navigator.of(context).push<DailyEntryGrant>(
-        MaterialPageRoute(
-          builder: (context) => WINRExperienceScreen(
+    if (!context.mounted) return null;
+
+    _isPresenting = true;
+    try {
+      // The V2 drawer renders its own chrome (host app dimmed behind, sheet
+      // flush to the screen's bottom + sides, rounded TOP corners only), so
+      // it's pushed as a transparent overlay route.
+      final result = await Navigator.of(context, rootNavigator: true)
+          .push<DailyEntryGrant>(
+        PageRouteBuilder<DailyEntryGrant>(
+          opaque: false,
+          barrierDismissible: false,
+          transitionDuration: const Duration(milliseconds: 200),
+          reverseTransitionDuration: const Duration(milliseconds: 200),
+          transitionsBuilder: (context, animation, secondary, child) =>
+              FadeTransition(opacity: animation, child: child),
+          pageBuilder: (context, animation, secondary) => WINRV2Experience(
             configuration: config,
-            user: user,
             networkClient: _networkClient!,
             secureStorage: _secureStorage!,
             preferencesStorage: _preferencesStorage!,
             streakEngine: _streakEngine!,
-            rewardedVideoProvider: _rewardedVideoProvider,
             cachedGiveaway: _cachedGiveaway,
-            cachedStreakState: _cachedStreakState,
             cachedClaimedToday: _cachedClaimedToday,
-            cachedTotalEntries: _cachedTotalEntries,
+            cachedStreakDay: _cachedStreakDay,
             sdkConfig: _cachedSdkConfig,
-            sdkCopy: _cachedSdkCopy,
-            sdkMedia: _cachedSdkMedia,
           ),
-          fullscreenDialog: true,
         ),
       );
 
       if (result != null) {
+        _cachedClaimedToday = true;
         return result;
       }
-      // User dismissed without claiming — this is NOT an error. Resolve with null
-      // so the host app's `await WINR.present(...)` completes normally instead of
-      // throwing (which previously bounced callers into their error/catch paths).
+      // User dismissed without claiming — NOT an error.
       config.options.analyticsAdapter
           ?.track(WINRAnalyticsEvents.experienceDismissed);
       return null;
+    } finally {
+      _isPresenting = false;
     }
-    // Context was unmounted before we could present — nothing shown, not an error.
-    return null;
-  }
-
-  /// Returns a widget that can be embedded in your app.
-  ///
-  /// This provides a card-style experience that can be integrated
-  /// directly into your app's UI instead of being presented modally.
-  static Widget presentAsCard({
-    VoidCallback? onEntryGranted,
-    VoidCallback? onError,
-  }) {
-    final config = _configuration;
-
-    if (config == null) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        child: const Text('WINR SDK not configured'),
-      );
-    }
-
-    return WINRExperienceCard(
-      branding: WINRBranding.defaultBranding(),
-      giveaway: _cachedGiveaway,
-      streakState: _cachedStreakState,
-      claimedToday: _cachedClaimedToday ?? false,
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        // When card is tapped, the publisher should call WINR.present()
-        onEntryGranted?.call();
-      },
-      onQuickClaim: onEntryGranted,
-    );
   }
 
   /// Registers for push notifications.
   ///
-  /// Requests permission and sets up FCM token registration for streak reminders.
+  /// Requests permission and sets up FCM token registration for streak
+  /// reminders.
   static Future<void> registerForPushNotifications() async {
     final config = _configuration;
     if (config == null) {
@@ -269,7 +382,8 @@ class WINR {
       return;
     }
 
-    Logger.instance.debug('Push reminders enabled — call WINRPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
+    Logger.instance.debug(
+        'Push reminders enabled — call WINRPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
   }
 
   /// Deletes all user data (GDPR compliance).
@@ -290,12 +404,11 @@ class WINR {
 
       // Clear cached data
       _cachedGiveaway = null;
-      _cachedStreakState = null;
+      _cachedSdkConfigRaw = null;
       _cachedSdkConfig = null;
-      _cachedSdkCopy = null;
-      _cachedSdkMedia = null;
       _cachedClaimedToday = null;
-      _cachedTotalEntries = 0;
+      _cachedStreakDay = null;
+      _cachedEmailConsent = null;
 
       Logger.instance.info('User data deleted successfully');
     } catch (e) {
@@ -337,7 +450,8 @@ class WINR {
           await _refreshGiveawayData();
           return;
         } on WINRException catch (e) {
-          // If auth failed, the cached token is stale — clear it and re-register
+          // If auth failed, the cached token is stale — clear it and
+          // re-register
           if (e.error == WINRError.authenticationFailed) {
             Logger.instance.info('Cached token expired, re-registering device');
             _networkClient!.setAuthToken(null);
@@ -357,9 +471,9 @@ class WINR {
       // (e.g. "America/New_York"), per spec field 16. `DateTime.now()
       // .timeZoneName` returns a locale abbreviation (e.g. "EST"), NOT IANA.
       // dart:core has no IANA source; add the `flutter_timezone` plugin
-      // (FlutterTimezone.getLocalTimezone()) to send a real IANA id. Until then
-      // we send the abbreviation as a last resort — the backend maps common
-      // abbreviations, so this is lower risk.
+      // (FlutterTimezone.getLocalTimezone()) to send a real IANA id. Until
+      // then we send the abbreviation as a last resort — the backend maps
+      // common abbreviations, so this is lower risk.
       final request = RegisterDeviceRequest(
         apiKey: config.apiKey,
         deviceFingerprint: deviceFingerprint,
@@ -382,26 +496,24 @@ class WINR {
       // Cache response data
       _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
-      _cachedTotalEntries = response.totalEntries;
-      _cachedSdkConfig = response.sdkConfig;
-      _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
-      _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
+      _cachedStreakDay = response.streakDay;
+      _cachedSdkConfigRaw = response.sdkConfig;
+      _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
+      if (response.optedOut == true) markOptedOut();
 
       // Cache streak state
       if (response.giveaway != null) {
         await preferencesStorage.cacheGiveaway(response.giveaway!);
       }
 
-      // If backend says not claimed but local storage says claimed today, trust local
+      // If backend says not claimed but local storage says claimed today,
+      // trust local
       if (!(_cachedClaimedToday ?? false)) {
         final localClaimed = await checkLocalClaimedToday(preferencesStorage);
         if (localClaimed) {
           _cachedClaimedToday = true;
         }
       }
-
-      // Set up rewarded video provider if configured
-      _setupRewardedVideoProvider();
 
       Logger.instance
           .info('Device registered successfully: ${_redactId(response.uuid)}');
@@ -419,11 +531,9 @@ class WINR {
   /// If [error] indicates the publisher is suspended / API key revoked, caches
   /// that state so subsequent [present] calls short-circuit cleanly.
   static void _handleSuspensionIfNeeded(Object error) {
-    if (error is WINRException &&
-        error.error == WINRError.serviceUnavailable) {
+    if (error is WINRException && error.error == WINRError.serviceUnavailable) {
       _isSuspended = true;
-      Logger.instance
-          .info('Publisher suspended — WINR experience disabled');
+      Logger.instance.info('Publisher suspended — WINR experience disabled');
     }
   }
 
@@ -437,25 +547,25 @@ class WINR {
 
       _cachedGiveaway = response.giveaway;
       _cachedClaimedToday = response.claimedToday;
-      _cachedTotalEntries = response.totalEntries;
-      _cachedSdkConfig = response.sdkConfig;
-      _cachedSdkCopy = _parseSdkCopy(response.sdkConfig);
-      _cachedSdkMedia = _parseSdkMedia(response.sdkConfig);
+      _cachedStreakDay = response.streakDay;
+      _cachedSdkConfigRaw = response.sdkConfig;
+      _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
+      _cachedEmailConsent = response.emailConsentStatus;
+      if (response.optedOut == true) markOptedOut();
 
       // Update cached data
       if (response.giveaway != null) {
         await _preferencesStorage!.cacheGiveaway(response.giveaway!);
       }
 
-      // If backend says not claimed but local storage says claimed today, trust local
+      // If backend says not claimed but local storage says claimed today,
+      // trust local
       if (!(_cachedClaimedToday ?? false)) {
         final localClaimed = await checkLocalClaimedToday(_preferencesStorage!);
         if (localClaimed) {
           _cachedClaimedToday = true;
         }
       }
-
-      _setupRewardedVideoProvider();
 
       Logger.instance.debug('Giveaway data refreshed');
     } on WINRException catch (e) {
@@ -473,59 +583,6 @@ class WINR {
     } catch (e) {
       Logger.instance.error('Failed to refresh giveaway data', e);
     }
-  }
-
-  /// Sets up the rewarded video provider based on giveaway config.
-  static void _setupRewardedVideoProvider() {
-    final sdkConfig = _cachedSdkConfig;
-    if (sdkConfig == null) return;
-
-    final adNetwork = sdkConfig['adNetwork'] as String?;
-    final adUnitId = sdkConfig['adUnitId'] as String?;
-
-    _rewardedVideoProvider = AdProviderFactory.create(
-      adNetwork: adNetwork,
-      adUnitId: adUnitId,
-      testMode: _configuration?.environment == WINREnvironment.staging,
-    );
-  }
-
-  /// Parses SDK config copy into typed model.
-  static SdkCopy? _parseSdkCopy(Map<String, dynamic>? sdkConfig) {
-    if (sdkConfig == null) return null;
-    
-    final copyJson = sdkConfig['copy'];
-    if (copyJson == null) return null;
-    
-    if (copyJson is Map<String, dynamic>) {
-      try {
-        return SdkCopy.fromJson(copyJson);
-      } catch (e) {
-        Logger.instance.error('Failed to parse SDK copy config', e);
-        return null;
-      }
-    }
-    
-    return null;
-  }
-
-  /// Parses SDK config media into typed model.
-  static SdkMedia? _parseSdkMedia(Map<String, dynamic>? sdkConfig) {
-    if (sdkConfig == null) return null;
-    
-    final mediaJson = sdkConfig['media'];
-    if (mediaJson == null) return null;
-    
-    if (mediaJson is Map<String, dynamic>) {
-      try {
-        return SdkMedia.fromJson(mediaJson);
-      } catch (e) {
-        Logger.instance.error('Failed to parse SDK media config', e);
-        return null;
-      }
-    }
-    
-    return null;
   }
 
   /// Refreshes the authentication token if needed.
@@ -592,8 +649,9 @@ class WINR {
     return RegExp(r"^[a-zA-Z '-]{1,50}$").hasMatch(trimmed) ? trimmed : null;
   }
 
-  /// Strips non-digits and validates a US mobile number against `^\+?1?\d{10}$`;
-  /// returns the digit-normalized value or null if invalid (phone is optional).
+  /// Strips non-digits and validates a US mobile number against
+  /// `^\+?1?\d{10}$`; returns the digit-normalized value or null if invalid
+  /// (phone is optional).
   static String? _validPhone(String? raw) {
     if (raw == null) return null;
     final trimmed = raw.trim();
@@ -604,8 +662,8 @@ class WINR {
         : null;
   }
 
-  /// Redacts a user id / uuid for logging — keeps only the last 4 chars so logs
-  /// remain useful for correlation without leaking the full identifier.
+  /// Redacts a user id / uuid for logging — keeps only the last 4 chars so
+  /// logs remain useful for correlation without leaking the full identifier.
   static String _redactId(String id) {
     if (id.length <= 4) return '****';
     return '****${id.substring(id.length - 4)}';
@@ -637,31 +695,34 @@ class WINR {
   }
 
   // MARK: - Internal State Sync
-  // These methods are used by WINRExperienceScreen within the SDK package.
-  // They are not part of the public API and should not be called by publishers.
+  // These methods are used by the experience within the SDK package.
+  // They are not part of the public API and should not be called by
+  // publishers.
 
   /// @internal — Syncs the static cached claimed-today state after a claim.
-  /// Used by [WINRExperienceScreen] within this package.
   static void syncClaimedToday(bool claimed) {
     _cachedClaimedToday = claimed;
   }
 
   /// @internal — Persists claimed-today date to local storage so the state
   /// survives app restarts within the same calendar day.
-  /// Used by [WINRExperienceScreen] within this package.
   static Future<void> persistClaimedToday(PreferencesStorage storage) async {
-    final today = DateTime.now().toIso8601String().substring(0, 10); // YYYY-MM-DD
+    final today = _dayString(DateTime.now());
     await storage.setString(StorageKeys.claimedTodayDate, today);
   }
 
   /// @internal — Checks local storage for a same-day claim record.
   /// Returns true if the user already claimed today (locally persisted).
-  /// Used by [WINRExperienceScreen] within this package.
   static Future<bool> checkLocalClaimedToday(PreferencesStorage storage) async {
     final stored = await storage.getString(StorageKeys.claimedTodayDate);
     if (stored == null) return false;
-    final today = DateTime.now().toIso8601String().substring(0, 10);
-    return stored == today;
+    return stored == _dayString(DateTime.now());
+  }
+
+  /// @internal — Foreground hook from the lifecycle observer.
+  static Future<void> handleAppResumed() async {
+    await _ensureRegistrationComplete();
+    await _autoPresentIfEligible();
   }
 
   // MARK: - Testing Support
@@ -674,6 +735,10 @@ class WINR {
   @visibleForTesting
   static WINRUser? get userForTesting => _configuration?.user;
 
+  /// Gets the raw server sdkConfig (for testing).
+  @visibleForTesting
+  static Map<String, dynamic>? get sdkConfigForTesting => _cachedSdkConfigRaw;
+
   /// Resets the SDK state (for testing).
   @visibleForTesting
   static void resetForTesting() {
@@ -682,16 +747,31 @@ class WINR {
     _secureStorage = null;
     _preferencesStorage = null;
     _streakEngine = null;
-    _rewardedVideoProvider = null;
     _cachedGiveaway = null;
-    _cachedStreakState = null;
+    _cachedSdkConfigRaw = null;
     _cachedSdkConfig = null;
-    _cachedSdkCopy = null;
-    _cachedSdkMedia = null;
     _cachedClaimedToday = null;
-    _cachedTotalEntries = 0;
+    _cachedStreakDay = null;
+    _cachedEmailConsent = null;
+    _cachedOptedOut = false;
     _isRegistering = false;
     _registrationCompleter = null;
     _isSuspended = false;
+    _isPresenting = false;
+    if (_lifecycleObserver != null) {
+      WidgetsBinding.instance.removeObserver(_lifecycleObserver!);
+      _lifecycleObserver = null;
+    }
+  }
+}
+
+/// Observes app lifecycle to re-attempt the once-a-day auto-present when the
+/// app returns to the foreground (mirrors iOS `didBecomeActiveNotification`).
+class _WinrLifecycleObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(WINR.handleAppResumed());
+    }
   }
 }
