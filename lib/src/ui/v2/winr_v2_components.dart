@@ -257,14 +257,24 @@ class WINRV2PrizeCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      winrV2FormatInt(totalEntries),
-                      style: WINRV2Font.inter(
-                        15,
-                        weight: FontWeight.w900,
-                        color: accent,
-                        letterSpacing: -0.3,
-                        height: 1.1,
+                    // Implicitly animates when the total changes (the Day 2+
+                    // CLAIM reveal counts up from the pre-claim total).
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(
+                        begin: totalEntries.toDouble(),
+                        end: totalEntries.toDouble(),
+                      ),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => Text(
+                        winrV2FormatInt(value.round()),
+                        style: WINRV2Font.inter(
+                          15,
+                          weight: FontWeight.w900,
+                          color: accent,
+                          letterSpacing: -0.3,
+                          height: 1.1,
+                        ),
                       ),
                     ),
                     Text(
@@ -436,7 +446,9 @@ class WINRV2PrizeCard extends StatelessWidget {
 // Streak rail (STREAK STEP + MILESTONE tiles)
 // ---------------------------------------------------------------------------
 
-enum WINRV2TileState { completed, active, locked }
+/// [ready] = today's tile before the user taps CLAIM (claim already granted
+/// server-side, reveal withheld): glows like [active] but shows no checkmark.
+enum WINRV2TileState { completed, active, ready, locked }
 
 /// One entry in the horizontally-scrolling streak rail — either a day tile or
 /// a milestone "power-up" accelerator tile.
@@ -618,25 +630,35 @@ class WINRV2StreakTile extends StatelessWidget {
 
   String get _noun => visitMode ? 'VISIT' : 'DAY';
 
+  bool get _hasAccentBackground =>
+      state == WINRV2TileState.active || state == WINRV2TileState.ready;
+
   @override
   Widget build(BuildContext context) {
-    if (state == WINRV2TileState.active) {
-      // Active-tile motion: breathing glow + confetti specks scattered around
-      // the tile.
-      return Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          const Positioned(
-            width: 152,
-            height: 176,
-            child: WINRV2Confetti(count: 12, speed: 0.7),
-          ),
-          WINRV2PulseGlow(accent: accent, child: _card()),
-        ],
-      );
+    switch (state) {
+      case WINRV2TileState.active:
+        // Active-tile motion: breathing glow + confetti specks scattered
+        // around the tile.
+        return Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            const Positioned(
+              width: 152,
+              height: 176,
+              child: WINRV2Confetti(count: 12, speed: 0.7),
+            ),
+            WINRV2PulseGlow(accent: accent, child: _card()),
+          ],
+        );
+      case WINRV2TileState.ready:
+        // Pre-reveal: glow draws the eye to CLAIM, but the confetti and
+        // checkmark are saved for the reveal moment.
+        return WINRV2PulseGlow(accent: accent, child: _card());
+      case WINRV2TileState.completed:
+      case WINRV2TileState.locked:
+        return _card();
     }
-    return _card();
   }
 
   Color get _numberColor {
@@ -644,6 +666,7 @@ class WINRV2StreakTile extends StatelessWidget {
       case WINRV2TileState.completed:
         return accent;
       case WINRV2TileState.active:
+      case WINRV2TileState.ready:
         return Colors.white;
       case WINRV2TileState.locked:
         return WINRV2Colors.foregroundSecondary;
@@ -660,9 +683,8 @@ class WINRV2StreakTile extends StatelessWidget {
       height: 134,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 3),
       decoration: BoxDecoration(
-        color:
-            state == WINRV2TileState.active ? null : WINRV2Colors.gunmetal,
-        gradient: state == WINRV2TileState.active
+        color: _hasAccentBackground ? null : WINRV2Colors.gunmetal,
+        gradient: _hasAccentBackground
             ? RadialGradient(
                 center: Alignment.topCenter,
                 radius: 1.15,
@@ -747,6 +769,11 @@ class WINRV2StreakTile extends StatelessWidget {
           height: 20,
           child: WINRV2AnimatedCheckmark(lineWidth: 2.5),
         );
+      case WINRV2TileState.ready:
+        // White flame (mirrors iOS "winr-flame"): the day is lit but the
+        // check is withheld until the CLAIM reveal.
+        return const Icon(Icons.local_fire_department,
+            size: 20, color: Colors.white);
       case WINRV2TileState.locked:
         return Icon(Icons.lock, size: 18, color: _labelColor);
     }

@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.0] - 2026-08-04
+
+- Day 2+ reveal flow (mirrors iOS): the auto-claim still fires silently the
+  moment the drawer opens, but returning users no longer get the celebration
+  modal. The dashboard holds YESTERDAY's numbers — streak label N-1, pre-claim
+  total, today's tile in a new `ready` state (breathing glow + white flame, no
+  checkmark, no confetti) — behind a "CLAIM N ENTRIES" pill. Tapping it is the
+  reveal: the tile flips to active (draw-on check + confetti), the streak label
+  advances, the total counts up to the post-claim value, and the pill becomes
+  "GOT IT" (which closes the drawer).
+- Day 1 keeps the "You're in!" celebration modal as its reveal, but its GOT IT
+  now dismisses the whole experience (previously settled on the dashboard).
+- Email-capture CTA renamed "GET MY N ENTRIES" → "CLAIM MY N ENTRIES".
+- "Already claimed" cross-device fallback and silent auto-claim failure are
+  unchanged (plain dashboard, no reveal).
+
 ## [2.1.0] - 2026-08-04
 
 - Removed (BREAKING): manual `WINR.present()` — the experience is exclusively

@@ -77,7 +77,7 @@ void main() {
 
     expect(find.text('VISIT. EARN. WIN.'), findsOneWidget);
     expect(find.text('\$1,000.00 CASH PRIZE'), findsOneWidget);
-    expect(find.text('GET MY 10 ENTRIES'), findsOneWidget);
+    expect(find.text('CLAIM MY 10 ENTRIES'), findsOneWidget);
     expect(
         find.text('I confirm I am 18 years of age or older'), findsOneWidget);
   });
@@ -115,6 +115,47 @@ void main() {
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
+  });
+
+  testWidgets('dashboard Day 2+ pre-reveal holds yesterday, CLAIM reveals',
+      (tester) async {
+    var revealed = false;
+    await tester.pumpWidget(_host(StatefulBuilder(
+      builder: (context, setState) => WINRV2DashboardView(
+        accent: accent,
+        logoUrl: null,
+        rulesUrl: null,
+        giveaway: _giveaway(),
+        streakDay: 3,
+        // Pre-reveal shows the pre-claim total; post-reveal the fresh total.
+        totalEntries: revealed ? 100 : 40,
+        entriesToday: 60,
+        ladder: const [10, 30, 60, 130, 240, 300, 500],
+        claimedToday: true,
+        onInfo: () {},
+        onClose: () {},
+        pendingClaimEntries: 60,
+        revealed: revealed,
+        onClaim: () => setState(() => revealed = true),
+      ),
+    )));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    // Pinned to yesterday: streak label N-1, CLAIM pill, no GOT IT.
+    expect(find.text('2 DAY STREAK'), findsOneWidget);
+    expect(find.text('CLAIM 60 ENTRIES'), findsOneWidget);
+    expect(find.text('GOT IT'), findsNothing);
+
+    // Tapping CLAIM is the reveal: label advances, pill becomes GOT IT.
+    await tester.ensureVisible(find.text('CLAIM 60 ENTRIES'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('CLAIM 60 ENTRIES'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('3 DAY STREAK'), findsOneWidget);
+    expect(find.text('GOT IT'), findsOneWidget);
+    expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
   });
 
   testWidgets('dashboard visit mode swaps copy', (tester) async {

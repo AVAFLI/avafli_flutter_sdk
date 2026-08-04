@@ -189,7 +189,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                     const SizedBox(height: 14),
                     WINRV2PillButton(
                       accent: widget.accent,
-                      title: 'GET MY $_day1Entries ENTRIES',
+                      title: 'CLAIM MY $_day1Entries ENTRIES',
                       isLoading: widget.isSubmitting,
                       enabled: _canSubmit,
                       onTap: () => widget.onSubmit(_email.text.trim()),
@@ -361,6 +361,13 @@ class WINRV2DashboardView extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onWinnerTap;
 
+  /// Reveal flow (Day 2+): the claim already succeeded server-side, but the UI
+  /// holds yesterday's numbers until the user taps "CLAIM N ENTRIES" — that tap
+  /// is the celebration (tile check + confetti + totals update), no modal.
+  final int? pendingClaimEntries;
+  final bool revealed;
+  final VoidCallback? onClaim;
+
   const WINRV2DashboardView({
     super.key,
     required this.accent,
@@ -375,9 +382,14 @@ class WINRV2DashboardView extends StatelessWidget {
     required this.onInfo,
     required this.onClose,
     this.onWinnerTap,
+    this.pendingClaimEntries,
+    this.revealed = true,
+    this.onClaim,
   });
 
   bool get _visitMode => giveaway?.isVisitMode ?? false;
+
+  bool get _preReveal => pendingClaimEntries != null && !revealed;
 
   int _ladderValue(int day) => WINRV2Ladder.entries(
         day: day,
@@ -398,7 +410,7 @@ class WINRV2DashboardView extends StatelessWidget {
       final state = day < streakDay
           ? WINRV2TileState.completed
           : (day == streakDay
-              ? WINRV2TileState.active
+              ? (_preReveal ? WINRV2TileState.ready : WINRV2TileState.active)
               : WINRV2TileState.locked);
       entries.add(WINRV2RailEntry.day(
         id: 'day-$day',
@@ -459,7 +471,11 @@ class WINRV2DashboardView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                     child: WINRV2PrizeCard(
                       accent: accent,
-                      streakDay: streakDay,
+                      // Pre-reveal the streak label still reads yesterday's
+                      // day; the CLAIM tap advances it to today.
+                      streakDay: _preReveal
+                          ? (streakDay - 1 > 1 ? streakDay - 1 : 1)
+                          : streakDay,
                       totalEntries: totalEntries,
                       prizeImageUrl: giveaway?.prizeImageUrl,
                       prizeValue: (giveaway?.prizeValue ?? 0).toInt(),
@@ -483,10 +499,25 @@ class WINRV2DashboardView extends StatelessWidget {
                   const SizedBox(height: 15),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: WINRV2PillButton(
-                      accent: accent,
-                      title: 'GOT IT',
-                      onTap: onClose,
+                    // CLAIM ⇄ GOT IT cross-fades on the reveal.
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      switchInCurve: Curves.easeOutBack,
+                      switchOutCurve: Curves.easeIn,
+                      child: _preReveal
+                          ? WINRV2PillButton(
+                              key: const ValueKey('claim'),
+                              accent: accent,
+                              title:
+                                  'CLAIM ${winrV2FormatInt(pendingClaimEntries!)} ENTRIES',
+                              onTap: onClaim ?? onClose,
+                            )
+                          : WINRV2PillButton(
+                              key: const ValueKey('got-it'),
+                              accent: accent,
+                              title: 'GOT IT',
+                              onTap: onClose,
+                            ),
                     ),
                   ),
                   const SizedBox(height: 6),

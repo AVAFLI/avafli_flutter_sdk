@@ -5,9 +5,13 @@
 // Mirrors the iOS SDK's WINRV2ExperienceRoot (WINRV2Screens.swift) and
 // WINRExperienceViewModel.swift:
 //   loading → emailCapture | streak → dailyConfirmed → streak → howItWorks…
-// Entries are granted automatically when the drawer opens (auto-claim); a
-// successful claim ALWAYS lands on the celebration modal; "Already claimed"
-// is silent (claimed dashboard) with a one-shot re-load to sync totals.
+// Entries are granted automatically when the drawer opens (auto-claim).
+// Day 1 (streakDay <= 1, right after email capture): the "You're in!"
+// celebration modal is the reveal, and its GOT IT closes the experience.
+// Day 2+: no modal — the dashboard holds YESTERDAY's numbers behind a
+// "CLAIM N ENTRIES" pill; tapping it is the reveal (tile check + confetti +
+// totals advance in place). "Already claimed" is silent (claimed dashboard)
+// with a one-shot re-load to sync totals.
 
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -93,6 +97,27 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   bool _isClaiming = false;
   bool _isSubmittingEmail = false;
+
+  // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
+  //
+  // The auto-claim on open grants entries server-side immediately, but the UI
+  // holds the previous day's numbers until the user taps "CLAIM N ENTRIES".
+  // That tap flips `_claimRevealed` — the day tile checks off with confetti,
+  // the streak label and totals advance, and the pill becomes "GOT IT".
+
+  /// The grant held back for the reveal (null when nothing is pending).
+  DailyEntryGrant? _pendingRevealGrant;
+
+  /// Whether the user has tapped CLAIM and seen the in-place celebration.
+  bool _claimRevealed = false;
+
+  /// Total entries as of before today's claim, for pre-reveal display.
+  int? _preClaimTotalEntries;
+
+  void _revealClaim() {
+    if (_pendingRevealGrant == null || _claimRevealed) return;
+    setState(() => _claimRevealed = true);
+  }
 
   /// One-shot guard for the "already claimed on another device" re-sync.
   bool _didResyncAfterAlreadyClaimed = false;
@@ -424,14 +449,26 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       );
 
       if (!mounted) return;
-      // V2: a claim always lands on the celebration modal.
+      // V2 auto-claim routing:
+      // - Day 1 (brand-new or restarted streak, typically right after email
+      //   capture): the "You're in!" celebration modal is the reveal.
+      // - Day 2+: no modal. Land on the dashboard pinned to yesterday's
+      //   numbers with a "CLAIM N ENTRIES" pill; the tap reveals the
+      //   celebration in place (Joe's Slice Day 2+ flow).
       setState(() {
         _streakState = updatedStreak;
         _claimedToday = true;
         _grant = grant;
         _entriesToday = grant.baseEntries;
         _confirmedTotalEntries = response.totalEntries;
-        _phase = _V2Phase.dailyConfirmed;
+        if (response.streakDay <= 1) {
+          _phase = _V2Phase.dailyConfirmed;
+        } else {
+          _pendingRevealGrant = grant;
+          _claimRevealed = false;
+          _preClaimTotalEntries = response.totalEntries - grant.total;
+          _phase = _V2Phase.streak;
+        }
         _isClaiming = false;
       });
     } catch (e) {
@@ -473,14 +510,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _phase = _V2Phase.streak;
       });
     }
-  }
-
-  /// The celebration modal's GOT IT — settle onto the dashboard.
-  void _showDashboardAfterCelebration() {
-    unawaited(_computeStreakAndMoveToDashboard(
-      backendClaimedToday: true,
-      backendStreakDay: _backendStreakDay,
-    ));
   }
 
   // -------------------------------------------------------------------------
@@ -601,21 +630,27 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         );
 
       case _V2Phase.streak:
+        final preReveal = _pendingRevealGrant != null && !_claimRevealed;
+        final postClaimTotal =
+            _streakState?.totalEntriesEarned ?? _backendTotalEntries ?? 0;
         return WINRV2DashboardView(
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
           giveaway: _giveaway,
           streakDay: _streakState?.currentDay ?? _displayStreakDay,
-          totalEntries: _streakState?.totalEntriesEarned ??
-              _backendTotalEntries ??
-              0,
+          totalEntries: preReveal
+              ? (_preClaimTotalEntries ?? postClaimTotal)
+              : postClaimTotal,
           entriesToday: _entriesToday,
           ladder: _ladder.isNotEmpty ? _ladder : _displayLadder,
           claimedToday: _claimedToday,
           onInfo: _showHowItWorks,
           onClose: _requestDismiss,
           onWinnerTap: () => setState(() => _showWinnerModal = true),
+          pendingClaimEntries: _pendingRevealGrant?.total,
+          revealed: _claimRevealed,
+          onClaim: _revealClaim,
         );
 
       case _V2Phase.dailyConfirmed:
@@ -646,7 +681,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
               earnedEntries: grant.total,
               nextEntries: _displayNextEntries,
               visitMode: _visitMode,
-              onDismiss: _showDashboardAfterCelebration,
+              // Day-1 modal is the reveal for brand-new streaks; GOT IT
+              // closes the whole experience until the next day's open.
+              onDismiss: _requestDismiss,
             ),
           ],
         );
