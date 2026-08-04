@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.3.0] - 2026-08-04
+
+### Added
+- **Winner prize-claim flow** — when the backend marks the user as the drawn
+  winner (`prizeClaim.status == "pending"` on `getActiveGiveaway`), the drawer
+  opens on the winner splash instead of the dashboard: CONGRATULATIONS! +
+  prize strip → single-page claim form (name, address, 50-state picker,
+  optional phone; email stays locked to the account) → `submitPrizeClaim` →
+  confirmation with the gold OFFICIAL WINNER card and RETURN TO APP. Appears
+  automatically; no integration work. The daily auto-claim still fires
+  silently while the flow is up, and an already-submitted claim shows the
+  normal dashboard.
+
+### Changed
+- Post-reveal come-back bar now celebrates "{N} ENTRIES ADDED / You're on a
+  roll!" (animated swap on the CLAIM reveal and in any claimed-today dashboard
+  state); pre-reveal/unclaimed states keep the come-back pitch.
+- Prize card is dark and full-bleed: the prize image fills the whole card, the
+  streak/total-entries stats sit in a solid black strip inside the top edge,
+  and the headline overlays the bottom over a black→transparent scrim
+  (right-aligned "WIN $1,000 / CASH PRIZE" for cash; centered "Win a {Prize}"
+  + accent value line otherwise).
+
 ## [2.2.0] - 2026-08-04
 
 - Day 2+ reveal flow (mirrors iOS): the auto-claim still fires silently the

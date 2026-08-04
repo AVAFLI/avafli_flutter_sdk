@@ -116,6 +116,10 @@ final success = await WINR.configure(config);
 
 There is no manual launch API — the WINR experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
 
+## Winner Experience
+
+When one of your users is drawn as a giveaway winner, the drawer automatically opens on a winner splash instead of the dashboard, then walks them through a prize-claim form (name, shipping address) and a confirmation with their claim number. This requires no integration work — the flow appears only for the drawn winner and disappears once their claim is submitted.
+
 ## Push Notifications
 
 Drive re-engagement with daily reminders. Publishers forward their FCM token to WINR:
