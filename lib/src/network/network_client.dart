@@ -9,6 +9,7 @@ import 'package:http/io_client.dart';
 import '../services/logger.dart';
 import '../winr_error.dart';
 import 'api_request.dart';
+import 'gts_roots.dart';
 
 /// HTTP client for making authenticated requests to the WINR backend.
 ///
@@ -49,34 +50,38 @@ class NetworkClientImpl implements NetworkClient {
     this.maxRetries = 3,
   });
 
-  /// Builds (once) an [IOClient] over a `dart:io` [HttpClient] that adds
-  /// certificate pinning (via [CertificatePinner]) on top of normal system
-  /// trust-store validation.
+  /// Builds (once) an [IOClient] over a `dart:io` [HttpClient] whose trust
+  /// store is RESTRICTED to the Google Trust Services roots, with an SPKI
+  /// leaf-pin backstop (via [CertificatePinner]) as defense-in-depth.
   ///
-  /// We pin on the Google Trust Services CA public keys (see
-  /// [CertificatePinner.defaultPins]) because the backend runs on
-  /// `*.cloudfunctions.net`, whose leaf certs rotate frequently but are all
-  /// issued under the GTS hierarchy — pinning the long-lived CA SPKI survives
-  /// leaf rotation.
+  /// **Trust-store restriction (the real CA pin).** The backend runs on
+  /// `*.cloudfunctions.net`, whose certificates chain to the GTS hierarchy.
+  /// We build the client from a `SecurityContext(withTrustedRoots: false)`
+  /// loaded with ONLY GTS Root R1 and GTS Root R4 (see `gts_roots.dart`, both
+  /// valid through 2036). Chain validation therefore succeeds only for chains
+  /// terminating at a GTS root — a certificate issued by any other CA
+  /// (compromised public CA, user-installed corporate root, MITM proxy) fails
+  /// the TLS handshake outright. This achieves CA pinning in pure Dart
+  /// despite `badCertificateCallback` only ever exposing the leaf: `dart:io`
+  /// never shows Dart the intermediates of the presented chain, but it DOES
+  /// let us dictate which roots the platform validator may chain to.
   ///
-  /// IMPORTANT `dart:io` LIMITATION: `badCertificateCallback` is invoked with
-  /// the **leaf** certificate only, and ONLY when the platform chain validation
-  /// fails. `dart:io` does not expose the intermediate/root certs of the
-  /// presented chain to Dart, so we cannot, from pure Dart, hash an intermediate
-  /// SPKI and compare it to our GTS CA pins. We therefore keep system trust
-  /// validation enabled (this is the real MITM gate: a forged/untrusted chain is
-  /// rejected before our callback ever runs), and use the callback as a
-  /// fail-closed backstop — any leaf that the platform already distrusts is
-  /// accepted ONLY if it directly matches a pin (it normally won't), otherwise
-  /// the handshake is aborted. Full CA-pin enforcement against the whole chain
-  /// would require a native (platform-channel) implementation; tracked as a
-  /// follow-up. See [CertificatePinner] for the SPKI computation.
+  /// **SPKI backstop.** `badCertificateCallback` fires only when chain
+  /// validation against the restricted store fails. We keep the existing
+  /// fail-closed [CertificatePinner] check there: a distrusted leaf is
+  /// accepted only if its SPKI directly matches a GTS pin (it normally
+  /// won't), otherwise the handshake is aborted.
   http.Client _client() {
     final existing = _pinnedClient;
     if (existing != null) return existing;
 
+    // Trust ONLY the GTS roots — everything else is rejected at handshake.
+    final context = SecurityContext(withTrustedRoots: false)
+      ..setTrustedCertificatesBytes(utf8.encode(gtsRootR1Pem))
+      ..setTrustedCertificatesBytes(utf8.encode(gtsRootR4Pem));
+
     const pinner = CertificatePinner(CertificatePinner.defaultPins);
-    final httpClient = HttpClient()
+    final httpClient = HttpClient(context: context)
       ..badCertificateCallback = (X509Certificate cert, String host, int port) {
         final ok = pinner.validate(cert);
         if (!ok) {
