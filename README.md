@@ -14,6 +14,9 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 **Key capabilities:**
 - **Daily entry sweepstakes** — Users earn entries every day they engage
 - **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically
+- **Streak ladder + milestone accelerators** — Escalating daily entry rewards, with server-configurable milestone bonuses
+- **Winner announcements** — "WE HAVE A WINNER!" banner and winner dialog, driven by the giveaway's `latestWinner`
+- **Visit mode** — A never-resetting streak variant for low-frequency apps
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
 - **Server-driven branding** — Logo, prize image, and primary color update without app releases
 - **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out, and user data deletion
@@ -47,12 +50,17 @@ await WINR.present(context);
 
 ## Installation
 
-Add the SDK to your `pubspec.yaml`:
+Add the SDK to your `pubspec.yaml` as a git dependency:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^2.0.0
+  winr_flutter_sdk:
+    git:
+      url: https://github.com/AVAFLI/winr_flutter_sdk.git
+      ref: main
 ```
+
+> **pub.dev:** The package is not yet published to pub.dev — `winr_flutter_sdk: ^2.0.0` will not resolve until it is.
 
 Then run:
 
@@ -176,9 +184,9 @@ Forward WINR events to your existing analytics stack:
 ```dart
 class MyAnalyticsAdapter implements AnalyticsAdapter {
   @override
-  void trackEvent(String name, Map<String, dynamic> properties) {
+  void track(String eventName, [Map<String, dynamic>? parameters]) {
     // Forward to Segment, Amplitude, Mixpanel, etc.
-    analytics.track(name, properties);
+    analytics.track(eventName, parameters);
   }
 }
 
@@ -192,8 +200,9 @@ await WINR.configure(WINRConfiguration(
 ```
 
 **Events emitted by the SDK:**
+- `winr_sdk_configured` — SDK configured successfully
 - `winr_experience_presented` — User opened the WINR experience
-- `winr_daily_entry_claimed` — Daily entries awarded
+- `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`, plus `weekly_bonus`, `monthly_bonus`, and `milestone_day` when awarded.
 - `winr_experience_dismissed` — User closed the WINR experience without a new claim
 
 ## GDPR / Delete User Data
@@ -233,4 +242,4 @@ For detailed API documentation, see the [WINR Docs](https://avafli-website.web.a
 
 ---
 
-© 2025 Avafli. All Rights Reserved.
+© 2026 Avafli. All Rights Reserved.

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0
+## 2.0.0 (2026-08-03)
 
 - V2 experience — full port of the iOS V2 design (WINR-High-V2 Figma):
   - Bottom drawer over the host app (dim backdrop, gunmetal sheet flush to
