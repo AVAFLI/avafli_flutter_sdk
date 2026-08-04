@@ -1,9 +1,9 @@
 name: winr_flutter_sdk
 description: >
   WINR Flutter SDK — A sweepstakes and engagement SDK for Flutter apps.
-  Add daily streaks, rewarded video entries, and sweepstakes campaigns
-  to your app with a few lines of code.
-version: 1.0.0
+  Add daily streaks and sweepstakes campaigns to your app with a few
+  lines of code.
+version: 2.0.0
 homepage: https://avafli-website.web.app/sdk
 repository: https://github.com/AVAFLI/winr_flutter_sdk
 
@@ -14,7 +14,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  lottie: ^3.3.1
   http: ^1.6.0
   flutter_secure_storage: ">=9.0.0 <12.0.0"
   shared_preferences: ^2.5.4
@@ -28,5 +27,34 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 
 flutter:
+  # The V2 UI uses Material icon glyphs (close, lock, flame, calendar, …);
+  # declaring this here guarantees the MaterialIcons font is bundled even if
+  # the host app doesn't set it.
+  uses-material-design: true
+
   assets:
-    - assets/animations/
+    - assets/images/
+
+  # Bundled V2 design fonts (Inter + Oswald). Consumed inside the SDK via
+  # TextStyle(fontFamily: ..., package: 'winr_flutter_sdk').
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter-v20-latin-regular.ttf
+          weight: 400
+        - asset: assets/fonts/inter-v20-latin-500.ttf
+          weight: 500
+        - asset: assets/fonts/inter-v20-latin-600.ttf
+          weight: 600
+        - asset: assets/fonts/inter-v20-latin-700.ttf
+          weight: 700
+        - asset: assets/fonts/inter-v20-latin-800.ttf
+          weight: 800
+        - asset: assets/fonts/inter-v20-latin-900.ttf
+          weight: 900
+    - family: Oswald
+      fonts:
+        - asset: assets/fonts/oswald-v57-latin-500.ttf
+          weight: 500
+        - asset: assets/fonts/oswald-v57-latin-700.ttf
+          weight: 700
