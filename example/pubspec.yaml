@@ -18,6 +18,10 @@ dependencies:
   # UI and styling
   cupertino_icons: ^1.0.2
 
+  # Demo-only: used by the "reset demo state" affordance to clear the SDK's
+  # once-per-day auto-present bookkeeping.
+  shared_preferences: ^2.5.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

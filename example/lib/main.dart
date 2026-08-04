@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+
+/// Must match the bundleId passed to WINR.configure — the SDK namespaces its
+/// auto-present bookkeeping by bundle id.
+const String kBundleId = 'com.example.myapp';
 
 void main() {
   runApp(const MyApp());
@@ -14,6 +19,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'WINR Flutter SDK Example',
       debugShowCheckedModeBanner: false,
+      // REQUIRED for the V2 auto-open flow: the SDK presents the experience
+      // through this navigator on the first app-open of the day.
+      navigatorKey: WINR.navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6366F1),
@@ -45,10 +53,12 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
 
   Future<void> _initializeSDK() async {
     try {
-      // 1. Configure the WINR SDK
+      // 1. Configure the WINR SDK. On the first app-open of each day the V2
+      //    experience drawer auto-presents by itself (no present() call
+      //    needed) — provided WINR.navigatorKey is attached above.
       await WINR.configure(WINRConfiguration(
         apiKey: 'YOUR_API_KEY',
-        bundleId: 'com.example.myapp',
+        bundleId: kBundleId,
         environment: WINREnvironment.production,
         user: const WINRUser(
           id: 'user_123',
@@ -196,7 +206,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                     ),
                   ),
                   Text(
-                    'Example Integration',
+                    'V2 Example Integration',
                     style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ],
@@ -220,7 +230,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'SDK configured successfully!',
+                  'SDK configured — the experience auto-opens once per day.',
                   style: TextStyle(
                     color: Color(0xFF10B981),
                     fontWeight: FontWeight.w500,
@@ -259,6 +269,23 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         ),
         const SizedBox(height: 12),
+        // DEMO ONLY: clears the SDK's once-per-day auto-present mark and the
+        // unregistered impression counter so the team can re-test the V2
+        // auto-open flow without waiting for tomorrow. Kill + relaunch the
+        // app after tapping — the drawer will auto-present again.
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _resetDemoState(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reset demo state (auto-open again)'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              foregroundColor: Colors.white70,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -280,10 +307,10 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   Future<void> _presentExperience() async {
     HapticFeedback.mediumImpact();
     try {
-      // 2. Present the experience
+      // 2. Present the experience manually (it also auto-opens once per day).
       final result = await WINR.present(context);
 
-      if (mounted) {
+      if (mounted && result != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Entries claimed: ${result.total}'),
@@ -300,6 +327,23 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _resetDemoState() async {
+    HapticFeedback.mediumImpact();
+    // The SDK namespaces its auto-present bookkeeping by bundle id.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('winr_last_auto_present_$kBundleId');
+    await prefs.remove('winr_unregistered_impressions_$kBundleId');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Demo state reset — kill and relaunch the app to see auto-open again'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     }
   }
 
