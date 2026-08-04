@@ -83,8 +83,11 @@ class WINR {
   /// `MaterialApp(navigatorKey: WINR.navigatorKey)` so the SDK can present the
   /// experience on the first app-open of the day. Without it, auto-open is
   /// silently skipped and only manual [present] works.
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
+  ///
+  /// Apps that already have their own navigator key can hand it to the SDK
+  /// instead (before the first auto-open opportunity):
+  /// `WINR.navigatorKey = myExistingKey;`
+  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
