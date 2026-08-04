@@ -348,6 +348,10 @@ class PrizeClaimBlock {
   final String prizeDescription;
   final double prizeValue;
 
+  /// Display-only masked winning email ("d********r@winr.example.com") for
+  /// the claim form's locked field. Absent from older backends.
+  final String? maskedEmail;
+
   /// Present when submitted.
   final String? claimNumber;
 
@@ -359,6 +363,7 @@ class PrizeClaimBlock {
     required this.giveawayId,
     required this.prizeDescription,
     required this.prizeValue,
+    this.maskedEmail,
     this.claimNumber,
     this.submittedAt,
   });
@@ -374,6 +379,7 @@ class PrizeClaimBlock {
       giveawayId: json['giveawayId'] ?? '',
       prizeDescription: json['prizeDescription'] ?? 'Your prize',
       prizeValue: (json['prizeValue'] as num?)?.toDouble() ?? 0,
+      maskedEmail: json['maskedEmail'] as String?,
       claimNumber: json['claimNumber'] as String?,
       submittedAt: json['submittedAt'] as String?,
     );

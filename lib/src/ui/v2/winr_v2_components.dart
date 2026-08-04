@@ -883,13 +883,18 @@ class WINRV2ComeBackBar extends StatefulWidget {
   final int nextEntries;
   final bool visitMode;
 
-  /// Celebration open (Day 2+ auto-claim): the bar's FIRST visible frame is
-  /// the "YOU'RE ON A ROLL!" toast. It holds ~2.5s, then slides ONCE
+  /// Celebration open (auto-claim, Day 1 AND Day 2+): the bar's FIRST
+  /// visible frame is the toast — "YOU'RE IN!" on Day 1 ([firstDay]),
+  /// "YOU'RE ON A ROLL!" on Day 2+. It holds ~2.5s, then slides ONCE
   /// (carousel: out left, in from right) to the resting pitch — the pitch is
   /// NEVER visible before the toast on a celebration open. Non-celebration
   /// opens (already-claimed reopen, no grant) rest on the pitch, no toast.
   final bool celebrating;
   final int claimedEntries;
+
+  /// Day 1 celebrates in place exactly like Day 2+ (the "You're in!" modal
+  /// is gone) — only the toast headline differs.
+  final bool firstDay;
 
   const WINRV2ComeBackBar({
     super.key,
@@ -898,6 +903,7 @@ class WINRV2ComeBackBar extends StatefulWidget {
     this.visitMode = false,
     this.celebrating = false,
     this.claimedEntries = 0,
+    this.firstDay = false,
   });
 
   @override
@@ -1052,7 +1058,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'YOU’RE ON A ROLL!',
+                    widget.firstDay ? 'YOU’RE IN!' : 'YOU’RE ON A ROLL!',
                     maxLines: 1,
                     style: WINRV2Font.inter(
                       20,

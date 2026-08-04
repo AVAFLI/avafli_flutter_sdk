@@ -4,18 +4,19 @@
 //
 // Mirrors the iOS SDK's WINRV2ExperienceRoot (WINRV2Screens.swift) and
 // WINRExperienceViewModel.swift:
-//   loading → emailCapture | streak → dailyConfirmed → streak → howItWorks…
+//   loading → emailCapture | streak → howItWorks…
 // Entries are granted automatically when the drawer opens (auto-claim).
-// Day 1 (streakDay <= 1, right after email capture): the "You're in!"
-// celebration modal is the reveal, and its GOT IT closes the experience.
-// Day 2+: no modal — the dashboard mounts pinned to YESTERDAY's numbers and
-// the celebration (tile check + confetti + totals advance in place) fires on
-// its own a beat later (Joe's Slice prototype); the pill reads GOT IT the
-// whole time. "Already claimed" is silent (claimed dashboard) with a one-shot
+// Day 1 AND Day 2+ celebrate IN PLACE (the Day-1 "You're in!" modal is
+// gone): the dashboard mounts as the first-frame celebration — Day 1 stages
+// the REAL grant from the awaited email-path claim, Day 2+ stages a
+// PREDICTED grant from the pre-claim status response; the celebration (tile
+// check + confetti + totals count-up + toast-first bar) fires on its own a
+// beat after mount (Joe's Slice prototype); the pill reads GOT IT the whole
+// time. Only the toast headline differs ("YOU'RE IN!" vs "YOU'RE ON A
+// ROLL!"). "Already claimed" is silent (claimed dashboard) with a one-shot
 // re-load to sync totals.
 
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -47,7 +48,6 @@ enum _V2Phase {
   noActiveGiveaway,
   emailCapture,
   streak,
-  dailyConfirmed,
   howItWorks,
 
   /// This person is the drawn winner and hasn't submitted their claim yet —
@@ -113,7 +113,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   int? _backendTotalEntries;
 
   DailyEntryGrant? _grant;
-  int _confirmedTotalEntries = 0;
 
   bool _isClaiming = false;
   bool _isSubmittingEmail = false;
@@ -210,14 +209,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     return List.generate(7, (i) => widget.streakEngine.baseEntries(i + 1));
   }
 
-  /// Tomorrow's reward, for the celebration modal + come-back messaging.
-  /// Uses the shared ladder math so accelerator milestones keep increasing it.
-  int get _displayNextEntries => WINRV2Ladder.entries(
-        day: _displayStreakDay + 1,
-        ladder: _displayLadder,
-        milestones: _giveaway?.milestones,
-      );
-
   @override
   void initState() {
     super.initState();
@@ -250,7 +241,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     return submitted && await _hasRegistered;
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool claimBeforeDashboard = false}) async {
     final storage = widget.preferencesStorage;
 
     // Always fetch fresh claim status from the backend. The giveaway config
@@ -345,13 +336,29 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       return;
     }
 
-    // Day 2+ auto-claim: stage the PREDICTED grant BEFORE the dashboard
-    // state is set, so the celebration is the dashboard's first visible
-    // frame — the claim round-trip lands later and reconciles silently.
-    // (Day 1 keeps its "You're in!" modal from the claim response.)
+    // Email path (Day 1): claim FIRST, while the capture view's spinner is
+    // still up. On success the celebration is staged from the REAL response
+    // (synchronous with the transition — no prediction needed) and the
+    // caches already reflect the claim, so the predicted staging below is
+    // naturally skipped. On failure this is a no-op and the normal predict →
+    // auto-claim → reconcile path takes over.
+    if (claimBeforeDashboard && backendClaimedToday == false) {
+      await _claimAndStageBeforeDashboard();
+      backendClaimedToday = _backendClaimedToday;
+      backendStreakDay = _backendStreakDay;
+    }
+
+    // Auto-claim staging (Day 1 AND Day 2+): stage the PREDICTED grant
+    // BEFORE the dashboard state is set, so the celebration is the
+    // dashboard's first visible frame — the claim round-trip lands later and
+    // reconciles silently. Day 1 celebrates in place exactly like Day 2+
+    // (the "You're in!" modal is gone); only the toast headline differs.
+    // Day 1 normally never reaches this — the email path claims first — but
+    // an interrupted Day-1 open (killed between email submit and claim)
+    // falls through here and still celebrates in place.
     if (backendClaimedToday == false &&
         backendStreakDay != null &&
-        backendStreakDay >= 2 &&
+        backendStreakDay >= 1 &&
         _backendTotalEntries != null) {
       final predicted = WINRV2Ladder.entries(
         day: backendStreakDay,
@@ -502,10 +509,56 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     }
 
     // Re-load so the (possibly switched) canonical user's authoritative
-    // streak + claim status drive the UI.
+    // streak + claim status drive the UI. The Day-1 claim is awaited INSIDE
+    // the load (capture spinner stays up) so the dashboard mounts already
+    // celebrating — never an uncelebrated streak page.
     if (mounted) {
       _setPhase(_V2Phase.loading);
-      await _load();
+      await _load(claimBeforeDashboard: true);
+    }
+  }
+
+  /// Email path (Day 1): awaited claim BEFORE the dashboard ever mounts. On
+  /// success the celebration is staged from the REAL response, so the first
+  /// dashboard frame counts 0 → N under the "YOU'RE IN!" toast. On failure
+  /// this is a no-op — [_load] falls through to the predicted staging and
+  /// the silent auto-claim retry, the same as any other open.
+  Future<void> _claimAndStageBeforeDashboard() async {
+    try {
+      final response =
+          await widget.networkClient.send(ClaimDailyEntriesRequest());
+
+      var streakBonusEntries = 0;
+      streakBonusEntries += response.weeklyBonusEntries ?? 0;
+      streakBonusEntries += response.monthlyBonusEntries ?? 0;
+      streakBonusEntries += response.milestone?.bonusEntries ?? 0;
+      streakBonusEntries += response.monthlyMilestone?.bonusEntries ?? 0;
+      final grant = DailyEntryGrant(
+        baseEntries: response.entries,
+        bonusEntries: streakBonusEntries,
+      );
+
+      _backendTotalEntries = response.totalEntries;
+      _backendStreakDay = response.streakDay;
+      _backendClaimedToday = true;
+      _backendMonthlyCurrent = response.monthlyCurrent;
+      _backendWeeklyCurrent = response.weeklyCurrent;
+
+      _grant = grant;
+      _pendingRevealGrant = grant;
+      _preClaimTotalEntries = response.totalEntries - grant.total;
+      _claimRevealed = false;
+
+      WINR.syncClaimedToday(true);
+      await WINR.persistClaimedToday(widget.preferencesStorage);
+
+      widget.configuration.options.analyticsAdapter?.track(
+        'winr_daily_entry_claimed',
+        {'day': response.streakDay, 'entries': response.entries},
+      );
+    } catch (e) {
+      Logger.instance
+          .info('Day-1 claim after email submit failed (dashboard will retry): $e');
     }
   }
 
@@ -570,32 +623,27 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       );
 
       if (!mounted) return;
-      // V2 auto-claim routing:
-      // - Day 1 (brand-new or restarted streak, typically right after email
-      //   capture): the "You're in!" celebration modal is the reveal.
-      // - Day 2+: the celebration already played at mount off the PREDICTED
-      //   grant — reconcile the staged numbers with the real response. In
-      //   the normal case they're identical, so nothing visibly changes; a
-      //   mismatch silently corrects the readouts. `_claimRevealed` is NOT
-      //   reset — the celebration never replays.
+      // V2 auto-claim routing (Day 1 AND Day 2+, unified — the Day-1
+      // celebration modal is gone): the celebration already played (or is
+      // playing) at mount off the staged grant — reconcile the staged
+      // numbers with the real response. In the normal case they're
+      // identical, so nothing visibly changes; a mismatch silently corrects
+      // the readouts. `_claimRevealed` is NOT reset — the celebration never
+      // replays. Day 1 only differs in the toast headline ("YOU'RE IN!"
+      // instead of "YOU'RE ON A ROLL!").
       setState(() {
         _streakState = updatedStreak;
         _claimedToday = true;
         _grant = grant;
         _entriesToday = grant.baseEntries;
-        _confirmedTotalEntries = response.totalEntries;
-        if (response.streakDay <= 1) {
-          _phase = _V2Phase.dailyConfirmed;
-        } else {
-          _pendingRevealGrant = grant;
-          _preClaimTotalEntries = response.totalEntries - grant.total;
-          _phase = _V2Phase.streak;
-        }
+        _pendingRevealGrant = grant;
+        _preClaimTotalEntries = response.totalEntries - grant.total;
+        _phase = _V2Phase.streak;
         _isClaiming = false;
       });
       // Safety net: if no prediction was staged pre-mount (e.g. the status
       // fetch was offline), the mount found nothing pending — fire the
-      // reveal now. No-op on Day 1 or when the reveal already played.
+      // reveal now. No-op when the reveal already played.
       _armCelebrationReveal();
     } catch (e) {
       _isClaiming = false;
@@ -716,7 +764,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         zip: form.zip.trim(),
         country: form.country,
         photoBase64: form.photoBase64,
-        story: null,
+        story: form.story.trim().isEmpty ? null : form.story.trim(),
       ));
       if (!mounted) return;
       setState(() {
@@ -909,41 +957,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           revealed: _claimRevealed,
         );
 
-      case _V2Phase.dailyConfirmed:
-        // Dashboard behind (blurred) + celebration modal on top.
-        final grant = _grant ?? DailyEntryGrant(baseEntries: _entriesToday);
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-              child: WINRV2DashboardView(
-                accent: _accent,
-                logoUrl: _logoUrl,
-                rulesUrl: _rulesUrl,
-                giveaway: _giveaway,
-                streakDay: _displayStreakDay,
-                totalEntries: _confirmedTotalEntries,
-                entriesToday: grant.baseEntries,
-                ladder: _displayLadder,
-                claimedToday: true,
-                onInfo: _showHowItWorks,
-                onClose: _requestDismiss,
-              ),
-            ),
-            WINRV2CelebrationModal(
-              accent: _accent,
-              streakDay: _displayStreakDay,
-              earnedEntries: grant.total,
-              nextEntries: _displayNextEntries,
-              visitMode: _visitMode,
-              // Day-1 modal is the reveal for brand-new streaks; GOT IT
-              // closes the whole experience until the next day's open.
-              onDismiss: _requestDismiss,
-            ),
-          ],
-        );
-
       case _V2Phase.winnerClaim:
         return _winnerClaimContent();
 
@@ -981,11 +994,16 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onClose: _requestDismiss,
         );
       case _WinnerClaimStep.form:
-        step = WINRV2ClaimFormView(
+        step = WINRV2ClaimStepsFlow(
           key: const ValueKey('winner-form'),
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
+          maskedEmail: claim.maskedEmail,
+          prizeHeadline: winrV2StripHeadline(
+            claim.prizeDescription,
+            claim.prizeValue.toInt(),
+          ),
           initialForm: _claimFormPrefill,
           isSubmitting: _isSubmittingClaim,
           submitError: _claimSubmitError,

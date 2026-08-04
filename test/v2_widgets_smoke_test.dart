@@ -230,31 +230,43 @@ void main() {
     expect(find.text('Come back again to receive:'), findsOneWidget);
   });
 
-  testWidgets('celebration modal day 1 vs day 2+', (tester) async {
-    await tester.pumpWidget(_host(WINRV2CelebrationModal(
+  testWidgets('day 1 celebrates in place with the YOU’RE IN! toast',
+      (tester) async {
+    // Unified Day-1 flow (Aug 2026 CTO decision): no "You're in!" modal —
+    // the dashboard mounts celebrating exactly like Day 2+, only the toast
+    // headline differs.
+    await tester.pumpWidget(_host(WINRV2DashboardView(
       accent: accent,
+      logoUrl: null,
+      rulesUrl: null,
+      giveaway: _giveaway(),
       streakDay: 1,
-      earnedEntries: 10,
-      nextEntries: 30,
-      onDismiss: () {},
+      totalEntries: 10,
+      entriesToday: 10,
+      ladder: const [10, 30, 60, 130, 240, 300, 500],
+      claimedToday: true,
+      onInfo: () {},
+      onClose: () {},
+      pendingClaimEntries: 10,
+      revealed: false,
     )));
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('You’re in!'), findsOneWidget);
-    expect(find.text('10 ENTRIES HAVE BEEN ADDED'), findsOneWidget);
+    await tester.pump();
 
-    await tester.pumpWidget(_host(WINRV2CelebrationModal(
-      accent: accent,
-      streakDay: 5,
-      earnedEntries: 240,
-      nextEntries: 300,
-      onDismiss: () {},
-    )));
+    // Day-1 headline; same subline and GOT IT pill as Day 2+.
+    expect(find.text('YOU’RE IN!'), findsOneWidget);
+    expect(find.text('YOU’RE ON A ROLL!'), findsNothing);
+    expect(find.text('Your 10 entries have been added automatically.'),
+        findsOneWidget);
+    expect(find.text('GOT IT'), findsOneWidget);
+
+    // After the ~2.5s hold the toast slides once to the resting pitch.
+    await tester.pump(const Duration(seconds: 3));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('YOU’RE ON A'), findsOneWidget);
-    expect(find.text('5 DAY STREAK!'), findsOneWidget);
-    expect(find.text('YOU EARNED'), findsOneWidget);
-    expect(find.text('Come back tomorrow for'), findsOneWidget);
-    expect(find.text('300 ENTRIES'), findsOneWidget);
+    expect(find.text('YOU’RE IN!'), findsNothing);
+    expect(
+      find.text('Come back tomorrow to\nkeep your streak alive and receive:'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('winner modal renders with initials fallback', (tester) async {

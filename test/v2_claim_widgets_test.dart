@@ -1,5 +1,6 @@
-// Widget smoke tests for the three winner prize-claim steps:
-// splash → form → confirmation (mirrors iOS WINRV2Claim.swift).
+// Widget smoke tests for the winner prize-claim steps:
+// splash → stepped form (3 steps + review on Flutter) → confirmation
+// (mirrors iOS WINRV2Claim.swift + WINRV2ClaimSteps/).
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,6 +36,32 @@ void main() {
 
   final accent = WINRV2Accent(null).color;
 
+  Widget stepsFlow({
+    String? maskedEmail = 'c******a@winr.example.com',
+    WINRPrizeClaimForm? initialForm,
+    String? submitError,
+    ValueChanged<WINRPrizeClaimForm>? onSubmit,
+  }) {
+    return _host(WINRV2ClaimStepsFlow(
+      accent: accent,
+      logoUrl: null,
+      maskedEmail: maskedEmail,
+      prizeHeadline: r'$1,000.00 CASH PRIZE',
+      initialForm: initialForm ?? WINRPrizeClaimForm(),
+      isSubmitting: false,
+      submitError: submitError,
+      onSubmit: onSubmit ?? (_) {},
+      onClose: () {},
+    ));
+  }
+
+  Future<void> tapContinue(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('CONTINUE'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('CONTINUE'));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('winner splash renders and CONTINUE advances', (tester) async {
     var continued = false;
     await tester.pumpWidget(_host(WINRV2WinnerSplashView(
@@ -61,45 +88,44 @@ void main() {
     expect(continued, isTrue);
   });
 
-  testWidgets('claim form gates SUBMIT on validity', (tester) async {
+  testWidgets('stepped form walks 3 steps, gates each, and submits',
+      (tester) async {
     WINRPrizeClaimForm? submitted;
-    await tester.pumpWidget(_host(WINRV2ClaimFormView(
-      accent: accent,
-      logoUrl: null,
+    await tester.pumpWidget(stepsFlow(
       initialForm: WINRPrizeClaimForm(
         firstName: 'Catherine',
         lastName: 'Cinosta',
       ),
-      isSubmitting: false,
-      submitError: null,
       onSubmit: (form) => submitted = form,
-      onClose: () {},
-    )));
+    ));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('PRIZE CLAIM FORM'), findsOneWidget);
+    // ── Step 1 of 3: TELL US ABOUT YOURSELF ──
+    expect(find.text('STEP 1 OF 3'), findsOneWidget);
     expect(find.text('TELL US ABOUT YOURSELF'), findsOneWidget);
-    // The winning email is locked/display-only — the SDK never stores raw
-    // email, the claim is keyed to the account server-side.
-    expect(find.text('On file with your winning entry'), findsOneWidget);
+    // The winning email is locked/display-only, masked by the backend.
+    expect(find.text('c******a@winr.example.com'), findsOneWidget);
+    // No back chevron on step 1.
+    expect(find.byKey(const ValueKey('claim-back')), findsNothing);
+
+    // Names are prefilled → CONTINUE advances.
+    await tapContinue(tester);
+
+    // ── Step 2 of 3: address ──
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
+    expect(find.text('WHERE SHOULD WE\nSEND YOUR PRIZE?'), findsOneWidget);
     expect(find.text('United States'), findsOneWidget);
-    expect(
-      find.text('Your information is secure and encrypted.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('claim-back')), findsOneWidget);
 
-    // Incomplete form: SUBMIT is disabled.
-    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('SUBMIT PRIZE CLAIM'), warnIfMissed: false);
-    expect(submitted, isNull);
+    // Incomplete address: CONTINUE is a no-op.
+    await tapContinue(tester);
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
 
-    // Fill the required fields (first/last are prefilled; text fields run
-    // firstName, lastName, phone, street, apt, city, zip).
+    // Fill the address (text fields run street, apt, city, zip).
     final fields = find.byType(TextField);
-    await tester.enterText(fields.at(3), '5 Haide Pl.');
-    await tester.enterText(fields.at(5), 'Brooklyn');
-    await tester.enterText(fields.at(6), '11737');
+    await tester.enterText(fields.at(0), '5 Haide Pl.');
+    await tester.enterText(fields.at(2), 'Brooklyn');
+    await tester.enterText(fields.at(3), '11737');
 
     // 50-state dropdown.
     await tester.ensureVisible(find.text('Select'));
@@ -109,50 +135,105 @@ void main() {
     await tester.tap(find.text('Alabama').last);
     await tester.pumpAndSettle();
 
-    // Still gated: all three consents must be affirmed.
+    await tapContinue(tester);
+
+    // ── Step 3 of 3: story + share ──
+    expect(find.text('STEP 3 OF 3'), findsOneWidget);
+    expect(find.text('PLEASE SHARE A LITTLE'), findsOneWidget);
+    expect(find.text('Share on Social Media:'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'So excited!');
+    await tester.pumpAndSettle();
+    await tapContinue(tester);
+
+    // ── Review: ALMOST DONE! — consents PRE-CHECKED ──
+    expect(find.text('ALMOST DONE!'), findsOneWidget);
+    expect(
+      find.text('Your information is secure and encrypted.'),
+      findsOneWidget,
+    );
+
+    // Untick a pre-checked consent → SUBMIT is a no-op.
+    await tester.ensureVisible(find.byKey(const ValueKey('consent-likeness')));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tapAt(
+      tester.getTopLeft(find.byKey(const ValueKey('consent-likeness'))) +
+          const Offset(12, 12),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
     await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text('SUBMIT PRIZE CLAIM'), warnIfMissed: false);
     expect(submitted, isNull);
 
-    // Tick the three consent checkboxes (tap the 24pt box at the row's left
-    // edge — the underlined rules/privacy spans open a URL instead).
-    for (final key in const [
-      ValueKey('consent-accuracy'),
-      ValueKey('consent-likeness'),
-      ValueKey('consent-rules'),
-    ]) {
-      await tester.ensureVisible(find.byKey(key));
-      await tester.pump(const Duration(seconds: 1));
-      await tester.tapAt(tester.getTopLeft(find.byKey(key)) + const Offset(12, 12));
-      await tester.pump(const Duration(milliseconds: 200));
-    }
-
+    // Re-affirm it → SUBMIT goes through with the whole form.
+    await tester.ensureVisible(find.byKey(const ValueKey('consent-likeness')));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tapAt(
+      tester.getTopLeft(find.byKey(const ValueKey('consent-likeness'))) +
+          const Offset(12, 12),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
     await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text('SUBMIT PRIZE CLAIM'));
     expect(submitted, isNotNull);
     expect(submitted!.isValid, isTrue);
+    expect(submitted!.firstName, 'Catherine');
     expect(submitted!.state, 'Alabama');
     expect(submitted!.zip, '11737');
+    expect(submitted!.story, 'So excited!');
     expect(submitted!.confirmsAccuracy, isTrue);
     expect(submitted!.authorizesLikeness, isTrue);
     expect(submitted!.agreesToRules, isTrue);
   });
 
-  testWidgets('claim form surfaces inline submit error', (tester) async {
-    await tester.pumpWidget(_host(WINRV2ClaimFormView(
-      accent: accent,
-      logoUrl: null,
-      initialForm: WINRPrizeClaimForm(),
-      isSubmitting: false,
-      submitError:
-          'Something went wrong. Please check your connection and try again.',
-      onSubmit: (_) {},
-      onClose: () {},
-    )));
+  testWidgets('back chevron returns to the previous step keeping values',
+      (tester) async {
+    await tester.pumpWidget(stepsFlow(
+      initialForm: WINRPrizeClaimForm(firstName: 'Sam', lastName: 'Winner'),
+    ));
     await tester.pump(const Duration(seconds: 1));
 
+    await tapContinue(tester);
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('claim-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('STEP 1 OF 3'), findsOneWidget);
+
+    // Prefilled values survive the round trip.
+    expect(find.text('Sam'), findsOneWidget);
+    expect(find.text('Winner'), findsOneWidget);
+  });
+
+  testWidgets('missing maskedEmail falls back to the generic locked copy',
+      (tester) async {
+    await tester.pumpWidget(stepsFlow(maskedEmail: null));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('On file with your winning entry'), findsOneWidget);
+  });
+
+  testWidgets('review surfaces the inline submit error', (tester) async {
+    await tester.pumpWidget(stepsFlow(
+      initialForm: WINRPrizeClaimForm(
+        firstName: 'Catherine',
+        lastName: 'Cinosta',
+        street: '5 Haide Pl.',
+        city: 'Brooklyn',
+        state: 'New York',
+        zip: '11737',
+      ),
+      submitError:
+          'Something went wrong. Please check your connection and try again.',
+    ));
+    await tester.pump(const Duration(seconds: 1));
+
+    // Every step is prefilled valid — walk straight to the review screen.
+    await tapContinue(tester); // → step 2
+    await tapContinue(tester); // → step 3
+    await tapContinue(tester); // → review
+
+    expect(find.text('ALMOST DONE!'), findsOneWidget);
     expect(
       find.text(
         'Something went wrong. Please check your connection and try again.',

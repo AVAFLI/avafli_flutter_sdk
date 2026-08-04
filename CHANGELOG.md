@@ -3,26 +3,46 @@
 ## [2.3.0] - 2026-08-04
 
 ### Added
-- **Winner prize-claim flow** — when the backend marks the user as the drawn
-  winner (`prizeClaim.status == "pending"` on `getActiveGiveaway`), the drawer
-  opens on the winner splash instead of the dashboard: CONGRATULATIONS! +
-  prize strip → single-page claim form (name, address, 50-state picker,
-  optional phone, three required consent checkboxes — accuracy, likeness
-  release, rules+privacy; email stays locked to the account) → `submitPrizeClaim` →
-  confirmation with the gold OFFICIAL WINNER card and RETURN TO APP. Appears
+- **Winner prize-claim flow (Joe's stepped Figma design)** — when the
+  backend marks the user as the drawn winner (`prizeClaim.status ==
+  "pending"` on `getActiveGiveaway`), the drawer opens on the winner splash
+  instead of the dashboard: CONGRATULATIONS! + prize strip → the stepped
+  form over the gold-sparkle backdrop — STEP 1 OF 3 "TELL US ABOUT
+  YOURSELF" (names, the LOCKED masked winning email from
+  `prizeClaim.maskedEmail` with a generic fallback, optional phone) →
+  STEP 2 "WHERE SHOULD WE SEND YOUR PRIZE?" (US address, 50-state dropdown,
+  Country locked to United States) → STEP 3 "PLEASE SHARE A LITTLE"
+  (optional story + social glyph row; pure-Dart has no share sheet, so the
+  glyphs copy the winner line to the clipboard) → review "ALMOST DONE!"
+  with the three consent checkboxes PRE-CHECKED (defaults true per the Aug
+  2026 CTO decision; unticking any disables SUBMIT) → `submitPrizeClaim`
+  (now including `story`) → confirmation with the gold OFFICIAL WINNER card
+  (trophy breaking the top border, serif name, "MONTH, YYYY • claimNumber")
+  and RETURN TO APP. Progress dots + "STEP N OF 3", back chevron from step
+  2, one-direction horizontal slide between steps. NOTE: iOS/Android/web
+  run this as 4 steps; Flutter deliberately SKIPS the photo step (this
+  package ships no image-picker dependency — pure-Dart) and renumbers to 3,
+  rather than showing a step whose only actions are disabled.
+  `photoBase64` stays wired in the API for future use. Appears
   automatically; no integration work. The daily auto-claim still fires
   silently while the flow is up, and an already-submitted claim shows the
   normal dashboard.
 
 ### Changed
-- **First-frame celebration beat** — on a claim-day open the dashboard mounts
-  with a PREDICTED grant already staged from the pre-claim status (the SDK's
-  ladder math mirrors the backend), so the celebration is the first visible
-  frame; the real claim runs in the background and reconciles totals/streak
+- **First-frame celebration beat, Day 1 AND Day 2+ (unified)** — on a
+  claim-day open the dashboard mounts with a grant already staged, so the
+  celebration is the first visible frame. Day 2+ stages a PREDICTED grant
+  from the pre-claim status (the SDK's ladder math mirrors the backend)
+  while the real claim runs in the background and reconciles totals/streak
   silently in place (no second celebration; failures settle back to server
-  truth quietly). The 2.2.0 "CLAIM N ENTRIES" tap is gone — nothing to press,
-  the pill reads GOT IT throughout, and only the Day-1 "You're in!" welcome
-  modal remains.
+  truth quietly). Day 1's "You're in!" welcome modal is GONE (CTO decision):
+  after email submit the claim is awaited while the capture spinner is
+  still up, and the dashboard mounts celebrating from the REAL grant —
+  count-up 0 → N with burst, Day-1 tile explosion + check + falling
+  confetti, toast-first bar headlined "YOU'RE IN!" (Day 2+ keeps "YOU'RE ON
+  A ROLL!"; the subline is unchanged), GOT IT closes. The 2.2.0 "CLAIM N
+  ENTRIES" tap is gone — nothing to press, the pill reads GOT IT
+  throughout.
 - **Toast-first come-back bar, new copy** — on celebration opens the bar's
   first visible state is the "YOU'RE ON A ROLL! / Your {N} entries have been
   added automatically." toast; it holds ~2.5s, then slides once to the

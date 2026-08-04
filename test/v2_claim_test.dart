@@ -29,8 +29,40 @@ void main() {
       final form = _validForm()
         ..phone = ''
         ..apt = ''
-        ..photoBase64 = null;
+        ..photoBase64 = null
+        ..story = '';
       expect(form.isValid, isTrue);
+      expect((_validForm()..story = 'So excited!').isValid, isTrue);
+    });
+
+    test('consents default to on — pre-checked per CTO decision', () {
+      // Aug 2026 CTO decision: the review screen shows the three consents
+      // PRE-CHECKED (defaults true); unticking any of them disables SUBMIT.
+      final fresh = WINRPrizeClaimForm();
+      expect(fresh.confirmsAccuracy, isTrue);
+      expect(fresh.authorizesLikeness, isTrue);
+      expect(fresh.agreesToRules, isTrue);
+      expect(fresh.hasAllConsents, isTrue);
+    });
+
+    test('per-step validity', () {
+      // Step 1: first + last name only.
+      expect(
+        WINRPrizeClaimForm(firstName: 'Sam', lastName: 'W').isStep1Valid,
+        isTrue,
+      );
+      expect(WINRPrizeClaimForm(firstName: 'Sam').isStep1Valid, isFalse);
+      expect(
+        WINRPrizeClaimForm(firstName: ' ', lastName: 'W').isStep1Valid,
+        isFalse,
+      );
+      // Step 2: full US shipping address (apartment optional).
+      expect(_validForm().isStep2Valid, isTrue);
+      expect((_validForm()..street = ' ').isStep2Valid, isFalse);
+      expect((_validForm()..city = '').isStep2Valid, isFalse);
+      expect((_validForm()..state = '').isStep2Valid, isFalse);
+      expect((_validForm()..zip = '117').isStep2Valid, isFalse);
+      expect((_validForm()..apt = '').isStep2Valid, isTrue);
     });
 
     test('missing required fields fail', () {
@@ -133,6 +165,19 @@ void main() {
       expect(block.prizeValue, 1000);
       expect(block.claimNumber, isNull);
       expect(block.submittedAt, isNull);
+      // maskedEmail is absent from older backends — decodes to null.
+      expect(block.maskedEmail, isNull);
+    });
+
+    test('decodes the masked winning email', () {
+      final block = PrizeClaimBlock.fromJson(const {
+        'status': 'pending',
+        'giveawayId': 'gw_123',
+        'prizeDescription': 'Cash Prize',
+        'prizeValue': 1000,
+        'maskedEmail': 'd********r@winr.example.com',
+      });
+      expect(block.maskedEmail, 'd********r@winr.example.com');
     });
 
     test('decodes submitted', () {
@@ -221,6 +266,21 @@ void main() {
       );
       expect(request.body['phone'], '+15555550123');
       expect(request.body['apt'], 'Apt 4B');
+    });
+
+    test('body includes the story when provided', () {
+      final request = SubmitPrizeClaimRequest(
+        giveawayId: 'gw_123',
+        firstName: 'Catherine',
+        lastName: 'Cinosta',
+        street: '5 Haide Pl.',
+        city: 'Brooklyn',
+        state: 'New York',
+        zip: '11737',
+        country: 'United States',
+        story: 'Buying my mom dinner.',
+      );
+      expect(request.body['story'], 'Buying my mom dinner.');
     });
   });
 }

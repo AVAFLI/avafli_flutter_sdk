@@ -116,7 +116,7 @@ final success = await WINR.configure(config);
 
 There is no manual launch API — the WINR experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
 
-Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then get a one-time "You're in!" welcome modal.
+Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then land straight on the same celebrating dashboard — the toast just reads "YOU'RE IN!" on Day 1.
 
 ## Winner Experience
 
