@@ -70,3 +70,7 @@ firebase_storage_rules.txt
 
 *.stamp
 build/
+
+# machine-local flutter build regeneration
+example/ios/Flutter/Generated.xcconfig
+example/ios/Flutter/flutter_export_environment.sh
