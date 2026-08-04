@@ -53,9 +53,9 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
 
   Future<void> _initializeSDK() async {
     try {
-      // 1. Configure the WINR SDK. On the first app-open of each day the V2
-      //    experience drawer auto-presents by itself (no present() call
-      //    needed) — provided WINR.navigatorKey is attached above.
+      // 1. Configure the WINR SDK. The experience presents itself: on the
+      //    first app-open of each day the V2 drawer auto-opens — provided
+      //    WINR.navigatorKey is attached above. There is no manual launch API.
       await WINR.configure(WINRConfiguration(
         apiKey: 'YOUR_API_KEY',
         bundleId: kBundleId,
@@ -257,18 +257,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _presentExperience(),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Present WINR Experience'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
         // DEMO ONLY: clears the SDK's once-per-day auto-present mark and the
         // unregistered impression counter so the team can re-test the V2
         // auto-open flow without waiting for tomorrow. Kill + relaunch the
@@ -303,32 +291,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   }
 
   // MARK: - Actions
-
-  Future<void> _presentExperience() async {
-    HapticFeedback.mediumImpact();
-    try {
-      // 2. Present the experience manually (it also auto-opens once per day).
-      final result = await WINR.present(context);
-
-      if (mounted && result != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Entries claimed: ${result.total}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _resetDemoState() async {
     HapticFeedback.mediumImpact();

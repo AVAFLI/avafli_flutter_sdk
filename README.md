@@ -43,18 +43,17 @@ await WINR.configure(config);
 // 2. Attach the SDK navigator key so the experience can auto-open on the
 //    first app-open of each day
 MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
-
-// 3. (Optional) Present the experience manually at any time
-await WINR.present(context);
 ```
+
+That's the whole integration — the experience presents itself once per day.
 
 ## Installation
 
-Add the SDK to your `pubspec.yaml` as a git dependency:
+Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^2.0.0
+  winr_flutter_sdk: ^2.1.0
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/winr_flutter_sdk). A git dependency on this repo also works if you need an unreleased revision.
@@ -113,21 +112,9 @@ final success = await WINR.configure(config);
 
 > **Email:** The SDK captures email through its own opt-in UI. Do not pass email via `WINRUser`.
 
-## Present the Experience
+## The Experience Presents Itself
 
-The V2 experience presents itself automatically once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3), and the RTD opt-out.
-
-You can also launch the bottom-drawer experience manually:
-
-```dart
-final grant = await WINR.present(context);
-
-if (grant != null) {
-  print('${grant.baseEntries} base + ${grant.bonusEntries} bonus = ${grant.total} total');
-}
-```
-
-The method returns a `DailyEntryGrant` when entries were claimed during the session, or `null` if the user dismissed without a new claim.
+There is no manual launch API — the WINR experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
 
 ## Push Notifications
 
@@ -225,7 +212,7 @@ This permanently removes all user data, entries, preferences, and consent record
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
-| `WINR.present(context)` | `Future<DailyEntryGrant?>` | Launch the WINR bottom-drawer experience |
+| `WINR.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open |
 | `WINR.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
 | `WINR.deleteUserData()` | `Future<void>` | Permanently delete all user data |
 

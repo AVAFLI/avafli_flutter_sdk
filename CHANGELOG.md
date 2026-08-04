@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0] - 2026-08-04
+
+- Removed (BREAKING): manual `WINR.present()` — the experience is exclusively
+  auto-opened by the SDK (at most once per calendar day, respecting the server
+  kill switch, the unregistered impression cap, and RTD opt-out). Attach
+  `WINR.navigatorKey` to your `MaterialApp`; there is no manual launch API.
+- README corrections (installation via pub.dev, auto-open-only integration)
+
 ## 2.0.0 (2026-08-03)
 
 - V2 experience — full port of the iOS V2 design (WINR-High-V2 Figma):

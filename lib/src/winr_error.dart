@@ -47,8 +47,7 @@ enum WINRError {
   serviceUnavailable('The WINR experience is no longer available.'),
 
   /// The user opted out (RTD — Right To Delete). The experience is
-  /// permanently silenced on this device: never auto-presented, and manual
-  /// [WINR.present] refuses too.
+  /// permanently silenced on this device: it is never auto-presented again.
   optedOut('User has opted out of the WINR experience.'),
   
   /// Unknown or unexpected error

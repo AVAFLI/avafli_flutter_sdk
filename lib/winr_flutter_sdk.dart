@@ -26,11 +26,9 @@
 /// ));
 ///
 /// // Attach the SDK navigator key so the experience can auto-open on the
-/// // first app-open of the day:
+/// // first app-open of the day (the experience presents itself; there is
+/// // no manual launch API):
 /// MaterialApp(navigatorKey: WINR.navigatorKey, ...);
-///
-/// // Or present manually:
-/// WINR.present(context);
 /// ```
 library winr_flutter_sdk;
 

@@ -24,8 +24,9 @@ import 'winr_user.dart';
 
 /// Main entry point for the WINR Flutter SDK.
 ///
-/// This class provides the primary interface for initializing the SDK
-/// and presenting the WINR experience.
+/// This class provides the primary interface for initializing the SDK. The
+/// WINR experience presents itself — the SDK auto-opens the bottom drawer at
+/// most once per calendar day; there is no manual launch API.
 ///
 /// Example usage:
 /// ```dart
@@ -38,9 +39,6 @@ import 'winr_user.dart';
 ///
 /// // For the once-a-day auto-open, attach the SDK's navigator key:
 /// MaterialApp(navigatorKey: WINR.navigatorKey, ...)
-///
-/// // Or present manually at any time:
-/// final result = await WINR.present(context);
 /// ```
 class WINR {
   static WINRConfiguration? _configuration;
@@ -61,7 +59,7 @@ class WINR {
   static bool? _cachedEmailConsent;
 
   /// RTD opt-out — from the backend or the local persisted flag. Once true
-  /// the experience is never auto-presented and [present] refuses.
+  /// the experience is never auto-presented.
   static bool _cachedOptedOut = false;
 
   // Registration state
@@ -70,8 +68,8 @@ class WINR {
 
   /// Set when the backend reports the publisher is suspended / its API key has
   /// been revoked (typically a billing lapse). Cached from a failed device
-  /// registration so repeated [present] calls short-circuit without hitting
-  /// the network or pushing a screen. Reset on each [configure].
+  /// registration so repeated auto-present attempts short-circuit without
+  /// hitting the network or pushing a screen. Reset on each [configure].
   static bool _isSuspended = false;
 
   /// Whether the experience route is currently on screen (don't stack).
@@ -82,7 +80,7 @@ class WINR {
   /// Navigator key for the V2 auto-open flow. Attach it to your app's
   /// `MaterialApp(navigatorKey: WINR.navigatorKey)` so the SDK can present the
   /// experience on the first app-open of the day. Without it, auto-open is
-  /// silently skipped and only manual [present] works.
+  /// silently skipped and the experience never appears.
   ///
   /// Apps that already have their own navigator key can hand it to the SDK
   /// instead (before the first auto-open opportunity):
@@ -92,7 +90,7 @@ class WINR {
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
   /// field 21: sdk_version format `v1.x.x`).
-  static const String sdkVersion = '2.0.0';
+  static const String sdkVersion = '2.1.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -189,13 +187,14 @@ class WINR {
     }
   }
 
-  /// Whether the WINR experience is currently available to present.
+  /// Whether the WINR experience is currently available (i.e. eligible to
+  /// auto-open).
   ///
   /// Returns `false` if the SDK has not been configured, or if the publisher
-  /// account is suspended / its API key has been revoked. Custom-UI
-  /// integrations can poll this after configuration completes to decide
-  /// whether to show their own launch entry point (instead of relying on the
-  /// [WINRError.serviceUnavailable] completion error from [present]).
+  /// account is suspended / its API key has been revoked. Publishers can poll
+  /// this after configuration completes to know whether the once-a-day
+  /// auto-open can occur (e.g. to show their own "service unavailable"
+  /// messaging elsewhere in the app).
   static bool get isAvailable => _configuration != null && !_isSuspended;
 
   // MARK: - Auto-present (V2 experience: open once per day on app open)
@@ -253,7 +252,7 @@ class WINR {
     // Re-fetch the navigator context after the awaits above.
     final presentContext = navigatorKey.currentContext;
     if (presentContext == null || !presentContext.mounted) return;
-    unawaited(present(presentContext));
+    unawaited(_present(presentContext));
   }
 
   static String _dayString(DateTime date) {
@@ -313,16 +312,17 @@ class WINR {
 
   /// Presents the WINR experience (the V2 bottom drawer) over the host app.
   ///
-  /// The experience can be opened at any time — users can always view it, but
-  /// entries are granted automatically at most once per day. Returns the
-  /// [DailyEntryGrant] when entries were claimed during this presentation, or
-  /// `null` if the user dismissed without a (new) claim.
+  /// Internal-only: the experience is exclusively SDK-driven — it is opened by
+  /// the once-a-day auto-present flow ([_autoPresentIfEligible]) and cannot be
+  /// launched manually by the host app. Returns the [DailyEntryGrant] when
+  /// entries were claimed during this presentation, or `null` if the user
+  /// dismissed without a (new) claim.
   ///
   /// If the publisher account is suspended / its API key has been revoked,
   /// this does NOT push any screen and instead throws a [WINRException]
   /// wrapping [WINRError.serviceUnavailable]. If the person opted out (RTD),
   /// throws [WINRError.optedOut].
-  static Future<DailyEntryGrant?> present(BuildContext context) async {
+  static Future<DailyEntryGrant?> _present(BuildContext context) async {
     final config = _configuration;
     if (config == null) {
       throw const WINRException(WINRError.notConfigured);
@@ -331,15 +331,13 @@ class WINR {
     // Ensure registration is complete — registration may flip _isSuspended.
     await _ensureRegistrationComplete();
 
-    // If the publisher is suspended, do not present anything. Surface the
-    // serviceUnavailable error so the host app can show its own message.
+    // If the publisher is suspended, do not present anything.
     if (_isSuspended) {
       Logger.instance.info('WINR present suppressed: publisher suspended');
       throw const WINRException(WINRError.serviceUnavailable);
     }
 
-    // RTD: an opted-out person never sees the experience again — not even via
-    // a manual present() from the host app.
+    // RTD: an opted-out person never sees the experience again.
     if (_cachedOptedOut) {
       Logger.instance.info('WINR present suppressed: user opted out (RTD)');
       throw const WINRException(WINRError.optedOut);
