@@ -165,15 +165,31 @@ class WINRV2EmptyStateView extends StatelessWidget {
 // New-user capture ("VISIT. EARN. WIN.")
 // ---------------------------------------------------------------------------
 
+/// Capture-screen submit: the typed email plus BOTH consent checkbox states,
+/// which the experience forwards verbatim to `submitEmail`.
+typedef WINRV2CaptureSubmit = void Function(
+  String email, {
+  required bool ageConfirmed,
+  required bool emailConsent,
+});
+
+/// SDK default for the email/marketing consent line when the server sends no
+/// `copy.emailCapture.emailConsentText` (or flat `copy.emailConsentText`).
+const String winrV2DefaultEmailConsentText =
+    'Get notified about prizes and rewards';
+
 class WINRV2CaptureView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final String? rulesUrl;
   final Giveaway? giveaway;
   final bool isSubmitting;
-  final ValueChanged<String> onSubmit;
+  final WINRV2CaptureSubmit onSubmit;
   final VoidCallback onInfo;
   final VoidCallback onClose;
+
+  /// Server-supplied consent copy; null → [winrV2DefaultEmailConsentText].
+  final String? emailConsentText;
 
   const WINRV2CaptureView({
     super.key,
@@ -185,6 +201,7 @@ class WINRV2CaptureView extends StatefulWidget {
     required this.onSubmit,
     required this.onInfo,
     required this.onClose,
+    this.emailConsentText,
   });
 
   @override
@@ -193,7 +210,14 @@ class WINRV2CaptureView extends StatefulWidget {
 
 class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   final TextEditingController _email = TextEditingController();
+
+  /// Age gate requires an affirmative action — starts UNCHECKED and gates the
+  /// CTA.
   bool _isAdult = false;
+
+  /// Email/marketing consent — pre-checked, and deliberately NOT part of
+  /// [_canSubmit]: unchecking it must still let the user enter.
+  bool _emailConsent = true;
 
   int get _day1Entries {
     final ladder = widget.giveaway?.streakLadder;
@@ -266,13 +290,19 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                     _emailField(),
                     const SizedBox(height: 14),
                     _ageCheckbox(),
+                    const SizedBox(height: 10),
+                    _emailConsentCheckbox(),
                     const SizedBox(height: 14),
                     WINRV2PillButton(
                       accent: widget.accent,
                       title: 'CLAIM MY $_day1Entries ENTRIES',
                       isLoading: widget.isSubmitting,
                       enabled: _canSubmit,
-                      onTap: () => widget.onSubmit(_email.text.trim()),
+                      onTap: () => widget.onSubmit(
+                        _email.text.trim(),
+                        ageConfirmed: _isAdult,
+                        emailConsent: _emailConsent,
+                      ),
                     ),
                   ],
                 ),
@@ -398,23 +428,44 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
     );
   }
 
-  Widget _ageCheckbox() {
+  Widget _ageCheckbox() => _checkbox(
+        checked: _isAdult,
+        label: 'I confirm I am 18 years of age or older',
+        onTap: () => setState(() => _isAdult = !_isAdult),
+      );
+
+  /// Pre-checked email/marketing consent, sitting directly under the age gate
+  /// and styled identically to it (see [_checkbox]).
+  Widget _emailConsentCheckbox() => _checkbox(
+        checked: _emailConsent,
+        label: widget.emailConsentText?.isNotEmpty == true
+            ? widget.emailConsentText!
+            : winrV2DefaultEmailConsentText,
+        onTap: () => setState(() => _emailConsent = !_emailConsent),
+      );
+
+  /// One checkbox row — box size, glyph treatment, spacing, color, text style
+  /// and tap target are defined ONCE here so both rows are pixel-identical.
+  Widget _checkbox({
+    required bool checked,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () => setState(() => _isAdult = !_isAdult),
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _isAdult ? Icons.check_box : Icons.check_box_outline_blank,
+            checked ? Icons.check_box : Icons.check_box_outline_blank,
             size: 22,
             color: Colors.white,
           ),
           const SizedBox(width: 10),
-          Text(
-            'I confirm I am 18 years of age or older',
-            style: WINRV2Font.inter(14),
+          Flexible(
+            child: Text(label, style: WINRV2Font.inter(14)),
           ),
         ],
       ),

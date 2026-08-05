@@ -91,7 +91,7 @@ class WINR {
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
   /// field 21: sdk_version format `v1.x.x`).
-  static const String sdkVersion = '2.3.3';
+  static const String sdkVersion = '2.4.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.

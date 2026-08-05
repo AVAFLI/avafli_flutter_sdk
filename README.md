@@ -53,7 +53,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^2.3.3
+  winr_flutter_sdk: ^2.4.0
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/winr_flutter_sdk). A git dependency on this repo also works if you need an unreleased revision.

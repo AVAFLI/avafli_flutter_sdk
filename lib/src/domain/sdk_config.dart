@@ -14,7 +14,15 @@ class WinrSdkConfig {
   /// Experience behavior (V2 auto-open flow). Absent → SDK defaults apply.
   final WinrExperienceConfig? experience;
 
-  const WinrSdkConfig({this.branding, this.rulesUrl, this.experience});
+  /// Server-driven copy overrides. V2 uses only the email-consent line.
+  final WinrSdkCopy? copy;
+
+  const WinrSdkConfig({
+    this.branding,
+    this.rulesUrl,
+    this.experience,
+    this.copy,
+  });
 
   factory WinrSdkConfig.fromJson(Map<String, dynamic> json) {
     return WinrSdkConfig(
@@ -25,12 +33,65 @@ class WinrSdkConfig {
       experience: json['experience'] is Map<String, dynamic>
           ? WinrExperienceConfig.fromJson(json['experience'])
           : null,
+      copy: json['copy'] is Map<String, dynamic>
+          ? WinrSdkCopy.fromJson(json['copy'])
+          : null,
     );
   }
 
   /// Null-tolerant convenience parser.
   static WinrSdkConfig? tryParse(Map<String, dynamic>? json) =>
       json == null ? null : WinrSdkConfig.fromJson(json);
+}
+
+/// Server-driven copy overrides (mirrors the iOS SDK's `SDKCopyConfig`).
+///
+/// The backend emits per-screen nested objects; older payloads carried a few
+/// flat fields instead. Both shapes are parsed so the SDK reads whichever the
+/// publisher's dashboard happens to send.
+class WinrSdkCopy {
+  /// Nested per-screen copy (current backend format).
+  final WinrEmailCaptureCopy? emailCapture;
+
+  /// Flat legacy field, kept as a fallback for older payloads.
+  final String? emailConsentText;
+
+  const WinrSdkCopy({this.emailCapture, this.emailConsentText});
+
+  factory WinrSdkCopy.fromJson(Map<String, dynamic> json) {
+    return WinrSdkCopy(
+      emailCapture: json['emailCapture'] is Map<String, dynamic>
+          ? WinrEmailCaptureCopy.fromJson(json['emailCapture'])
+          : null,
+      emailConsentText: json['emailConsentText'] as String?,
+    );
+  }
+
+  /// Nested value wins; the flat legacy field is the fallback. Null when the
+  /// server said nothing, so the caller applies the SDK default literal.
+  String? get resolvedEmailConsentText {
+    final nested = emailCapture?.emailConsentText;
+    if (nested != null && nested.isNotEmpty) return nested;
+    final flat = emailConsentText;
+    if (flat != null && flat.isNotEmpty) return flat;
+    return null;
+  }
+}
+
+/// Email-capture screen copy. V2 hardcodes the design and only honors the
+/// consent line, but the field is namespaced with the rest of the screen's
+/// copy so the backend contract matches the other WINR SDKs.
+class WinrEmailCaptureCopy {
+  /// "Get notified about prizes and rewards"
+  final String? emailConsentText;
+
+  const WinrEmailCaptureCopy({this.emailConsentText});
+
+  factory WinrEmailCaptureCopy.fromJson(Map<String, dynamic> json) {
+    return WinrEmailCaptureCopy(
+      emailConsentText: json['emailConsentText'] as String?,
+    );
+  }
 }
 
 /// Publisher branding config — only the V2 publisher-configurable bits.

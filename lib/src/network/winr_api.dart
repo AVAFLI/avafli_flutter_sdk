@@ -466,12 +466,22 @@ class SubmitPrizeClaimResponse {
 /// Submit email request.
 class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
   final String email;
-  final bool hasConsent;
+
+  /// The age-gate checkbox state, stored server-side as proof of the 18+
+  /// affirmation. The CTA is gated on it, so it is true in practice — but it
+  /// is always the REAL checkbox value, never a hardcoded literal.
+  final bool ageConfirmed;
+
+  /// The email/marketing consent checkbox state. Pre-checked, and the user
+  /// may clear it and still enter — so this genuinely varies.
+  final bool emailConsent;
+
   final String? publisherUserId;
 
   SubmitEmailRequest({
     required this.email,
-    required this.hasConsent,
+    required this.ageConfirmed,
+    required this.emailConsent,
     this.publisherUserId,
   });
 
@@ -481,7 +491,10 @@ class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
   @override
   Map<String, dynamic> get body => {
     'email': email,
-    'marketingConsent': hasConsent,
+    'ageConfirmed': ageConfirmed,
+    'emailConsent': emailConsent,
+    // Legacy alias for backends still reading the pre-2.4.0 field name.
+    'marketingConsent': emailConsent,
     if (publisherUserId != null) 'publisherUserId': publisherUserId,
   };
 

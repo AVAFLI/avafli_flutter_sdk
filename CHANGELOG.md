@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.4.0] - 2026-08-05
+
+Consent capture, matched across all four WINR SDKs.
+
+### Added
+- **Email-consent checkbox on the capture screen.** A second checkbox sits
+  directly below the 18+ age gate, styled identically to it, reading "Get
+  notified about prizes and rewards" — or the publisher's own copy when the
+  backend sends `sdkConfig.copy.emailCapture.emailConsentText` (the flat
+  legacy `sdkConfig.copy.emailConsentText` is honored as a fallback). It is
+  **pre-checked** and does **not** gate entry: clearing it still leaves the
+  CTA enabled, so the user can decline marketing email and enter anyway. The
+  age gate is unchanged — still unchecked by default, still the thing that
+  (with a valid email) enables the CTA.
+
+### Changed
+- **Age confirmation is now transmitted and stored server-side.** `submitEmail`
+  previously sent only `{ email, marketingConsent }` with a hardcoded consent
+  value; it now carries the real state of both checkboxes as
+  `{ email, ageConfirmed, emailConsent }`. `marketingConsent` is still sent,
+  mirroring `emailConsent`, for backends reading the pre-2.4.0 field name.
+- `WINRV2CaptureView.onSubmit` now takes `(String email, {required bool
+  ageConfirmed, required bool emailConsent})` instead of a bare email string.
+  Internal API — publisher integrations are unaffected.
+
 ## [2.3.3] - 2026-08-05
 
 Three defects found testing the SDK inside a real publisher app.

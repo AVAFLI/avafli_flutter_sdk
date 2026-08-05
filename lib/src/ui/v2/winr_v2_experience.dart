@@ -542,7 +542,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   // Email capture
   // -------------------------------------------------------------------------
 
-  Future<void> _submitEmail(String email) async {
+  Future<void> _submitEmail(
+    String email, {
+    required bool ageConfirmed,
+    required bool emailConsent,
+  }) async {
     if (email.isEmpty || _isSubmittingEmail) return;
 
     // NOTE: we deliberately do NOT persist the raw email locally (PII-High).
@@ -553,7 +557,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     try {
       final response = await widget.networkClient.send(SubmitEmailRequest(
         email: email,
-        hasConsent: true,
+        ageConfirmed: ageConfirmed,
+        emailConsent: emailConsent,
         publisherUserId: widget.configuration.user.id,
       ));
 
@@ -995,7 +1000,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           rulesUrl: _rulesUrl,
           giveaway: _giveaway,
           isSubmitting: _isSubmittingEmail,
-          onSubmit: (email) => unawaited(_submitEmail(email)),
+          emailConsentText: widget.sdkConfig?.copy?.resolvedEmailConsentText,
+          onSubmit: (email, {required ageConfirmed, required emailConsent}) =>
+              unawaited(_submitEmail(
+            email,
+            ageConfirmed: ageConfirmed,
+            emailConsent: emailConsent,
+          )),
           onInfo: _showHowItWorks,
           onClose: _requestDismiss,
         );
