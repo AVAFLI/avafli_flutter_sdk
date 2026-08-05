@@ -100,6 +100,18 @@ class WINRV2Font {
   }
 }
 
+/// Minimum line height (leading multiple) for the big Inter Black display
+/// lines — the prize-card lockups and the white prize strip.
+///
+/// Flutter's `height` REPLACES the font's natural leading: `height: 1.0`
+/// yields a line box exactly `fontSize` tall, and Inter Black's real metrics
+/// (ascent 0.969em + descent 0.241em) do not fit in it, so glyphs spill out of
+/// their line box and collide with the neighbouring line. 1.15 gives 0.23em of
+/// descent space — roughly double the deepest descender in these strings (the
+/// comma in "$1,000" and the "$" tail) — so stacked display lines can never
+/// touch, at any FittedBox scale.
+const double winrV2HeadlineLineHeight = 1.15;
+
 /// Bundled images — mirrors iOS `WINRV2Asset`.
 class WINRV2Assets {
   WINRV2Assets._();

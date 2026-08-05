@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.3.3] - 2026-08-05
+
+Three defects found testing the SDK inside a real publisher app.
+
+### Fixed
+- **Prize headline no longer overlaps itself.** The prize card's cash lockup
+  ("WIN $1,000" over "CASH PRIZE") set `height: 1.0` on the big line — a line
+  box exactly `fontSize` tall with NO leading — and then pulled the second
+  line up into it with `Transform.translate(offset: Offset(0, -5))`. Inter
+  Black's real metrics don't fit a 1.0 line box, so the two lines physically
+  collided; the iOS original is safe only because SwiftUI's `VStack(spacing:
+  -5)` operates on line boxes that carry natural leading. Both display lines
+  now carry real leading (1.15) with no negative offset, and the whole lockup
+  shares ONE `FittedBox` so a narrow screen scales both lines by the same
+  factor. Same leading fix applied to the wrapping non-cash lockup ("Win a
+  $500 Amazon Gift Card").
+- **The drawer no longer sits on a spinner for seconds.** It auto-opens ahead
+  of its sequential network calls (registerDevice → getActiveGiveaway →
+  claim). When the device already has a cached giveaway and streak, the real
+  dashboard now paints IMMEDIATELY from that cache and the fresh response
+  reconciles silently in place — the same no-replay reconcile the celebration
+  staging already used (a celebration staged after the cache render still
+  fires exactly once). The email-capture gate is unchanged: an unconsented
+  user never sees a cached dashboard.
+- **Cold start shows a skeleton, not a bare spinner.** With nothing cached to
+  paint, the loading view is now a pulsing block-out of the real layout
+  (header, prize card, three streak tiles, come-back bar, pill) in the
+  drawer's own colors instead of a centered `CircularProgressIndicator` and
+  "Loading…".
+- **The prize image arrives with the card instead of popping in after it.**
+  The publisher's `prizeImageUrl` (and logo) are now decoded into the image
+  cache as soon as the SDK learns the giveaway config — at registration and
+  on every refresh, mirroring the iOS GIF prewarm — so the card normally
+  paints its art on its first frame. A cold URL fades in over ~200ms against
+  the card's dark background rather than flashing, and a broken one falls
+  back to the bundled cash hero.
+
 ## [2.3.0] - 2026-08-04
 
 ### Added

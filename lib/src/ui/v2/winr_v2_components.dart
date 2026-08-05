@@ -232,22 +232,25 @@ class WINRV2PrizeCard extends StatelessWidget {
   Widget _hero() {
     final url = prizeImageUrl;
     if (url != null && url.isNotEmpty) {
-      return Image.network(
-        url,
+      // Normally already decoded by [WINRV2ImageWarmer] (warmed the moment the
+      // SDK learned the giveaway config), so it paints with the rest of the
+      // card. A cold URL fades in over the card's dark background instead of
+      // popping, and a broken one falls back to the bundled cash hero.
+      return WINRV2RemoteImage(
+        url: url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            const ColoredBox(color: WINRV2Colors.deepCharcoal),
-        loadingBuilder: (context, child, progress) => progress == null
-            ? child
-            : const ColoredBox(color: WINRV2Colors.deepCharcoal),
+        placeholderColor: WINRV2Colors.deepCharcoal,
+        fallbackBuilder: (_) => _bundledHero(),
       );
     }
-    return Image.asset(
-      WINRV2Assets.cashHero,
-      package: WINRV2Assets.package,
-      fit: BoxFit.cover,
-    );
+    return _bundledHero();
   }
+
+  Widget _bundledHero() => Image.asset(
+        WINRV2Assets.cashHero,
+        package: WINRV2Assets.package,
+        fit: BoxFit.cover,
+      );
 
   /// Solid black strip inside the top of the card: accent title + white sub.
   Widget _statsStrip() {
@@ -348,33 +351,52 @@ class WINRV2PrizeCard extends StatelessWidget {
 
   Widget _cashLockup() {
     // "WIN $1,000" (Black 44) over "CASH PRIZE" (Black 19), right-aligned.
+    //
+    // LEADING IS LOAD-BEARING. iOS gets away with `VStack(spacing: -5)`
+    // because SwiftUI line boxes carry natural leading (~1.2) that absorbs the
+    // negative spacing. A Flutter `height: 1.0` line box is exactly the font
+    // size with NO leading, so Inter Black's overshoot plus the comma's
+    // descender spilled out of the box and physically collided with the line
+    // below it. Both lines now carry real leading (>= 1.15 == 0.23em of
+    // descent space, far more than the ~0.11em the comma/"$" actually use)
+    // and there is NO negative offset — the lines can never touch.
+    //
+    // The two lines share ONE FittedBox so a narrow screen scales the whole
+    // lockup uniformly (iOS scales the VStack, not just its first line);
+    // scaling a single line while the other stayed fixed is what turned a
+    // tight lockup into an overlapping one on smaller devices.
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
-            'WIN \$${winrV2FormatInt(prizeValue)}',
-            maxLines: 1,
-            style: WINRV2Font.inter(
-              44,
-              weight: FontWeight.w900,
-              letterSpacing: -2.2,
-              height: 1.0,
-            ),
-          ),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -5),
-          child: Text(
-            'CASH PRIZE',
-            style: WINRV2Font.inter(
-              19,
-              weight: FontWeight.w900,
-              letterSpacing: -0.57,
-              height: 1.0,
-            ),
+          alignment: Alignment.centerRight,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'WIN \$${winrV2FormatInt(prizeValue)}',
+                maxLines: 1,
+                style: WINRV2Font.inter(
+                  44,
+                  weight: FontWeight.w900,
+                  letterSpacing: -2.2,
+                  height: winrV2HeadlineLineHeight,
+                ),
+              ),
+              Text(
+                'CASH PRIZE',
+                maxLines: 1,
+                style: WINRV2Font.inter(
+                  19,
+                  weight: FontWeight.w900,
+                  letterSpacing: -0.57,
+                  height: winrV2HeadlineLineHeight,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -382,7 +404,9 @@ class WINRV2PrizeCard extends StatelessWidget {
   }
 
   Widget _prizeLockup() {
-    // Centered "Win a {Prize}" + accent "$X.00 VALUE!".
+    // Centered "Win a {Prize}" + accent "$X.00 VALUE!". Same leading rule as
+    // the cash lockup — this one wraps to TWO lines ("Win a $500 Amazon Gift
+    // Card"), so a 1.0 line box collided line-against-line on descenders.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -395,7 +419,7 @@ class WINRV2PrizeCard extends StatelessWidget {
             28,
             weight: FontWeight.w900,
             letterSpacing: -1.0,
-            height: 1.0,
+            height: winrV2HeadlineLineHeight,
           ),
         ),
         if (winrV2ShowsValueLine(prizeDescription, prizeValue))
@@ -497,8 +521,7 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
 
   void _centerActive() {
     if (!mounted || !_controller.hasClients) return;
-    final index =
-        widget.entries.indexWhere((e) => e.id == widget.activeID);
+    final index = widget.entries.indexWhere((e) => e.id == widget.activeID);
     if (index < 0) return;
     final tileCenter =
         _hPadding + index * (_tileWidth + _spacing) + _tileWidth / 2;
@@ -518,8 +541,8 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
       controller: _controller,
       scrollDirection: Axis.horizontal,
       clipBehavior: Clip.none,
-      padding: const EdgeInsets.only(
-          left: _hPadding, right: _hPadding, bottom: 12),
+      padding:
+          const EdgeInsets.only(left: _hPadding, right: _hPadding, bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -725,8 +748,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(999),
@@ -830,7 +852,8 @@ class WINRV2PowerUpTile extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.local_fire_department, size: 24, color: Colors.white),
+          const Icon(Icons.local_fire_department,
+              size: 24, color: Colors.white),
           const Spacer(),
           Text(
             '$label\nSTREAK BONUS!',
@@ -857,8 +880,7 @@ class WINRV2PowerUpTile extends StatelessWidget {
               'EVERY DAY!',
               softWrap: false,
               overflow: TextOverflow.visible,
-              style:
-                  WINRV2Font.inter(14, weight: FontWeight.w900, height: 1.1),
+              style: WINRV2Font.inter(14, weight: FontWeight.w900, height: 1.1),
             ),
           ),
           const SizedBox(height: 7),
@@ -917,17 +939,39 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
   late bool _showToast;
   Timer? _holdTimer;
 
+  /// One-shot guard: the toast plays exactly once per bar, whether it was
+  /// seeded at mount or arrived late.
+  bool _toastPlayed = false;
+
   @override
   void initState() {
     super.initState();
     _showToast = widget.celebrating;
-    if (_showToast) {
-      // Hold the toast a beat, then slide once to the resting pitch.
-      _holdTimer = Timer(const Duration(milliseconds: 2500), () {
-        if (!mounted) return;
-        setState(() => _showToast = false);
-      });
+    if (_showToast) _startHold();
+  }
+
+  @override
+  void didUpdateWidget(WINRV2ComeBackBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Cache-first render: the dashboard now paints from cached values while
+    // the network resolves, so the bar can MOUNT before the claim has been
+    // staged. When the celebration arrives a moment later the toast slides in
+    // from the right (the carousel's normal forward direction) instead of
+    // being missed entirely — and, via [_toastPlayed], never twice.
+    if (widget.celebrating && !oldWidget.celebrating && !_toastPlayed) {
+      setState(() => _showToast = true);
+      _startHold();
     }
+  }
+
+  /// Hold the toast a beat, then slide once to the resting pitch.
+  void _startHold() {
+    _toastPlayed = true;
+    _holdTimer?.cancel();
+    _holdTimer = Timer(const Duration(milliseconds: 2500), () {
+      if (!mounted) return;
+      setState(() => _showToast = false);
+    });
   }
 
   @override
@@ -1015,8 +1059,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                               weight: FontWeight.w700, height: 1.2),
                         ),
                         const TextSpan(
-                            text:
-                                ' to\nkeep your streak alive and receive:'),
+                            text: ' to\nkeep your streak alive and receive:'),
                       ],
               ),
               textAlign: TextAlign.center,

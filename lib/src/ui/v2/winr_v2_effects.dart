@@ -288,6 +288,115 @@ class _CheckmarkPainter extends CustomPainter {
 }
 
 // ---------------------------------------------------------------------------
+// Remote image prewarming (publisher prize art + logo)
+// ---------------------------------------------------------------------------
+
+/// Decodes the publisher's remote images into Flutter's shared [ImageCache]
+/// ahead of the drawer opening, so the prize card paints its art on its FIRST
+/// frame instead of popping in a beat after everything else.
+///
+/// This is the remote-image sibling of [WINRV2GifAsset.prewarm] (and mirrors
+/// what the iOS SDK does for its GIF prewarm): the SDK learns `prizeImageUrl`
+/// at registration / giveaway refresh, long before the experience is
+/// presented, which is exactly the moment to pay the download.
+///
+/// Deliberately context-free — `precacheImage` needs a [BuildContext] the SDK
+/// doesn't have at configure time, so this resolves the [NetworkImage]
+/// directly. The provider is `NetworkImage(url)`, the same cache key
+/// `Image.network(url)` resolves to, so the widget hits the cache
+/// synchronously.
+class WINRV2ImageWarmer {
+  WINRV2ImageWarmer._();
+
+  /// URLs already warmed (or in flight) — a repeated refresh is a no-op.
+  static final Set<String> _warmed = <String>{};
+
+  /// Kicks off a decode for [url] if it hasn't been warmed yet. Silent and
+  /// fire-and-forget: a failure just means the widget loads it normally.
+  static void prewarm(String? url) {
+    if (url == null || url.isEmpty) return;
+    if (!_warmed.add(url)) return;
+    try {
+      final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+      late final ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (ImageInfo image, bool synchronous) {
+          // Decoded and retained by the shared ImageCache from here on.
+          stream.removeListener(listener);
+        },
+        onError: (Object error, StackTrace? stack) {
+          stream.removeListener(listener);
+          _warmed.remove(url); // Allow a retry on the next refresh.
+        },
+      );
+      stream.addListener(listener);
+    } catch (_) {
+      _warmed.remove(url);
+    }
+  }
+
+  @visibleForTesting
+  static void resetForTesting() => _warmed.clear();
+
+  @visibleForTesting
+  static bool isWarmed(String url) => _warmed.contains(url);
+}
+
+/// Fade-in duration for a remote image that wasn't already decoded — short
+/// enough to feel instant, long enough to avoid a hard pop.
+const Duration winrV2ImageFadeDuration = Duration(milliseconds: 200);
+
+/// [Image.network] with the SDK's standard arrival behaviour: a dark
+/// placeholder (never a white/blank flash), a ~200ms fade-in when the bytes
+/// arrive late, NO fade at all when the warmer already decoded it (the common
+/// case — it paints with the rest of the card), and a caller-supplied
+/// fallback on error.
+class WINRV2RemoteImage extends StatelessWidget {
+  final String url;
+  final BoxFit fit;
+
+  /// Painted behind the image while it decodes.
+  final Color placeholderColor;
+
+  /// Shown when the URL fails to load.
+  final WidgetBuilder fallbackBuilder;
+
+  const WINRV2RemoteImage({
+    super.key,
+    required this.url,
+    required this.fit,
+    required this.placeholderColor,
+    required this.fallbackBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      url,
+      fit: fit,
+      errorBuilder: (context, _, __) => fallbackBuilder(context),
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        // Prewarmed: already in the ImageCache, so it paints on the card's
+        // first frame with everything else — no fade, no placeholder.
+        if (wasSynchronouslyLoaded) return child;
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            ColoredBox(color: placeholderColor),
+            AnimatedOpacity(
+              opacity: frame == null ? 0 : 1,
+              duration: winrV2ImageFadeDuration,
+              curve: Curves.easeOut,
+              child: child,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Bundled GIF playback (Joe's Figma animation files)
 // ---------------------------------------------------------------------------
 

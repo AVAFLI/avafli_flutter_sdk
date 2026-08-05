@@ -17,6 +17,7 @@ import 'services/push_notification_manager.dart';
 import 'storage/preferences_storage.dart';
 import 'storage/secure_storage.dart';
 import 'storage/storage.dart';
+import 'ui/v2/winr_v2_effects.dart';
 import 'ui/v2/winr_v2_experience.dart';
 import 'winr_configuration.dart';
 import 'winr_error.dart';
@@ -90,7 +91,7 @@ class WINR {
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
   /// field 21: sdk_version format `v1.x.x`).
-  static const String sdkVersion = '2.3.2';
+  static const String sdkVersion = '2.3.3';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -168,7 +169,8 @@ class WINR {
 
       // Register device in background, then attempt the once-a-day
       // auto-present.
-      unawaited(_registerDeviceIfNeeded().then((_) => _autoPresentIfEligible()));
+      unawaited(
+          _registerDeviceIfNeeded().then((_) => _autoPresentIfEligible()));
 
       // Auto-present on subsequent foregrounds too (covers the "app stayed in
       // memory overnight" case — a new day should re-open the experience).
@@ -298,8 +300,8 @@ class WINR {
     }
     await networkClient.send(OptOutRequest());
     markOptedOut();
-    Logger.instance.info(
-        'User opted out of WINR (RTD) — experience permanently silenced');
+    Logger.instance
+        .info('User opted out of WINR (RTD) — experience permanently silenced');
   }
 
   /// @internal — Records the RTD flag (from the backend or [optOut]) so the
@@ -530,6 +532,7 @@ class WINR {
       if (response.giveaway != null) {
         await preferencesStorage.cacheGiveaway(response.giveaway!);
       }
+      _prewarmPublisherArt();
 
       // If backend says not claimed but local storage says claimed today,
       // trust local
@@ -551,6 +554,16 @@ class WINR {
       _registrationCompleter?.complete();
       _registrationCompleter = null;
     }
+  }
+
+  /// Decodes the publisher's remote art (prize hero + logo) into the image
+  /// cache as soon as the SDK learns the giveaway config — registration and
+  /// every giveaway refresh — so the drawer paints the prize card complete on
+  /// its first frame instead of the art popping in after everything else.
+  /// Fire-and-forget; failures just fall back to loading at display time.
+  static void _prewarmPublisherArt() {
+    WINRV2ImageWarmer.prewarm(_cachedGiveaway?.prizeImageUrl);
+    WINRV2ImageWarmer.prewarm(_cachedSdkConfig?.branding?.logoUrl);
   }
 
   /// If [error] indicates the publisher is suspended / API key revoked, caches
@@ -582,6 +595,7 @@ class WINR {
       if (response.giveaway != null) {
         await _preferencesStorage!.cacheGiveaway(response.giveaway!);
       }
+      _prewarmPublisherArt();
 
       // If backend says not claimed but local storage says claimed today,
       // trust local

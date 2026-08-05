@@ -16,29 +16,110 @@ import 'winr_v2_winner.dart';
 // Loading + empty states
 // ---------------------------------------------------------------------------
 
-class WINRV2LoadingView extends StatelessWidget {
+/// Cold start (no cached giveaway/streak to paint from): a SKELETON of the
+/// dashboard rather than a centered spinner.
+///
+/// The drawer auto-opens before its sequential network calls resolve
+/// (registerDevice → getActiveGiveaway → claim). A bare spinner made that wait
+/// read as "nothing is here yet"; blocking out the real layout — header, prize
+/// card, streak tiles, come-back bar, pill — in the drawer's own gunmetal
+/// reads as the content arriving, at identical latency. The warm path never
+/// gets here at all: a cached giveaway + streak paints the real dashboard
+/// immediately (see `_hydrateFromCache`).
+class WINRV2LoadingView extends StatefulWidget {
   const WINRV2LoadingView({super.key});
 
   @override
+  State<WINRV2LoadingView> createState() => _WINRV2LoadingViewState();
+}
+
+class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2.5,
-            ),
+    return ColoredBox(
+      color: WINRV2Colors.gunmetal,
+      child: FadeTransition(
+        // A single shared pulse keeps every block in phase, so it reads as one
+        // surface breathing rather than a field of blinking rectangles.
+        opacity: Tween<double>(begin: 0.45, end: 0.85).animate(
+          CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+        ),
+        // Never scrolls — the wrapper just lets the blocked-out layout run off
+        // a short drawer instead of overflowing it.
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              const SizedBox(height: 15),
+              const WINRV2TabGrabber(),
+              const SizedBox(height: 15),
+              // Header: "?" circle • logo • "X" circle.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    _block(36, 36, radius: 18),
+                    const Spacer(),
+                    _block(140, 34),
+                    const Spacer(),
+                    _block(36, 36, radius: 18),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Prize card.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: _block(double.infinity, 200, radius: 10),
+              ),
+              const SizedBox(height: 15),
+              // Streak rail: three tiles.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _block(106, 134, radius: 10),
+                    _block(106, 134, radius: 10),
+                    _block(106, 134, radius: 10),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 15),
+              // Come-back bar.
+              _block(double.infinity, 71, radius: 0),
+              const SizedBox(height: 15),
+              // CTA pill.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: _block(double.infinity, 54, radius: 27),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Loading…',
-            style: WINRV2Font.inter(14, color: WINRV2Colors.textTertiary),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _block(double width, double height, {double radius = 6}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0x14FFFFFF),
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
@@ -203,8 +284,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                   'Your email lets us contact you if you win. By entering you '
                   'agree to the Official Rules & Privacy Policy',
                   textAlign: TextAlign.center,
-                  style:
-                      WINRV2Font.inter(12, color: WINRV2Colors.textTertiary),
+                  style: WINRV2Font.inter(12, color: WINRV2Colors.textTertiary),
                 ),
               ),
               const SizedBox(height: 3),
@@ -666,8 +746,7 @@ class WINRV2HowItWorksView extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$number.',
-            style: WINRV2Font.inter(18, weight: FontWeight.w900)),
+        Text('$number.', style: WINRV2Font.inter(18, weight: FontWeight.w900)),
         const SizedBox(width: 9),
         Expanded(
           child: Column(

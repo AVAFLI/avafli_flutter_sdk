@@ -221,7 +221,73 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // Decode the confetti-burst GIF NOW so mounting it at the reveal beat
     // (dashboard mount) plays instantly from frame 0.
     WINRV2GifAsset.prewarm(WINRV2Assets.confettiBurst);
+    // Same idea for the publisher's remote prize art: normally already warm
+    // (the SDK warms it at registration/refresh), but a drawer opened before
+    // that landed gets one more chance to have it decoded before the prize
+    // card paints.
+    WINRV2ImageWarmer.prewarm(_giveaway?.prizeImageUrl);
+    WINRV2ImageWarmer.prewarm(widget.sdkConfig?.branding?.logoUrl);
+    // Paint the dashboard from cache on the first frames — before any network
+    // call resolves — then let [_load] reconcile silently.
+    unawaited(_hydrateFromCache());
     _load();
+  }
+
+  // -------------------------------------------------------------------------
+  // Cache-first render
+  // -------------------------------------------------------------------------
+
+  /// True once the dashboard has been painted from cached values, so the
+  /// network reconcile knows it is updating a live dashboard rather than
+  /// replacing a loading screen.
+  bool _hydratedFromCache = false;
+
+  /// Renders the dashboard IMMEDIATELY from cached state (giveaway config +
+  /// persisted streak), skipping the loading phase entirely.
+  ///
+  /// The drawer used to sit on a spinner for as long as the sequential
+  /// registerDevice → getActiveGiveaway → claim round-trips took (5s+ on a
+  /// slow network) even when every value it needed was already on the device.
+  /// Everything here is a LOCAL read, so this lands within a frame or two of
+  /// mount; [_load] then reconciles the same way the celebration staging
+  /// already does — silently, with no re-animation (the reveal flags are
+  /// untouched, so a staged celebration still fires exactly once).
+  ///
+  /// Bails out (leaving the skeleton up) when anything is missing or when a
+  /// fresh response has already resolved the phase — a first-ever open, an
+  /// un-consented user who must see email capture first, or a cold cache all
+  /// take the genuine loading path.
+  Future<void> _hydrateFromCache() async {
+    if (_phase != _V2Phase.loading) return;
+
+    final storage = widget.preferencesStorage;
+    final giveaway = widget.cachedGiveaway ?? await storage.getCachedGiveaway();
+    if (giveaway == null) return;
+
+    // Day 1 / unconsented users must land on email capture, never a dashboard.
+    if (!await _hasEmailConsent) return;
+
+    final stored = await storage.getStreakState();
+    final day = widget.cachedStreakDay ?? stored?.currentDay;
+    if (stored == null || day == null) return;
+
+    // A network response beat us here — never stomp fresher truth.
+    if (!mounted || _phase != _V2Phase.loading) return;
+
+    final ladder = (giveaway.streakLadder.isNotEmpty)
+        ? giveaway.streakLadder
+        : List.generate(7, (i) => widget.streakEngine.baseEntries(i + 1));
+    final dayIndex = (day - 1).clamp(0, ladder.length - 1);
+
+    setState(() {
+      _giveaway = giveaway;
+      _streakState = stored.copyWith(currentDay: day);
+      _ladder = ladder;
+      _entriesToday = ladder[dayIndex];
+      _claimedToday = widget.cachedClaimedToday ?? false;
+      _hydratedFromCache = true;
+      _phase = _V2Phase.streak;
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -281,6 +347,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       if (response.giveaway != null) {
         _giveaway = response.giveaway;
         await storage.cacheGiveaway(response.giveaway!);
+        // Keep the prize art warm across prize changes mid-session.
+        WINRV2ImageWarmer.prewarm(response.giveaway!.prizeImageUrl);
       }
       backendClaimedToday = response.claimedToday;
       backendStreakDay = response.streakDay;
@@ -452,9 +520,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           _claimedToday = true;
           _phase = _V2Phase.streak;
         });
-      } else {
+      } else if (!_hydratedFromCache) {
         _setPhase(_V2Phase.error);
       }
+      // Already showing a cache-rendered dashboard: a local streak-engine
+      // hiccup is not worth replacing it with an error screen.
       return;
     }
     final newState = result.value;
@@ -503,7 +573,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       }
       Logger.instance.debug('Email submitted to backend');
     } catch (e) {
-      Logger.instance.error('Email submit to backend failed (will retry later)', e);
+      Logger.instance
+          .error('Email submit to backend failed (will retry later)', e);
     } finally {
       if (mounted) setState(() => _isSubmittingEmail = false);
     }
@@ -557,8 +628,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         {'day': response.streakDay, 'entries': response.entries},
       );
     } catch (e) {
-      Logger.instance
-          .info('Day-1 claim after email submit failed (dashboard will retry): $e');
+      Logger.instance.info(
+          'Day-1 claim after email submit failed (dashboard will retry): $e');
     }
   }
 
@@ -873,13 +944,14 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
               AnimatedSlide(
                 offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
                 duration: const Duration(milliseconds: 450),
-                curve: _drawerAppeared ? Curves.easeOutCubic : Curves.easeInCubic,
+                curve:
+                    _drawerAppeared ? Curves.easeOutCubic : Curves.easeInCubic,
                 child: SizedBox(
                   height: constraints.maxHeight * 0.90,
                   width: double.infinity,
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(30)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(30)),
                     child: ColoredBox(
                       color: WINRV2Colors.gunmetal,
                       child: _drawerContent(),
@@ -964,8 +1036,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         return WINRV2HowItWorksView(
           accent: _accent,
           logoUrl: _logoUrl,
-          day1Entries:
-              _displayLadder.isNotEmpty ? _displayLadder.first : 10,
+          day1Entries: _displayLadder.isNotEmpty ? _displayLadder.first : 10,
           visitMode: _visitMode,
           onDone: _hideHowItWorks,
           onClose: _requestDismiss,
