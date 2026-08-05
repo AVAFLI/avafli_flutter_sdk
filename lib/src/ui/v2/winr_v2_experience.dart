@@ -571,6 +571,12 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         Logger.instance
             .info('Adopted existing account — streak unified across devices');
       }
+      // The backend now holds a confirmed email + consent for this user, but
+      // WINR's cached copy of that flag is only ever refreshed by
+      // getActiveGiveaway. Mark it here too so nothing downstream (notably
+      // the unregistered auto-open impression cap) keeps treating a
+      // just-registered user as unregistered until the next refresh lands.
+      WINR.markEmailConsentGranted();
       Logger.instance.debug('Email submitted to backend');
     } catch (e) {
       Logger.instance

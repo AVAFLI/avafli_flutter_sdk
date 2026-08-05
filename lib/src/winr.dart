@@ -312,6 +312,19 @@ class WINR {
         .then((prefs) => prefs.setBool(_optedOutKey, true)));
   }
 
+  /// @internal — Records that the person just completed email capture.
+  ///
+  /// [_cachedEmailConsent] is otherwise only ever refreshed by
+  /// getActiveGiveaway, so between a successful submit and the next refresh
+  /// the SDK still believed the user was unregistered and would have counted
+  /// their next auto-open against the unregistered impression cap. In
+  /// practice the once-a-day mark is checked FIRST, so today the stale flag
+  /// is never reached — this makes the correctness explicit instead of
+  /// leaving it dependent on the order of two unrelated guards.
+  static void markEmailConsentGranted() {
+    _cachedEmailConsent = true;
+  }
+
   /// Presents the WINR experience (the V2 bottom drawer) over the host app.
   ///
   /// Internal-only: the experience is exclusively SDK-driven — it is opened by

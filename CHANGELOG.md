@@ -36,6 +36,13 @@ Three defects found testing the SDK inside a real publisher app.
   paints its art on its first frame. A cold URL fades in over ~200ms against
   the card's dark background rather than flashing, and a broken one falls
   back to the bundled cash hero.
+- **A successful email submit now marks the cached email-consent flag
+  immediately.** `WINR._cachedEmailConsent` was only ever refreshed by
+  `getActiveGiveaway`, so between capture and the next refresh the SDK still
+  believed a just-registered user was unregistered. Not reachable today — the
+  once-a-day auto-present mark is checked before the unregistered impression
+  cap — but the correctness no longer depends on the order of two unrelated
+  guards.
 
 ## [2.3.0] - 2026-08-04
 
