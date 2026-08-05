@@ -5,25 +5,30 @@
 Consent capture, matched across all four WINR SDKs.
 
 ### Added
-- **Email-consent checkbox on the capture screen.** A second checkbox sits
-  directly below the 18+ age gate, styled identically to it, reading "Get
-  notified about prizes and rewards" — or the publisher's own copy when the
-  backend sends `sdkConfig.copy.emailCapture.emailConsentText` (the flat
-  legacy `sdkConfig.copy.emailConsentText` is honored as a fallback). It is
-  **pre-checked** and does **not** gate entry: clearing it still leaves the
-  CTA enabled, so the user can decline marketing email and enter anyway. The
-  age gate is unchanged — still unchecked by default, still the thing that
-  (with a valid email) enables the CTA.
+- **Marketing-consent checkbox on the capture screen.** A second checkbox sits
+  directly below the 18+ age gate, styled identically to it, reading "I agree
+  to receive marketing emails from {PublisherName}" — the backend interpolates
+  the publisher's name and sends the finished string as
+  `sdkConfig.copy.emailCapture.emailConsentText` (the flat legacy
+  `sdkConfig.copy.emailConsentText` is honored as a fallback); with no config
+  the SDK falls back to "I agree to receive marketing emails from this app".
+
+  The box governs **marketing email only**. It is **pre-checked**, and
+  declining it affects **nothing else**: the CTA stays enabled, the entry is
+  submitted normally, and WINR still contacts the user if they win — winner
+  contact is operational and no checkbox gates it. The age gate is unchanged —
+  still unchecked by default, still the thing that (with a valid email)
+  enables the CTA.
 
 ### Changed
 - **Age confirmation is now transmitted and stored server-side.** `submitEmail`
   previously sent only `{ email, marketingConsent }` with a hardcoded consent
-  value; it now carries the real state of both checkboxes as
-  `{ email, ageConfirmed, emailConsent }`. `marketingConsent` is still sent,
-  mirroring `emailConsent`, for backends reading the pre-2.4.0 field name.
+  value; it now sends `{ email, ageConfirmed, marketingConsent }` carrying the
+  real state of both checkboxes. `ageConfirmed` is always present — the
+  backend keys off it to tell a 2.4.0+ client from a legacy one.
 - `WINRV2CaptureView.onSubmit` now takes `(String email, {required bool
-  ageConfirmed, required bool emailConsent})` instead of a bare email string.
-  Internal API — publisher integrations are unaffected.
+  ageConfirmed, required bool marketingConsent})` instead of a bare email
+  string. Internal API — publisher integrations are unaffected.
 
 ## [2.3.3] - 2026-08-05
 

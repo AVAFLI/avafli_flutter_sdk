@@ -67,6 +67,11 @@ class WinrSdkCopy {
     );
   }
 
+  /// The MARKETING consent line for the capture screen. The wire key is
+  /// historically named `emailConsentText`; it carries a publisher-named
+  /// string ("I agree to receive marketing emails from {PublisherName}")
+  /// interpolated SERVER-side.
+  ///
   /// Nested value wins; the flat legacy field is the fallback. Null when the
   /// server said nothing, so the caller applies the SDK default literal.
   String? get resolvedEmailConsentText {
@@ -82,7 +87,8 @@ class WinrSdkCopy {
 /// consent line, but the field is namespaced with the rest of the screen's
 /// copy so the backend contract matches the other WINR SDKs.
 class WinrEmailCaptureCopy {
-  /// "Get notified about prizes and rewards"
+  /// Marketing-consent line, e.g. "I agree to receive marketing emails from
+  /// {PublisherName}" with the name already substituted by the backend.
   final String? emailConsentText;
 
   const WinrEmailCaptureCopy({this.emailConsentText});

@@ -2,8 +2,9 @@
 // copy that drives the new one, and the payload both of them produce.
 //
 // The load-bearing rules:
-//   * age gate  → unchecked by default, GATES the CTA;
-//   * email consent → checked by default, does NOT gate the CTA;
+//   * age gate → unchecked by default, GATES the CTA;
+//   * marketing consent → checked by default, does NOT gate the CTA, and
+//     declining it changes nothing about entry or winner contact;
 //   * submitEmail carries the real state of both, never a literal.
 
 import 'package:flutter/material.dart';
@@ -67,7 +68,7 @@ void main() {
 
     Future<void> pumpCapture(
       WidgetTester tester, {
-      String? emailConsentText,
+      String? marketingConsentText,
     }) async {
       submitted = [];
       await tester.pumpWidget(MaterialApp(
@@ -79,9 +80,13 @@ void main() {
             rulesUrl: null,
             giveaway: _giveaway(),
             isSubmitting: false,
-            emailConsentText: emailConsentText,
-            onSubmit: (email, {required ageConfirmed, required emailConsent}) {
-              submitted = [email, ageConfirmed, emailConsent];
+            marketingConsentText: marketingConsentText,
+            onSubmit: (
+              email, {
+              required ageConfirmed,
+              required marketingConsent,
+            }) {
+              submitted = [email, ageConfirmed, marketingConsent];
             },
             onInfo: () {},
             onClose: () {},
@@ -94,12 +99,12 @@ void main() {
     bool ctaEnabled(WidgetTester tester) =>
         tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled;
 
-    testWidgets('email consent starts CHECKED, age gate starts unchecked',
+    testWidgets('marketing consent starts CHECKED, age gate starts unchecked',
         (tester) async {
       await pumpCapture(tester);
 
       expect(find.text(_ageLabel), findsOneWidget);
-      expect(find.text(winrV2DefaultEmailConsentText), findsOneWidget);
+      expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
 
       // Exactly one of each glyph: consent ticked, age empty.
       expect(find.byIcon(Icons.check_box), findsOneWidget);
@@ -107,7 +112,7 @@ void main() {
 
       // ...and the ticked one belongs to the consent row, not the age row.
       final consentRow = find.ancestor(
-        of: find.text(winrV2DefaultEmailConsentText),
+        of: find.text(winrV2DefaultMarketingConsentText),
         matching: find.byType(Row),
       );
       expect(
@@ -134,7 +139,7 @@ void main() {
       expect(ctaEnabled(tester), isTrue);
     });
 
-    testWidgets('unchecking email consent does NOT disable the CTA',
+    testWidgets('unchecking marketing consent does NOT disable the CTA',
         (tester) async {
       await pumpCapture(tester);
       await tester.enterText(find.byType(TextField), 'winner@example.com');
@@ -142,7 +147,7 @@ void main() {
       await tester.pump();
       expect(ctaEnabled(tester), isTrue);
 
-      await tester.tap(find.text(winrV2DefaultEmailConsentText));
+      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
 
       // Consent cleared (both boxes now empty) — CTA still live.
@@ -164,53 +169,64 @@ void main() {
       expect(submitted, ['winner@example.com', true, true]);
 
       // Declined path: consent cleared, entry still submitted.
-      await tester.tap(find.text(winrV2DefaultEmailConsentText));
+      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
       await tester.tap(find.byType(WINRV2PillButton));
       await tester.pump();
       expect(submitted, ['winner@example.com', true, false]);
     });
 
+    // The production path: the backend interpolates the publisher name and
+    // ships the finished string — the SDK never substitutes one itself.
     testWidgets('server-supplied consent copy overrides the default',
         (tester) async {
-      await pumpCapture(tester, emailConsentText: 'Email me about prizes');
+      const serverCopy = 'I agree to receive marketing emails from Acme News';
+      await pumpCapture(tester, marketingConsentText: serverCopy);
 
-      expect(find.text('Email me about prizes'), findsOneWidget);
-      expect(find.text(winrV2DefaultEmailConsentText), findsNothing);
+      expect(find.text(serverCopy), findsOneWidget);
+      expect(find.text(winrV2DefaultMarketingConsentText), findsNothing);
     });
   });
 
   group('SubmitEmailRequest body', () {
-    test('carries ageConfirmed + emailConsent, with the legacy alias', () {
+    test('carries ageConfirmed + marketingConsent under those exact keys', () {
       final body = SubmitEmailRequest(
         email: 'winner@example.com',
         ageConfirmed: true,
-        emailConsent: false,
+        marketingConsent: false,
         publisherUserId: 'pub_1',
       ).body;
 
       expect(body['email'], 'winner@example.com');
       expect(body['ageConfirmed'], isTrue);
-      expect(body['emailConsent'], isFalse);
-      // Legacy field mirrors the new consent value, never the age value.
       expect(body['marketingConsent'], isFalse);
       expect(body['publisherUserId'], 'pub_1');
+
+      // `emailConsent` was never the contract — the wire name is
+      // `marketingConsent`, and nothing else may leak in.
+      expect(body.containsKey('emailConsent'), isFalse);
+      expect(
+        body.keys.toSet(),
+        {'email', 'ageConfirmed', 'marketingConsent', 'publisherUserId'},
+      );
     });
 
-    test('omits publisherUserId when absent', () {
+    test('omits publisherUserId when absent, but never ageConfirmed', () {
       final body = SubmitEmailRequest(
         email: 'winner@example.com',
         ageConfirmed: true,
-        emailConsent: true,
+        marketingConsent: true,
       ).body;
 
-      expect(body['emailConsent'], isTrue);
       expect(body['marketingConsent'], isTrue);
       expect(body.containsKey('publisherUserId'), isFalse);
+      // The backend keys off the PRESENCE of ageConfirmed to detect a 2.4.0+
+      // client, so it is unconditional.
+      expect(body.containsKey('ageConfirmed'), isTrue);
     });
   });
 
-  group('sdkConfig consent copy', () {
+  group('sdkConfig marketing-consent copy', () {
     test('nested emailCapture copy wins over the flat legacy field', () {
       final config = WinrSdkConfig.fromJson({
         'copy': {

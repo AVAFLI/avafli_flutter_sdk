@@ -165,18 +165,24 @@ class WINRV2EmptyStateView extends StatelessWidget {
 // New-user capture ("VISIT. EARN. WIN.")
 // ---------------------------------------------------------------------------
 
-/// Capture-screen submit: the typed email plus BOTH consent checkbox states,
-/// which the experience forwards verbatim to `submitEmail`.
+/// Capture-screen submit: the typed email plus BOTH checkbox states, which
+/// the experience forwards verbatim to `submitEmail`.
 typedef WINRV2CaptureSubmit = void Function(
   String email, {
   required bool ageConfirmed,
-  required bool emailConsent,
+  required bool marketingConsent,
 });
 
-/// SDK default for the email/marketing consent line when the server sends no
-/// `copy.emailCapture.emailConsentText` (or flat `copy.emailConsentText`).
-const String winrV2DefaultEmailConsentText =
-    'Get notified about prizes and rewards';
+/// SDK default for the marketing-consent line, used only when the server
+/// sends no `copy.emailCapture.emailConsentText` (or flat
+/// `copy.emailConsentText`).
+///
+/// In practice the server wins: it populates that field with a
+/// publisher-named string ("I agree to receive marketing emails from
+/// {PublisherName}"). This generic literal is the offline/no-config
+/// fallback — the SDK never interpolates a publisher name itself.
+const String winrV2DefaultMarketingConsentText =
+    'I agree to receive marketing emails from this app';
 
 class WINRV2CaptureView extends StatefulWidget {
   final Color accent;
@@ -188,8 +194,8 @@ class WINRV2CaptureView extends StatefulWidget {
   final VoidCallback onInfo;
   final VoidCallback onClose;
 
-  /// Server-supplied consent copy; null → [winrV2DefaultEmailConsentText].
-  final String? emailConsentText;
+  /// Server-supplied consent copy; null → [winrV2DefaultMarketingConsentText].
+  final String? marketingConsentText;
 
   const WINRV2CaptureView({
     super.key,
@@ -201,7 +207,7 @@ class WINRV2CaptureView extends StatefulWidget {
     required this.onSubmit,
     required this.onInfo,
     required this.onClose,
-    this.emailConsentText,
+    this.marketingConsentText,
   });
 
   @override
@@ -215,9 +221,10 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   /// CTA.
   bool _isAdult = false;
 
-  /// Email/marketing consent — pre-checked, and deliberately NOT part of
-  /// [_canSubmit]: unchecking it must still let the user enter.
-  bool _emailConsent = true;
+  /// Marketing consent — permission to send promotional email, and NOTHING
+  /// else. Pre-checked, and deliberately absent from [_canSubmit]: unchecking
+  /// it must still let the user enter, and never affects winner contact.
+  bool _marketingConsent = true;
 
   int get _day1Entries {
     final ladder = widget.giveaway?.streakLadder;
@@ -291,7 +298,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                     const SizedBox(height: 14),
                     _ageCheckbox(),
                     const SizedBox(height: 10),
-                    _emailConsentCheckbox(),
+                    _marketingConsentCheckbox(),
                     const SizedBox(height: 14),
                     WINRV2PillButton(
                       accent: widget.accent,
@@ -301,7 +308,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                       onTap: () => widget.onSubmit(
                         _email.text.trim(),
                         ageConfirmed: _isAdult,
-                        emailConsent: _emailConsent,
+                        marketingConsent: _marketingConsent,
                       ),
                     ),
                   ],
@@ -434,14 +441,14 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         onTap: () => setState(() => _isAdult = !_isAdult),
       );
 
-  /// Pre-checked email/marketing consent, sitting directly under the age gate
-  /// and styled identically to it (see [_checkbox]).
-  Widget _emailConsentCheckbox() => _checkbox(
-        checked: _emailConsent,
-        label: widget.emailConsentText?.isNotEmpty == true
-            ? widget.emailConsentText!
-            : winrV2DefaultEmailConsentText,
-        onTap: () => setState(() => _emailConsent = !_emailConsent),
+  /// Pre-checked MARKETING consent, sitting directly under the age gate and
+  /// styled identically to it (see [_checkbox]).
+  Widget _marketingConsentCheckbox() => _checkbox(
+        checked: _marketingConsent,
+        label: widget.marketingConsentText?.isNotEmpty == true
+            ? widget.marketingConsentText!
+            : winrV2DefaultMarketingConsentText,
+        onTap: () => setState(() => _marketingConsent = !_marketingConsent),
       );
 
   /// One checkbox row — box size, glyph treatment, spacing, color, text style

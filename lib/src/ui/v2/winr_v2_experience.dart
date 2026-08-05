@@ -545,7 +545,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   Future<void> _submitEmail(
     String email, {
     required bool ageConfirmed,
-    required bool emailConsent,
+    required bool marketingConsent,
   }) async {
     if (email.isEmpty || _isSubmittingEmail) return;
 
@@ -558,7 +558,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       final response = await widget.networkClient.send(SubmitEmailRequest(
         email: email,
         ageConfirmed: ageConfirmed,
-        emailConsent: emailConsent,
+        marketingConsent: marketingConsent,
         publisherUserId: widget.configuration.user.id,
       ));
 
@@ -1000,12 +1000,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           rulesUrl: _rulesUrl,
           giveaway: _giveaway,
           isSubmitting: _isSubmittingEmail,
-          emailConsentText: widget.sdkConfig?.copy?.resolvedEmailConsentText,
-          onSubmit: (email, {required ageConfirmed, required emailConsent}) =>
+          marketingConsentText:
+              widget.sdkConfig?.copy?.resolvedEmailConsentText,
+          onSubmit: (email, {required ageConfirmed, required marketingConsent}) =>
               unawaited(_submitEmail(
             email,
             ageConfirmed: ageConfirmed,
-            emailConsent: emailConsent,
+            marketingConsent: marketingConsent,
           )),
           onInfo: _showHowItWorks,
           onClose: _requestDismiss,

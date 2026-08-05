@@ -73,7 +73,7 @@ void main() {
       rulesUrl: null,
       giveaway: _giveaway(),
       isSubmitting: false,
-      onSubmit: (_, {required ageConfirmed, required emailConsent}) {},
+      onSubmit: (_, {required ageConfirmed, required marketingConsent}) {},
       onInfo: () {},
       onClose: () {},
     )));
@@ -84,7 +84,7 @@ void main() {
     expect(find.text('CLAIM MY 10 ENTRIES'), findsOneWidget);
     expect(
         find.text('I confirm I am 18 years of age or older'), findsOneWidget);
-    expect(find.text(winrV2DefaultEmailConsentText), findsOneWidget);
+    expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
   });
 
   testWidgets('dashboard renders with winner banner and rail', (tester) async {

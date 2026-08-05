@@ -470,18 +470,23 @@ class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
   /// The age-gate checkbox state, stored server-side as proof of the 18+
   /// affirmation. The CTA is gated on it, so it is true in practice — but it
   /// is always the REAL checkbox value, never a hardcoded literal.
+  ///
+  /// ALWAYS sent: the backend keys off the PRESENCE of this field to tell a
+  /// 2.4.0+ client from a legacy one, so it must never be omitted.
   final bool ageConfirmed;
 
-  /// The email/marketing consent checkbox state. Pre-checked, and the user
-  /// may clear it and still enter — so this genuinely varies.
-  final bool emailConsent;
+  /// The MARKETING consent checkbox state — permission to send the user
+  /// promotional email, nothing more. Pre-checked, and the user may clear it
+  /// and still enter, so this genuinely varies. Winner contact is operational
+  /// and happens regardless of this value.
+  final bool marketingConsent;
 
   final String? publisherUserId;
 
   SubmitEmailRequest({
     required this.email,
     required this.ageConfirmed,
-    required this.emailConsent,
+    required this.marketingConsent,
     this.publisherUserId,
   });
 
@@ -492,9 +497,7 @@ class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
   Map<String, dynamic> get body => {
     'email': email,
     'ageConfirmed': ageConfirmed,
-    'emailConsent': emailConsent,
-    // Legacy alias for backends still reading the pre-2.4.0 field name.
-    'marketingConsent': emailConsent,
+    'marketingConsent': marketingConsent,
     if (publisherUserId != null) 'publisherUserId': publisherUserId,
   };
 
