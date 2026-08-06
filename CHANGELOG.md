@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.5.0] - 2026-08-06
+
+### Breaking
+
+`WINR.deleteUserData()` is **removed**. Use `WINR.optOut()`. The old call
+hard-deleted entry records — the evidence a drawing was fair — left no
+tombstone so delete-and-re-register farmed entries, and never cleaned
+prize-claim PII. `optOut()` is identity-wide and complete.
+
+### Fixed
+
+The example app shipped a placeholder API key and so could never run as
+provided.
+
 ## [2.4.0] - 2026-08-05
 
 Consent capture, matched across all four WINR SDKs.
