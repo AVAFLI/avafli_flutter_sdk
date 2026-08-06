@@ -606,20 +606,6 @@ class RegisterPushTokenRequest extends PostRequest<SuccessResponse> {
 }
 
 /// Delete user data request (GDPR).
-class DeleteUserDataRequest extends PostRequest<SuccessResponse> {
-  @override
-  String get endpoint => '/deleteUserData';
-
-  @override
-  Map<String, dynamic> get body => {};
-
-  @override
-  SuccessResponse parseResponse(http.Response response) {
-    final data = parseJsonResponse(response);
-    return SuccessResponse.fromJson(data);
-  }
-}
-
 /// Opt-out request (RTD — Right To Delete). Tombstones the person on the
 /// backend and permanently silences the experience on this device.
 class OptOutRequest extends PostRequest<SuccessResponse> {

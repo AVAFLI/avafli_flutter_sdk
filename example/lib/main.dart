@@ -277,9 +277,9 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => _deleteAccount(),
+            onPressed: () => _optOut(),
             icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete Account (GDPR)'),
+            label: const Text('Erase My Data (GDPR)'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               foregroundColor: Colors.red,
@@ -309,14 +309,14 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     }
   }
 
-  Future<void> _deleteAccount() async {
+  Future<void> _optOut() async {
     HapticFeedback.mediumImpact();
     try {
-      await WINR.deleteUserData();
+      await WINR.optOut();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account data deleted'),
+            content: Text('Data erased and experience silenced'),
             backgroundColor: Colors.blue,
           ),
         );

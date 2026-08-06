@@ -201,15 +201,28 @@ await WINR.configure(WINRConfiguration(
 - `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`, plus `weekly_bonus`, `monthly_bonus`, and `milestone_day` when awarded.
 - `winr_experience_dismissed` — User closed the WINR experience without a new claim
 
-## GDPR / Delete User Data
+## GDPR / CCPA
 
-Support GDPR/CCPA deletion requests:
+Handle erasure requests with `optOut()`:
 
 ```dart
-await WINR.deleteUserData();
+await WINR.optOut();
 ```
 
-This permanently removes all user data, entries, preferences, and consent records from WINR servers.
+This is the complete Right-to-be-Forgotten path. It removes the person's personal
+information everywhere it is held — including prize-claim records, which carry name,
+address and phone — links their devices together so one call covers all of them, and
+permanently silences the experience on the device so it survives a reinstall.
+
+De-identified entry records are deliberately retained. They are the evidence that a
+drawing was fair and that a prize went to a real eligible person, which a sweepstakes
+operator must be able to show; GDPR Art. 17(3) exempts data needed for legal claims.
+The person is erased, the proof is kept.
+
+> A previous `deleteUserData()` method was removed in 2.5.0. It hard-deleted entry
+> records, which both destroyed that evidence and — because it left no tombstone —
+> allowed delete-and-re-register to farm unlimited entries. Use `optOut()`.
+
 
 ## API Reference
 
@@ -220,7 +233,6 @@ This permanently removes all user data, entries, preferences, and consent record
 | `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
 | `WINR.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open |
 | `WINR.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
-| `WINR.deleteUserData()` | `Future<void>` | Permanently delete all user data |
 
 ### Push Notifications
 

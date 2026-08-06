@@ -426,36 +426,16 @@ class WINR {
         'Push reminders enabled — call WINRPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
   }
 
-  /// Deletes all user data (GDPR compliance).
+  /// Right-to-be-Forgotten (GDPR/CCPA)
   ///
-  /// Removes all user data from the backend and clears local storage.
-  static Future<void> deleteUserData() async {
-    final networkClient = _networkClient;
-    if (networkClient == null) {
-      throw const WINRException(WINRError.notConfigured);
-    }
-
-    try {
-      await networkClient.send(DeleteUserDataRequest());
-
-      // Clear local storage
-      await _secureStorage?.clear();
-      await _preferencesStorage?.clear();
-
-      // Clear cached data
-      _cachedGiveaway = null;
-      _cachedSdkConfigRaw = null;
-      _cachedSdkConfig = null;
-      _cachedClaimedToday = null;
-      _cachedStreakDay = null;
-      _cachedEmailConsent = null;
-
-      Logger.instance.info('User data deleted successfully');
-    } catch (e) {
-      Logger.instance.error('Failed to delete user data', e);
-      rethrow;
-    }
-  }
+  /// `deleteUserData()` was REMOVED. It called a backend hard-delete that wiped the
+  /// user's entries, leaving no tombstone — so delete -> re-register -> claim again
+  /// the same day farmed unlimited entries. It also destroyed the records proving the
+  /// drawing was fair, and left prize-claim PII orphaned.
+  ///
+  /// Use [optOut] instead. It is the correct erasure: identity-wide, PII scrubbed
+  /// everywhere including prize claims, tombstoned so it survives a reinstall, and
+  /// the experience stays permanently silenced on the device.
 
   // MARK: - Private Methods
 
