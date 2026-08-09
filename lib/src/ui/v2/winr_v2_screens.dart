@@ -224,7 +224,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   /// Marketing consent — permission to send promotional email, and NOTHING
   /// else. Pre-checked, and deliberately absent from [_canSubmit]: unchecking
   /// it must still let the user enter, and never affects winner contact.
-  bool _marketingConsent = true;
+  // Unchecked by default: consent must be an affirmative act (pre-ticked boxes
+  // are invalid under GDPR and disfavored by US state regulators).
+  bool _marketingConsent = false;
 
   int get _day1Entries {
     final ladder = widget.giveaway?.streakLadder;

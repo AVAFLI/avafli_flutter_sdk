@@ -99,29 +99,19 @@ void main() {
     bool ctaEnabled(WidgetTester tester) =>
         tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled;
 
-    testWidgets('marketing consent starts CHECKED, age gate starts unchecked',
+    testWidgets('BOTH checkboxes start unchecked — consent is an affirmative act',
         (tester) async {
+      // Marketing was pre-checked until Aug 2026. Changed on governance
+      // review: pre-ticked consent boxes are invalid under GDPR and
+      // disfavored by US state regulators.
       await pumpCapture(tester);
 
       expect(find.text(_ageLabel), findsOneWidget);
       expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
 
-      // Exactly one of each glyph: consent ticked, age empty.
-      expect(find.byIcon(Icons.check_box), findsOneWidget);
-      expect(find.byIcon(Icons.check_box_outline_blank), findsOneWidget);
-
-      // ...and the ticked one belongs to the consent row, not the age row.
-      final consentRow = find.ancestor(
-        of: find.text(winrV2DefaultMarketingConsentText),
-        matching: find.byType(Row),
-      );
-      expect(
-        find.descendant(
-          of: consentRow.first,
-          matching: find.byIcon(Icons.check_box),
-        ),
-        findsOneWidget,
-      );
+      // No ticked glyphs anywhere; two empty boxes.
+      expect(find.byIcon(Icons.check_box), findsNothing);
+      expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
     });
 
     testWidgets('the age gate — not the consent box — gates the CTA',
@@ -139,7 +129,7 @@ void main() {
       expect(ctaEnabled(tester), isTrue);
     });
 
-    testWidgets('unchecking marketing consent does NOT disable the CTA',
+    testWidgets('toggling marketing consent never affects the CTA',
         (tester) async {
       await pumpCapture(tester);
       await tester.enterText(find.byType(TextField), 'winner@example.com');
@@ -147,12 +137,16 @@ void main() {
       await tester.pump();
       expect(ctaEnabled(tester), isTrue);
 
+      // Checking it: CTA unchanged.
       await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
+      expect(find.byIcon(Icons.check_box), findsNWidgets(2));
+      expect(ctaEnabled(tester), isTrue);
 
-      // Consent cleared (both boxes now empty) — CTA still live.
+      // Unchecking it again: CTA still unchanged.
+      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
+      await tester.pump();
       expect(find.byIcon(Icons.check_box), findsOneWidget); // the age box
-      expect(find.byIcon(Icons.check_box_outline_blank), findsOneWidget);
       expect(ctaEnabled(tester), isTrue);
     });
 
@@ -163,17 +157,17 @@ void main() {
       await tester.tap(find.text(_ageLabel));
       await tester.pump();
 
-      // Default path: consent left checked.
+      // Default path: consent left UNTOUCHED — silence is not consent.
       await tester.tap(find.byType(WINRV2PillButton));
       await tester.pump();
-      expect(submitted, ['winner@example.com', true, true]);
+      expect(submitted, ['winner@example.com', true, false]);
 
-      // Declined path: consent cleared, entry still submitted.
+      // Affirmative path: user ticks the box, submit carries true.
       await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
       await tester.tap(find.byType(WINRV2PillButton));
       await tester.pump();
-      expect(submitted, ['winner@example.com', true, false]);
+      expect(submitted, ['winner@example.com', true, true]);
     });
 
     // The production path: the backend interpolates the publisher name and
