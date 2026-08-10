@@ -860,3 +860,150 @@ class WINRV2HowItWorksView extends StatelessWidget {
     );
   }
 }
+
+/// Verification code entry — shown when the typed email matches an EXISTING
+/// account and the OTP gate is on. One numeric field, auto-submits at 6 digits.
+class WINRV2CodeEntryView extends StatefulWidget {
+  const WINRV2CodeEntryView({
+    super.key,
+    required this.accent,
+    required this.logoUrl,
+    required this.email,
+    required this.isVerifying,
+    required this.errorText,
+    required this.onSubmit,
+    required this.onResend,
+    required this.onInfo,
+    required this.onClose,
+  });
+
+  final Color accent;
+  final String? logoUrl;
+  final String email;
+  final bool isVerifying;
+  final String? errorText;
+  final void Function(String code) onSubmit;
+  final VoidCallback onResend;
+  final VoidCallback onInfo;
+  final VoidCallback onClose;
+
+  @override
+  State<WINRV2CodeEntryView> createState() => _WINRV2CodeEntryViewState();
+}
+
+class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
+  final TextEditingController _code = TextEditingController();
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: WINRV2Colors.deepCharcoal,
+      child: SafeArea(
+        child: Column(
+          children: [
+            WINRV2Header(
+              logoUrl: widget.logoUrl,
+              onInfo: widget.onInfo,
+              onClose: widget.onClose,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                child: Column(
+                  children: [
+                    Text(
+                      'CHECK YOUR EMAIL',
+                      textAlign: TextAlign.center,
+                      style: WINRV2Font.inter(28,
+                          weight: FontWeight.w900, color: Colors.white),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'This email is already part of a WINR streak. Enter the '
+                      '6-digit code we sent to ${widget.email} to pick it up '
+                      'on this device.',
+                      textAlign: TextAlign.center,
+                      style: WINRV2Font.inter(14,
+                          color: Colors.white.withValues(alpha: 0.75)),
+                    ),
+                    const SizedBox(height: 22),
+                    Container(
+                      height: 54,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        controller: _code,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        textAlign: TextAlign.center,
+                        style: WINRV2Font.inter(22,
+                            weight: FontWeight.w700,
+                            color: WINRV2Colors.gunmetal),
+                        decoration: InputDecoration(
+                          isCollapsed: true,
+                          border: InputBorder.none,
+                          counterText: '',
+                          hintText: '••••••',
+                          hintStyle: WINRV2Font.inter(22,
+                              color:
+                                  WINRV2Colors.gunmetal.withValues(alpha: 0.4)),
+                        ),
+                        onChanged: (v) {
+                          // Auto-submit on the sixth digit.
+                          final digits = v.replaceAll(RegExp(r'\D'), '');
+                          if (digits.length == 6 && !widget.isVerifying) {
+                            widget.onSubmit(digits);
+                          }
+                        },
+                      ),
+                    ),
+                    if (widget.errorText != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.errorText!,
+                        textAlign: TextAlign.center,
+                        style: WINRV2Font.inter(13,
+                            color: const Color(0xFFFF6B63)),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    WINRV2PillButton(
+                      accent: widget.accent,
+                      title: 'VERIFY',
+                      isLoading: widget.isVerifying,
+                      enabled: !widget.isVerifying,
+                      onTap: () {
+                        final digits =
+                            _code.text.replaceAll(RegExp(r'\D'), '');
+                        if (digits.length == 6) widget.onSubmit(digits);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: widget.onResend,
+                      child: Text(
+                        "Didn't get it? Send a new code",
+                        style: WINRV2Font.inter(13,
+                            color: Colors.white.withValues(alpha: 0.6)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

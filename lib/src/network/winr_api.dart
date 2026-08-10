@@ -517,6 +517,10 @@ class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
 class SubmitEmailResponse {
   final bool success;
   final bool adopted;
+
+  /// The typed email matches an EXISTING account and the OTP gate is on: no
+  /// merge happened; show the 6-digit code screen and call verifyAdoptionCode.
+  final bool verificationRequired;
   final String? uuid;
   final String? token;
   final String? refreshToken;
@@ -524,6 +528,7 @@ class SubmitEmailResponse {
   const SubmitEmailResponse({
     this.success = true,
     this.adopted = false,
+    this.verificationRequired = false,
     this.uuid,
     this.token,
     this.refreshToken,
@@ -533,10 +538,30 @@ class SubmitEmailResponse {
     return SubmitEmailResponse(
       success: json['success'] ?? true,
       adopted: json['adopted'] ?? false,
+      verificationRequired: json['verificationRequired'] ?? false,
       uuid: json['uuid'] as String?,
       token: json['token'] as String?,
       refreshToken: json['refreshToken'] as String?,
     );
+  }
+}
+
+/// Completes a verification-gated adoption with the emailed 6-digit code.
+/// The response is the same shape as an adopted SubmitEmailResponse.
+class VerifyAdoptionCodeRequest extends PostRequest<SubmitEmailResponse> {
+  final String code;
+  VerifyAdoptionCodeRequest({required this.code});
+
+  @override
+  String get endpoint => '/verifyAdoptionCode';
+
+  @override
+  Map<String, dynamic> get body => {'code': code};
+
+  @override
+  SubmitEmailResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return SubmitEmailResponse.fromJson(data);
   }
 }
 

@@ -47,6 +47,7 @@ enum _V2Phase {
   loading,
   noActiveGiveaway,
   emailCapture,
+  codeEntry,
   streak,
   howItWorks,
 
@@ -116,6 +117,16 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   bool _isClaiming = false;
   bool _isSubmittingEmail = false;
+
+  /// Verification-gated adoption: the email awaiting its 6-digit code, plus the
+  /// consents from the ORIGINAL submit (resend must reuse them — fabricating
+  /// values would overwrite the marketing choice the person actually made).
+  /// In-memory only; the raw email is never persisted locally.
+  String? _pendingVerificationEmail;
+  bool _pendingAgeConfirmed = false;
+  bool _pendingMarketingConsent = false;
+  bool _isVerifyingCode = false;
+  String? _codeError;
 
   // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
   //
@@ -566,6 +577,22 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // existing user under this publisher (another device/SDK), the backend
       // hands back that canonical user's credentials. Switch to them so the
       // person keeps ONE streak per publisher across devices.
+      if (response.verificationRequired) {
+        // The typed address matches an EXISTING account: the merge is parked
+        // until the person proves the inbox is theirs.
+        if (mounted) {
+          setState(() {
+            _pendingVerificationEmail = email;
+            _pendingAgeConfirmed = ageConfirmed;
+            _pendingMarketingConsent = marketingConsent;
+            _codeError = null;
+            _isSubmittingEmail = false;
+            _phase = _V2Phase.codeEntry;
+          });
+        }
+        return;
+      }
+
       if (response.adopted && response.token != null && response.uuid != null) {
         await widget.secureStorage.saveAuthToken(response.token!);
         if (response.refreshToken != null) {
@@ -983,6 +1010,58 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     );
   }
 
+  /// Check the 6-digit adoption code; approved → adopt the canonical user's
+  /// credentials and reload into the dashboard (same as a direct adoption).
+  Future<void> _submitVerificationCode(String code) async {
+    if (_isVerifyingCode) return;
+    setState(() {
+      _isVerifyingCode = true;
+      _codeError = null;
+    });
+    try {
+      final response =
+          await widget.networkClient.send(VerifyAdoptionCodeRequest(code: code));
+      if (response.adopted && response.token != null && response.uuid != null) {
+        await widget.secureStorage.saveAuthToken(response.token!);
+        if (response.refreshToken != null) {
+          await widget.secureStorage.saveRefreshToken(response.refreshToken!);
+        }
+        await widget.secureStorage.saveUserUuid(response.uuid!);
+        widget.networkClient.setAuthToken(response.token!);
+        Logger.instance.info('Adoption verified — streak unified across devices');
+      }
+      WINR.markEmailConsentGranted();
+      if (mounted) {
+        setState(() {
+          _pendingVerificationEmail = null;
+          _isVerifyingCode = false;
+          _phase = _V2Phase.loading;
+        });
+        await _load(claimBeforeDashboard: true);
+      }
+    } catch (e) {
+      Logger.instance.error('Adoption code check failed', e);
+      if (mounted) {
+        setState(() {
+          _isVerifyingCode = false;
+          _codeError = "That code didn't match. Check the email and try again.";
+        });
+      }
+    }
+  }
+
+  /// Request a fresh code by re-submitting the ORIGINAL email + consents.
+  Future<void> _resendVerificationCode() async {
+    final email = _pendingVerificationEmail;
+    if (email == null) return;
+    setState(() => _phase = _V2Phase.emailCapture);
+    await _submitEmail(
+      email,
+      ageConfirmed: _pendingAgeConfirmed,
+      marketingConsent: _pendingMarketingConsent,
+    );
+  }
+
   Widget _drawerContent() {
     switch (_phase) {
       case _V2Phase.loading:
@@ -992,6 +1071,19 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       case _V2Phase.error:
         // Nothing to pitch (or opted out / errored) — quiet empty state.
         return WINRV2EmptyStateView(onClose: _requestDismiss);
+
+      case _V2Phase.codeEntry:
+        return WINRV2CodeEntryView(
+          accent: _accent,
+          logoUrl: _logoUrl,
+          email: _pendingVerificationEmail ?? '',
+          isVerifying: _isVerifyingCode,
+          errorText: _codeError,
+          onSubmit: (code) => unawaited(_submitVerificationCode(code)),
+          onResend: () => unawaited(_resendVerificationCode()),
+          onInfo: _showHowItWorks,
+          onClose: _requestDismiss,
+        );
 
       case _V2Phase.emailCapture:
         return WINRV2CaptureView(
