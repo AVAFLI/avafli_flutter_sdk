@@ -868,6 +868,7 @@ class WINRV2CodeEntryView extends StatefulWidget {
     super.key,
     required this.accent,
     required this.logoUrl,
+    required this.rulesUrl,
     required this.email,
     required this.isVerifying,
     required this.errorText,
@@ -879,6 +880,7 @@ class WINRV2CodeEntryView extends StatefulWidget {
 
   final Color accent;
   final String? logoUrl;
+  final String? rulesUrl;
   final String email;
   final bool isVerifying;
   final String? errorText;
@@ -991,16 +993,33 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: widget.onResend,
-                      child: Text(
-                        "Didn't get it? Send a new code",
-                        style: WINRV2Font.inter(13,
-                            color: Colors.white.withValues(alpha: 0.6)),
-                      ),
+                      // Two-tone: the question reads as copy, the underlined
+                      // action reads as a control.
+                      child: Text.rich(TextSpan(children: [
+                        TextSpan(
+                          text: "Didn't get it? ",
+                          style: WINRV2Font.inter(14,
+                              color: Colors.white.withValues(alpha: 0.65)),
+                        ),
+                        TextSpan(
+                          text: 'Send a new code',
+                          style: WINRV2Font.inter(14,
+                                  weight: FontWeight.w700,
+                                  color: const Color(0xFF7FB0FF))
+                              .copyWith(
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: const Color(0xFF7FB0FF)),
+                        ),
+                      ])),
                     ),
                   ],
                 ),
               ),
             ),
+            // Same legal footer as the capture screen — one consent flow, one
+            // footer; without it the sheet trails off into a void.
+            WINRV2LegalLinks(rulesUrl: widget.rulesUrl, showPoweredBy: true),
+            const SizedBox(height: 24),
           ],
         ),
       ),

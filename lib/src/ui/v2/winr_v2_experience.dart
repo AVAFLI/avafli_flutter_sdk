@@ -1076,6 +1076,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         return WINRV2CodeEntryView(
           accent: _accent,
           logoUrl: _logoUrl,
+          rulesUrl: _rulesUrl,
           email: _pendingVerificationEmail ?? '',
           isVerifying: _isVerifyingCode,
           errorText: _codeError,
