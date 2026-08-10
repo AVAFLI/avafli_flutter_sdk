@@ -47,6 +47,23 @@ MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
 
 That's the whole integration — the experience presents itself once per day.
 
+### Guest / logged-out users
+
+No account system, or the user isn't signed in? Pass `WINRUser.guest`:
+
+```dart
+await WINR.configure(WINRConfiguration(
+  apiKey: 'winr_live_…',
+  bundleId: 'com.example.myapp',
+  user: WINRUser.guest,
+));
+```
+
+The SDK mints a stable per-install guest id (`winr_guest_…`) for attribution —
+never fabricate placeholder ids yourself. The experience is fully functional
+for guests. When the user signs in, call `configure` again with the real user:
+attribution upgrades in place and the streak carries over automatically.
+
 ## Installation
 
 Add the SDK to your `pubspec.yaml`:

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -164,8 +165,12 @@ class WINR {
       config.options.analyticsAdapter?.track(WINRAnalyticsEvents.sdkConfigured);
 
       // Identify user and submit profile
-      _configuration!.options.analyticsAdapter?.identify(config.user.id);
-      Logger.instance.debug('User set: ${_redactId(config.user.id)}');
+      if (!config.user.isGuest) {
+        _configuration!.options.analyticsAdapter?.identify(config.user.id);
+      }
+      Logger.instance.debug(config.user.isGuest
+          ? 'User set: guest session'
+          : 'User set: ${_redactId(config.user.id)}');
 
       // Register device in background, then attempt the once-a-day
       // auto-present.
@@ -658,11 +663,15 @@ class WINR {
   /// rejecting the whole profile, since these are optional.
   static Future<void> _submitUserProfileIfNeeded(WINRUser user) async {
     try {
+      // Guests get the SDK-minted stable id (persisted, so attribution doesn't
+      // churn per session); a later configure with the signed-in user
+      // overwrites it in place.
+      final effectiveId = user.isGuest ? await _loadOrCreateGuestId() : user.id;
       final request = SubmitUserProfileRequest(
         firstName: _validName(user.firstName),
         lastName: _validName(user.lastName),
         phone: _validPhone(user.phone),
-        publisherUserId: user.id,
+        publisherUserId: effectiveId,
       );
 
       await _networkClient!.send(request);
@@ -692,6 +701,19 @@ class WINR {
     return RegExp(r'^\+?1?\d{10}$').hasMatch(trimmed) && digits.length >= 10
         ? digits
         : null;
+  }
+
+  /// Stable per-install guest identity, minted on first use.
+  static Future<String> _loadOrCreateGuestId() async {
+    const key = 'winr_guest_id';
+    final existing = await _preferencesStorage?.getString(key);
+    if (existing != null && existing.isNotEmpty) return existing;
+    // 128 bits from the platform CSPRNG — collision-safe without a uuid dep.
+    final rng = Random.secure();
+    final hex = List.generate(16, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    final fresh = 'winr_guest_$hex';
+    await _preferencesStorage?.setString(key, fresh);
+    return fresh;
   }
 
   /// Redacts a user id / uuid for logging — keeps only the last 4 chars so

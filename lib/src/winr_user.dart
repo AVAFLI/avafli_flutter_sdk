@@ -36,6 +36,19 @@ class WINRUser {
   /// field stays editable.
   final String? email;
 
+  /// A guest session — the person is not signed in to YOUR app (or your app
+  /// has no accounts). The SDK mints a stable per-install guest id
+  /// (`winr_guest_…`) and uses it for attribution, so there is always a real
+  /// identifier without your integration fabricating one. The WINR experience
+  /// is fully functional for guests; when your user signs in, call configure
+  /// again with the real user and attribution upgrades in place — the streak
+  /// is device-anchored and unaffected.
+  static const WINRUser guest =
+      WINRUser(id: '', firstName: '', lastName: '');
+
+  /// True when this value is the [guest] sentinel.
+  bool get isGuest => id.isEmpty;
+
   /// Creates a new [WINRUser].
   ///
   /// [id], [firstName], and [lastName] are required.
