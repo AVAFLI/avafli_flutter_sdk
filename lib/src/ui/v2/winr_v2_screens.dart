@@ -9,8 +9,17 @@ import 'package:flutter/material.dart';
 
 import '../../domain/giveaway.dart';
 import 'winr_v2_components.dart';
+import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
 import 'winr_v2_winner.dart';
+
+/// Email shape check shared by the capture CTA gate and the inline error, so
+/// the two can never disagree (an enabled CTA under a visible error, or vice
+/// versa). Deliberately a SHAPE check only — the server revalidates.
+bool winrV2IsValidEmail(String raw) {
+  final e = raw.trim();
+  return e.length <= 254 && RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
+}
 
 // ---------------------------------------------------------------------------
 // Loading + empty states
@@ -161,6 +170,162 @@ class WINRV2EmptyStateView extends StatelessWidget {
   }
 }
 
+/// Geo-blocked (`WINRError.geographyNotAllowed`) — a DEDICATED state, not the
+/// generic empty state: the person needs to know WHY there's nothing here
+/// (US-only sweepstakes) and that it isn't an outage on our side.
+class WINRV2GeoBlockedView extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const WINRV2GeoBlockedView({super.key, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              WINRV2Strings.geoBlockedHeadline,
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(20, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              WINRV2Strings.geoBlockedBody,
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(
+                14,
+                color: WINRV2Colors.textTertiary,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 220,
+              child: WINRV2PillButton(
+                accent: WINRV2Colors.winrBlue,
+                title: 'CLOSE',
+                onTap: onClose,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Session expired — token refresh AND re-registration both failed. Unlike
+/// every other error (which keeps the quiet empty state), this one is
+/// actionable: RETRY re-registers the device and reloads.
+class WINRV2SessionExpiredView extends StatelessWidget {
+  final Color accent;
+  final VoidCallback onRetry;
+  final VoidCallback onClose;
+
+  const WINRV2SessionExpiredView({
+    super.key,
+    required this.accent,
+    required this.onRetry,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              WINRV2Strings.sessionExpired,
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(16, weight: FontWeight.w600, height: 1.3),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 220,
+              child: WINRV2PillButton(
+                accent: accent,
+                title: WINRV2Strings.retry,
+                onTap: onRetry,
+              ),
+            ),
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: onClose,
+              behavior: HitTestBehavior.opaque,
+              child: Text(
+                'CLOSE',
+                style: WINRV2Font.inter(
+                  14,
+                  weight: FontWeight.w700,
+                  color: WINRV2Colors.textTertiary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Non-blocking dashboard notice (duplicate same-day entry, failed
+/// auto-claim). Sits above the prize card in the info-card styling; an
+/// optional TRY AGAIN affordance re-attempts the claim.
+class WINRV2DashboardNotice extends StatelessWidget {
+  final Color accent;
+  final String notice;
+  final VoidCallback? onRetry;
+
+  const WINRV2DashboardNotice({
+    super.key,
+    required this.accent,
+    required this.notice,
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0x14FFFFFF), // white 8%
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(notice, style: WINRV2Font.inter(13, height: 1.35)),
+          if (onRetry != null) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              button: true,
+              child: GestureDetector(
+                onTap: onRetry,
+                behavior: HitTestBehavior.opaque,
+                child: Text(
+                  WINRV2Strings.tryAgain,
+                  style: WINRV2Font.inter(
+                    13,
+                    weight: FontWeight.w700,
+                    color: accent,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // New-user capture ("VISIT. EARN. WIN.")
 // ---------------------------------------------------------------------------
@@ -197,6 +362,11 @@ class WINRV2CaptureView extends StatefulWidget {
   /// Server-supplied consent copy; null → [winrV2DefaultMarketingConsentText].
   final String? marketingConsentText;
 
+  /// Inline, retryable submit failure from the experience (e.g. the email
+  /// POST died in transit). Rendered under the email field in the same error
+  /// styling as validation; the user stays here and can try again.
+  final String? submitError;
+
   const WINRV2CaptureView({
     super.key,
     required this.accent,
@@ -209,6 +379,7 @@ class WINRV2CaptureView extends StatefulWidget {
     required this.onClose,
     this.marketingConsentText,
     this.prefilledEmail,
+    this.submitError,
   });
 
   /// Partner-authenticated email (WINRUser.email). Well-formed → rendered
@@ -221,6 +392,12 @@ class WINRV2CaptureView extends StatefulWidget {
 
 class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   final TextEditingController _email = TextEditingController();
+  final FocusNode _emailFocus = FocusNode();
+
+  /// Errors appear only once the field has been "touched" — focus lost (or a
+  /// submit attempted) while holding an invalid non-empty value. Typing a
+  /// first, still-incomplete address never flashes red mid-keystroke.
+  bool _emailTouched = false;
 
   /// Age gate requires an affirmative action — starts UNCHECKED and gates the
   /// CTA.
@@ -249,19 +426,34 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   }
 
   bool get _canSubmit =>
-      _isAdult &&
-      (_lockedEmail != null ||
-          (_email.text.contains('@') && _email.text.contains('.')));
+      _isAdult && (_lockedEmail != null || winrV2IsValidEmail(_email.text));
+
+  /// Validation error visible? Only for the editable field, only once
+  /// touched, and only for a non-empty invalid value (an empty field dims
+  /// the CTA but never scolds).
+  bool get _showsEmailError =>
+      _lockedEmail == null &&
+      _emailTouched &&
+      _email.text.trim().isNotEmpty &&
+      !winrV2IsValidEmail(_email.text);
 
   @override
   void initState() {
     super.initState();
     _email.addListener(() => setState(() {}));
+    _emailFocus.addListener(() {
+      if (!_emailFocus.hasFocus &&
+          _email.text.trim().isNotEmpty &&
+          !winrV2IsValidEmail(_email.text)) {
+        setState(() => _emailTouched = true);
+      }
+    });
   }
 
   @override
   void dispose() {
     _email.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
@@ -314,6 +506,26 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 child: Column(
                   children: [
                     _emailField(),
+                    if (_showsEmailError || widget.submitError != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            // Validation wins: a malformed address must be
+                            // fixed before a transport retry means anything.
+                            _showsEmailError
+                                ? WINRV2Strings.invalidEmail
+                                : widget.submitError!,
+                            style: WINRV2Font.inter(
+                              13,
+                              color: WINRV2Colors.errorRed,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     _ageCheckbox(),
                     const SizedBox(height: 10),
@@ -454,9 +666,13 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
             Expanded(
               child: TextField(
                 controller: _email,
+                focusNode: _emailFocus,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 enableSuggestions: false,
+                // A keyboard "done" is a submit attempt — the error may show
+                // even though the dimmed CTA swallowed the tap.
+                onSubmitted: (_) => setState(() => _emailTouched = true),
                 style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
                 cursorColor: WINRV2Colors.gunmetal,
                 decoration: InputDecoration(
@@ -546,6 +762,11 @@ class WINRV2DashboardView extends StatelessWidget {
   final int? pendingClaimEntries;
   final bool revealed;
 
+  /// Non-blocking notice above the prize card (duplicate same-day entry,
+  /// failed auto-claim); [onNoticeRetry] adds a TRY AGAIN affordance.
+  final String? notice;
+  final VoidCallback? onNoticeRetry;
+
   const WINRV2DashboardView({
     super.key,
     required this.accent,
@@ -562,6 +783,8 @@ class WINRV2DashboardView extends StatelessWidget {
     this.onWinnerTap,
     this.pendingClaimEntries,
     this.revealed = true,
+    this.notice,
+    this.onNoticeRetry,
   });
 
   bool get _visitMode => giveaway?.isVisitMode ?? false;
@@ -647,6 +870,16 @@ class WINRV2DashboardView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 15),
                       child: WINRV2WinnerBanner(onTap: onWinnerTap!),
+                    ),
+                  if (notice != null)
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 22, right: 22, bottom: 15),
+                      child: WINRV2DashboardNotice(
+                        accent: accent,
+                        notice: notice!,
+                        onRetry: onNoticeRetry,
+                      ),
                     ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -975,7 +1208,7 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                         widget.errorText!,
                         textAlign: TextAlign.center,
                         style: WINRV2Font.inter(13,
-                            color: const Color(0xFFFF6B63)),
+                            color: WINRV2Colors.errorRed),
                       ),
                     ],
                     const SizedBox(height: 16),

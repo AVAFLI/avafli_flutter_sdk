@@ -92,7 +92,7 @@ class WINR {
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:` (uses leading `v` per spec
   /// field 21: sdk_version format `v1.x.x`).
-  static const String sdkVersion = '2.5.0';
+  static const String sdkVersion = '2.6.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -701,6 +701,21 @@ class WINR {
     } catch (e) {
       Logger.instance.error('Failed to refresh giveaway data', e);
     }
+  }
+
+  /// @internal — Session-expired recovery for the experience's RETRY button.
+  ///
+  /// Mirrors the automatic stale-token path in [_registerDeviceIfNeeded]:
+  /// clears the dead credentials and re-runs the device-registration
+  /// handshake so the shared network client holds a fresh token before the
+  /// experience reloads. Safe no-op when the SDK facade isn't configured
+  /// (e.g. widget tests that mount the experience directly).
+  static Future<void> recoverExpiredSession() async {
+    final secureStorage = _secureStorage;
+    if (secureStorage == null || _configuration == null) return;
+    _networkClient?.setAuthToken(null);
+    await secureStorage.deleteAuthData();
+    await _registerDeviceIfNeeded();
   }
 
   /// Refreshes the authentication token if needed.

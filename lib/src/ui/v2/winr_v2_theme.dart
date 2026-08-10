@@ -32,6 +32,10 @@ class WINRV2Colors {
   static const Color textSecondary = Color(0xBFFFFFFF); // white 75%
   static const Color textTertiary = Color(0x99FFFFFF); // white 60%
   static const Color foregroundSecondary = Color(0x80FFFFFF); // white 50%
+
+  /// Inline error text — the code-entry screen established this red; every
+  /// field-level error uses it so validation reads identically everywhere.
+  static const Color errorRed = Color(0xFFFF6B63);
 }
 
 /// The publisher's primary color (branding.primaryColor) with the WINR-blue

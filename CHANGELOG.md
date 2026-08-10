@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.6.0 — 2026-08-10
+
+User-facing error messaging per the Master Field List; honest failure states
+— no fabricated claim success.
+
+- **Centralized copy** (`WINRV2Strings`): every user-facing error/notice
+  string lives in one file, matching the Master Field List's "User Message
+  (UI)" column exactly. Raw backend error text is never rendered.
+- **Email capture**: inline "Please enter a valid email address." under the
+  field (after it's touched or a submit is attempted). A failed submit now
+  keeps the user on capture with "Something went wrong sending your email.
+  Please try again." — and the email-confirmed flag is persisted only AFTER
+  the backend accepts the submit (previously a failed submit looked complete
+  forever).
+- **Winner claim form**: first/last name validated (unicode letters, spaces,
+  apostrophes, hyphens, periods, max 50) with inline errors; the optional
+  phone must normalize to 10 US digits (leading 1 allowed) or CONTINUE is
+  blocked with "Please enter a valid 10-digit mobile number."
+- **Duplicate same-day entry**: a claim rejected as already-claimed (e.g.
+  entered on another device) shows a transient dashboard notice instead of
+  silence.
+- **Failed auto-claim**: the dashboard shows the honest unclaimed state plus
+  "We couldn't record today's entry. Check your connection and try again."
+  with a TRY AGAIN affordance — never a fabricated local success.
+- **Geo-blocked**: dedicated "Not available in your location" state (US-only
+  messaging) instead of the generic empty state.
+- **Session expired**: when token refresh AND re-registration fail, a
+  dedicated "Your session has expired. Please try again." state with a RETRY
+  button that re-registers the device and reloads.
+
 ## 2.5.3 — 2026-08-10
 
 Auto-open now survives host boot navigation.

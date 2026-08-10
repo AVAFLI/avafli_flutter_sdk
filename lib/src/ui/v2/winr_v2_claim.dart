@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'winr_v2_components.dart';
+import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
@@ -82,12 +83,47 @@ class WINRPrizeClaimForm {
     return z.length == 5 && RegExp(r'^\d{5}$').hasMatch(z);
   }
 
+  /// Name characters per the Master Field List: unicode letters plus
+  /// spaces, apostrophes (straight or curly), hyphens, and periods.
+  static final RegExp _nameChars =
+      RegExp(r"^[\p{L} .'’\-]+$", unicode: true);
+  static final RegExp _anyLetter = RegExp(r'\p{L}', unicode: true);
+
+  /// A valid first/last name: non-empty trimmed, allowed characters only,
+  /// at least one actual letter, max 50 characters.
+  static bool isValidName(String raw) {
+    final t = raw.trim();
+    return t.isNotEmpty &&
+        t.length <= 50 &&
+        _nameChars.hasMatch(t) &&
+        _anyLetter.hasMatch(t);
+  }
+
+  /// Normalizes a typed phone to 10 US digits: strips every non-digit and
+  /// drops a leading country "1" (keeping the last 10). Returns null when
+  /// the result isn't exactly 10 digits.
+  static String? normalizePhone(String raw) {
+    var digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 11 && digits.startsWith('1')) {
+      digits = digits.substring(1);
+    }
+    return digits.length == 10 ? digits : null;
+  }
+
+  /// Phone stays OPTIONAL: blank is fine; anything typed must normalize to
+  /// 10 digits (see [normalizePhone]).
+  static bool isValidOptionalPhone(String raw) =>
+      raw.trim().isEmpty || normalizePhone(raw) != null;
+
   // ── Per-step validity (stepped flow) ──
 
-  /// Step 1 "TELL US ABOUT YOURSELF": first + last name (email is
-  /// server-side, phone optional).
+  /// Step 1 "TELL US ABOUT YOURSELF": valid first + last name (email is
+  /// server-side); phone is optional but must be a real 10-digit US number
+  /// when present.
   bool get isStep1Valid =>
-      firstName.trim().isNotEmpty && lastName.trim().isNotEmpty;
+      isValidName(firstName) &&
+      isValidName(lastName) &&
+      isValidOptionalPhone(phone);
 
   /// Step 2 "WHERE SHOULD WE SEND YOUR PRIZE?": full US shipping address.
   bool get isStep2Valid =>
@@ -854,6 +890,24 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
 
   // ── Step 1: TELL US ABOUT YOURSELF ──
 
+  /// Inline error for a NAME field: shown only once something invalid is
+  /// actually typed (an empty field dims CONTINUE but never scolds).
+  String? _nameError(TextEditingController controller, String message) {
+    final text = controller.text;
+    if (text.trim().isEmpty) return null;
+    return WINRPrizeClaimForm.isValidName(text) ? null : message;
+  }
+
+  /// Inline error for the OPTIONAL phone: blank is fine; anything typed
+  /// must normalize to 10 US digits or CONTINUE stays blocked.
+  String? get _phoneError {
+    final text = _phone.text;
+    if (text.trim().isEmpty) return null;
+    return WINRPrizeClaimForm.normalizePhone(text) == null
+        ? WINRV2Strings.invalidPhone
+        : null;
+  }
+
   Widget _step1() {
     return _page(
       title: 'TELL US ABOUT YOURSELF',
@@ -867,11 +921,17 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _WINRStepField(label: 'First Name', controller: _firstName),
+              _WINRStepField(
+                label: 'First Name',
+                controller: _firstName,
+                errorText:
+                    _nameError(_firstName, WINRV2Strings.invalidFirstName),
+              ),
               const SizedBox(height: 21),
               _WINRStepField(
                 label: 'Last Name (we will only show your last initial)',
                 controller: _lastName,
+                errorText: _nameError(_lastName, WINRV2Strings.invalidLastName),
               ),
               const SizedBox(height: 21),
               // The winning email lives server-side (the SDK never stores
@@ -886,6 +946,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
                 label: 'Phone Number (optional)',
                 controller: _phone,
                 keyboardType: TextInputType.phone,
+                errorText: _phoneError,
               ),
             ],
           ),
@@ -1310,18 +1371,21 @@ class _WINRStepFieldLabel extends StatelessWidget {
 }
 
 /// A labeled claim-step text field per the frames: 12px label, 59px box,
-/// #212832 fill / #3D424B 1px border / r10, 20px input text.
+/// #212832 fill / #3D424B 1px border / r10, 20px input text. An optional
+/// [errorText] renders inline under the box in the shared error red.
 class _WINRStepField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final TextInputType keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final String? errorText;
 
   const _WINRStepField({
     required this.label,
     required this.controller,
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
+    this.errorText,
   });
 
   @override
@@ -1350,6 +1414,16 @@ class _WINRStepField extends StatelessWidget {
             ),
           ),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              errorText!,
+              style: WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
+            ),
+          ),
+        ],
       ],
     );
   }

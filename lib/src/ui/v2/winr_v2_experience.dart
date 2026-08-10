@@ -38,6 +38,7 @@ import 'winr_v2_claim.dart';
 import 'winr_v2_components.dart';
 import 'winr_v2_effects.dart';
 import 'winr_v2_screens.dart';
+import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
 import 'winr_v2_winner.dart';
 
@@ -55,6 +56,13 @@ enum _V2Phase {
   /// the drawer shows the winner splash → claim form → confirmation flow
   /// instead of the dashboard. Takes precedence on open.
   winnerClaim,
+
+  /// Geo-blocked (`WINRError.geographyNotAllowed`) — dedicated US-only
+  /// messaging instead of the generic empty state.
+  geoBlocked,
+
+  /// Token refresh AND re-registration failed — dedicated retryable state.
+  sessionExpired,
   error,
 }
 
@@ -117,6 +125,20 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   bool _isClaiming = false;
   bool _isSubmittingEmail = false;
+
+  /// Inline, retryable error on the capture screen for a failed email
+  /// submit — the user stays on capture; the SDK never proceeds as if the
+  /// submit worked ([WINRV2Strings.emailSubmitFailed]).
+  String? _emailSubmitError;
+
+  /// Non-blocking dashboard notice (duplicate same-day entry / failed
+  /// auto-claim) + its optional retry affordance and auto-clear timer.
+  String? _dashboardNotice;
+  VoidCallback? _dashboardNoticeRetry;
+  Timer? _dashboardNoticeTimer;
+
+  /// How long the transient "already entered today" notice stays up.
+  static const _noticeAutoClear = Duration(seconds: 6);
 
   /// Verification-gated adoption: the email awaiting its 6-digit code, plus the
   /// consents from the ORIGINAL submit (resend must reuse them — fabricating
@@ -242,6 +264,62 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // call resolves — then let [_load] reconcile silently.
     unawaited(_hydrateFromCache());
     _load();
+  }
+
+  @override
+  void dispose() {
+    _dashboardNoticeTimer?.cancel();
+    super.dispose();
+  }
+
+  // -------------------------------------------------------------------------
+  // Dashboard notices (non-blocking)
+  // -------------------------------------------------------------------------
+
+  /// Shows a notice above the prize card. [autoClear] makes it transient;
+  /// [onRetry] adds a TRY AGAIN affordance (mutually sensible, not both).
+  void _showDashboardNotice(
+    String message, {
+    VoidCallback? onRetry,
+    Duration? autoClear,
+  }) {
+    _dashboardNoticeTimer?.cancel();
+    _dashboardNoticeTimer = null;
+    if (!mounted) return;
+    setState(() {
+      _dashboardNotice = message;
+      _dashboardNoticeRetry = onRetry;
+    });
+    if (autoClear != null) {
+      _dashboardNoticeTimer = Timer(autoClear, () {
+        _dashboardNoticeTimer = null;
+        if (!mounted) return;
+        setState(() {
+          _dashboardNotice = null;
+          _dashboardNoticeRetry = null;
+        });
+      });
+    }
+  }
+
+  void _clearDashboardNotice() {
+    _dashboardNoticeTimer?.cancel();
+    _dashboardNoticeTimer = null;
+    if (!mounted || (_dashboardNotice == null && _dashboardNoticeRetry == null)) {
+      _dashboardNotice = null;
+      _dashboardNoticeRetry = null;
+      return;
+    }
+    setState(() {
+      _dashboardNotice = null;
+      _dashboardNoticeRetry = null;
+    });
+  }
+
+  /// TRY AGAIN on the failed-auto-claim notice.
+  void _retryDailyClaim() {
+    _clearDashboardNotice();
+    unawaited(_claimDailyEntries());
   }
 
   // -------------------------------------------------------------------------
@@ -374,7 +452,23 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         await storage.setBool(StorageKeys.emailConfirmed, true);
       }
     } catch (e) {
-      // Offline fallback: use cached giveaway.
+      // Session expired: the network client already tried the refresh-token
+      // path and it failed — a dedicated retryable state, because every
+      // subsequent call (claim included) would bounce the same way.
+      if (e is WINRException && e.error == WINRError.authenticationFailed) {
+        Logger.instance.error('Session expired during load', e);
+        _setPhase(_V2Phase.sessionExpired);
+        return;
+      }
+      // Geo-blocked: the person needs to know WHY (US-only), not a generic
+      // "check back soon".
+      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+        Logger.instance.info('Load blocked by geography');
+        _setPhase(_V2Phase.geoBlocked);
+        return;
+      }
+      // Everything else — offline fallback: use cached giveaway. NOTE: the
+      // backend's raw text (serverMessage) is for logs only, never the UI.
       _giveaway ??= await storage.getCachedGiveaway();
       Logger.instance.debug('Using cached giveaway (offline): $e');
     }
@@ -560,11 +654,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   }) async {
     if (email.isEmpty || _isSubmittingEmail) return;
 
-    // NOTE: we deliberately do NOT persist the raw email locally (PII-High).
-    // The backend stores it encrypted and returns a user_uid handshake.
-    await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
-
-    setState(() => _isSubmittingEmail = true);
+    setState(() {
+      _isSubmittingEmail = true;
+      _emailSubmitError = null;
+    });
     try {
       final response = await widget.networkClient.send(SubmitEmailRequest(
         email: email,
@@ -603,6 +696,14 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         Logger.instance
             .info('Adopted existing account — streak unified across devices');
       }
+      // NOTE: we deliberately do NOT persist the raw email locally
+      // (PII-High) — the backend stores it encrypted. The non-PII "email
+      // submitted" flag is persisted ONLY NOW, after the backend accepted
+      // the submit. Persisting it up-front left a failed submit looking
+      // complete forever: the capture gate never showed again while every
+      // claim bounced off the backend consent gate.
+      await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
+
       // The backend now holds a confirmed email + consent for this user, but
       // WINR's cached copy of that flag is only ever refreshed by
       // getActiveGiveaway. Mark it here too so nothing downstream (notably
@@ -611,8 +712,23 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       WINR.markEmailConsentGranted();
       Logger.instance.debug('Email submitted to backend');
     } catch (e) {
-      Logger.instance
-          .error('Email submit to backend failed (will retry later)', e);
+      Logger.instance.error('Email submit to backend failed', e);
+      if (!mounted) return;
+      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+        setState(() {
+          _isSubmittingEmail = false;
+          _phase = _V2Phase.geoBlocked;
+        });
+        return;
+      }
+      // Stay ON the capture screen with an inline, retryable error — never
+      // proceed as if the submit worked, and never surface the backend's
+      // raw text.
+      setState(() {
+        _isSubmittingEmail = false;
+        _emailSubmitError = WINRV2Strings.emailSubmitFailed;
+      });
+      return;
     } finally {
       if (mounted) setState(() => _isSubmittingEmail = false);
     }
@@ -740,6 +856,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // the readouts. `_claimRevealed` is NOT reset — the celebration never
       // replays. Day 1 only differs in the toast headline ("YOU'RE IN!"
       // instead of "YOU'RE ON A ROLL!").
+      _dashboardNoticeTimer?.cancel();
+      _dashboardNoticeTimer = null;
       setState(() {
         _streakState = updatedStreak;
         _claimedToday = true;
@@ -749,6 +867,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _preClaimTotalEntries = response.totalEntries - grant.total;
         _phase = _V2Phase.streak;
         _isClaiming = false;
+        // A retried claim just landed — retire any failure notice.
+        _dashboardNotice = null;
+        _dashboardNoticeRetry = null;
       });
       // Safety net: if no prediction was staged pre-mount (e.g. the status
       // fetch was offline), the mount found nothing pending — fire the
@@ -756,6 +877,21 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       _armCelebrationReveal();
     } catch (e) {
       _isClaiming = false;
+
+      // Session expired mid-claim (refresh already failed inside the network
+      // client) — the dedicated retryable state, same as during load.
+      if (e is WINRException && e.error == WINRError.authenticationFailed) {
+        Logger.instance.error('Session expired during claim', e);
+        _setPhase(_V2Phase.sessionExpired);
+        return;
+      }
+      // Geo-blocked mid-claim — dedicated US-only messaging.
+      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+        Logger.instance.info('Claim blocked by geography');
+        _setPhase(_V2Phase.geoBlocked);
+        return;
+      }
+
       final isAlreadyClaimed =
           (e is WINRException && e.error == WINRError.ineligibleToday) ||
               e.toString().contains('Already claimed');
@@ -764,6 +900,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // another device beat us between the status fetch and the claim. For an
       // auto-claim this isn't news worth celebrating: show the dashboard in
       // its claimed state and re-load ONCE to pull the authoritative totals.
+      // Local state DIDN'T know (we only claim when we believe today is
+      // open), so tell the person why nothing new was granted — a transient
+      // notice, not a modal.
       if (isAlreadyClaimed) {
         Logger.instance.info('Already claimed today — updating local state');
         final updatedStreak = streak.copyWith(lastClaimedDate: DateTime.now());
@@ -781,6 +920,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           _claimedToday = true;
           _phase = _V2Phase.streak;
         });
+        _showDashboardNotice(
+          WINRV2Strings.alreadyEnteredToday,
+          autoClear: _noticeAutoClear,
+        );
         // One-shot: never loop if status + claim keep disagreeing.
         if (!_didResyncAfterAlreadyClaimed) {
           _didResyncAfterAlreadyClaimed = true;
@@ -789,8 +932,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         return;
       }
 
-      // Auto-claim failures are SILENT by design: the dashboard simply shows
-      // the unclaimed state. Never fake a local success for an auto-claim.
+      // Transport-level auto-claim failure: the dashboard shows the HONEST
+      // unclaimed state — never a fabricated local success — plus a
+      // non-blocking notice with a retry affordance so the person isn't left
+      // believing today's entry landed.
       Logger.instance.info('Auto-claim declined: $e');
       if (!mounted) return;
       setState(() {
@@ -803,6 +948,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _claimedToday = false;
         _phase = _V2Phase.streak;
       });
+      _showDashboardNotice(
+        WINRV2Strings.entryNotRecorded,
+        onRetry: _retryDailyClaim,
+      );
     }
   }
 
@@ -923,6 +1072,19 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     setState(() => _phase = phase);
   }
 
+  /// RETRY on the session-expired state: clear the stale credentials,
+  /// re-run the registration handshake, and reload. If the session is still
+  /// broken the load lands right back on sessionExpired.
+  Future<void> _retrySessionExpired() async {
+    _setPhase(_V2Phase.loading);
+    try {
+      await WINR.recoverExpiredSession();
+    } catch (e) {
+      Logger.instance.error('Session recovery failed', e);
+    }
+    await _load();
+  }
+
   void _showHowItWorks() {
     setState(() {
       _lastPrimaryPhase = _phase;
@@ -1035,6 +1197,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         widget.networkClient.setAuthToken(response.token!);
         Logger.instance.info('Adoption verified — streak unified across devices');
       }
+      // The email flow is only now truly complete — persist the non-PII
+      // "email submitted" flag here, not at submit time (see _submitEmail).
+      await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
       WINR.markEmailConsentGranted();
       if (mounted) {
         setState(() {
@@ -1075,7 +1240,19 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       case _V2Phase.noActiveGiveaway:
       case _V2Phase.error:
         // Nothing to pitch (or opted out / errored) — quiet empty state.
+        // Raw backend text (WINRException.serverMessage / displayMessage)
+        // is never rendered; unknown errors always land here.
         return WINRV2EmptyStateView(onClose: _requestDismiss);
+
+      case _V2Phase.geoBlocked:
+        return WINRV2GeoBlockedView(onClose: _requestDismiss);
+
+      case _V2Phase.sessionExpired:
+        return WINRV2SessionExpiredView(
+          accent: _accent,
+          onRetry: () => unawaited(_retrySessionExpired()),
+          onClose: _requestDismiss,
+        );
 
       case _V2Phase.codeEntry:
         return WINRV2CodeEntryView(
@@ -1098,6 +1275,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           rulesUrl: _rulesUrl,
           giveaway: _giveaway,
           isSubmitting: _isSubmittingEmail,
+          submitError: _emailSubmitError,
           marketingConsentText:
               widget.sdkConfig?.copy?.resolvedEmailConsentText,
           prefilledEmail: widget.configuration.user.email,
@@ -1144,6 +1322,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onWinnerTap: () => setState(() => _showWinnerModal = true),
           pendingClaimEntries: _pendingRevealGrant?.total,
           revealed: _claimRevealed,
+          notice: _dashboardNotice,
+          onNoticeRetry: _dashboardNoticeRetry,
         );
 
       case _V2Phase.winnerClaim:
