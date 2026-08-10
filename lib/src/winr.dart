@@ -381,10 +381,12 @@ class WINR {
         PageRouteBuilder<DailyEntryGrant>(
           opaque: false,
           barrierDismissible: false,
-          transitionDuration: const Duration(milliseconds: 200),
-          reverseTransitionDuration: const Duration(milliseconds: 200),
-          transitionsBuilder: (context, animation, secondary, child) =>
-              FadeTransition(opacity: animation, child: child),
+          // No route-level transition: the experience widget animates its own
+          // scrim fade and sheet slide, and finishes them BEFORE popping. A
+          // route fade on top double-exposes the still-visible sheet over the
+          // host app during dismissal.
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
           pageBuilder: (context, animation, secondary) => WINRV2Experience(
             configuration: config,
             networkClient: _networkClient!,

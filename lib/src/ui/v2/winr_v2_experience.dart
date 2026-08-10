@@ -949,7 +949,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     if (_isDismissing) return;
     _isDismissing = true;
     setState(() => _drawerAppeared = false);
-    await Future.delayed(const Duration(milliseconds: 280));
+    // Must outlast the 450ms AnimatedSlide below — the route has no exit
+    // transition of its own, so popping early freezes the sheet mid-slide.
+    await Future.delayed(const Duration(milliseconds: 470));
     if (!mounted) return;
     Navigator.of(context).pop(_grant);
   }

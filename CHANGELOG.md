@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.5.2 — 2026-08-10
+
+Presentation polish — fixes a visibly broken dismiss animation.
+
+- **Fixed ghosted cross-fade on dismiss.** The experience route applied its own
+  200ms whole-screen fade on top of the widget's 450ms slide-down, and popped
+  280ms in — mid-dismiss, the still-visible sheet double-exposed over the host
+  app. The route now has no transition of its own; the widget's scrim fade and
+  sheet slide run to completion before the pop.
+- **Publisher logo no longer pops in.** On a cold open (e.g. auto-open at app
+  launch) the header logo could appear a few frames after the drawer. It now
+  eases in over 200ms when it wasn't already cached.
+
 ## 2.5.1 — 2026-08-10
 
 Consent correctness and cross-device security.

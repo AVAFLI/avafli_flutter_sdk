@@ -89,8 +89,17 @@ class WINRV2Header extends StatelessWidget {
         url,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        loadingBuilder: (context, child, progress) =>
-            progress == null ? child : const SizedBox.shrink(),
+        // Cache hits (the prewarmed path) render synchronously; a cold load
+        // eases in rather than popping a frame after the drawer appears.
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: child,
+          );
+        },
       );
     }
     return Text('WINR', style: WINRV2Font.inter(28, weight: FontWeight.w900));
