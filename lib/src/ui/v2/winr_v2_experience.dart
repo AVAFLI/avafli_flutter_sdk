@@ -948,6 +948,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   Future<void> _requestDismiss() async {
     if (_isDismissing) return;
     _isDismissing = true;
+    // Distinguishes a user-tapped close from the route being destroyed by
+    // host navigation (which must NOT consume the once-a-day auto-open).
+    WINR.noteUserDismissedExperience();
     setState(() => _drawerAppeared = false);
     // Must outlast the 450ms AnimatedSlide below — the route has no exit
     // transition of its own, so popping early freezes the sheet mid-slide.

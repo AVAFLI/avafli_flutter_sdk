@@ -206,10 +206,53 @@ class WINR {
 
   // MARK: - Auto-present (V2 experience: open once per day on app open)
 
+  /// True while the host has asked auto-open to wait (see [holdAutoOpen]).
+  static bool _autoOpenHeld = false;
+
+  /// Set by the experience when the user themselves closed it (X / GOT IT).
+  /// If the route completes WITHOUT this flag and without a grant, something
+  /// in the host removed it — e.g. a splash screen finishing with
+  /// `Get.offAll` / `pushAndRemoveUntil`, which clears every route including
+  /// ours.
+  static bool _userDismissedExperience = false;
+
+  /// Bounded retry budget for auto-presents killed by host navigation.
+  static int _autoPresentRetries = 0;
+  static const int _maxAutoPresentRetries = 2;
+
+  /// @internal — the experience calls this from its own dismiss path.
+  static void noteUserDismissedExperience() {
+    _userDismissedExperience = true;
+  }
+
+  /// Pauses the once-a-day auto-open.
+  ///
+  /// Call this before [configure] when your app has a boot flow (splash
+  /// screen, auth gate) that ends by clearing the navigation stack
+  /// (`Get.offAll`, `pushAndRemoveUntil`, …) — otherwise the drawer can
+  /// present over the splash and be destroyed by that navigation a moment
+  /// later. Call [releaseAutoOpen] once your main screen is mounted.
+  static void holdAutoOpen() {
+    _autoOpenHeld = true;
+  }
+
+  /// Releases a [holdAutoOpen] and immediately attempts the once-a-day
+  /// auto-open if it is due. Safe to call when the SDK is not configured,
+  /// and safe to call repeatedly.
+  static Future<void> releaseAutoOpen() async {
+    _autoOpenHeld = false;
+    await _autoPresentIfEligible();
+  }
+
   /// Presents the experience automatically, at most once per calendar day,
   /// when all conditions allow. Called after registration completes and on
   /// each app foreground. All short-circuits are silent by design.
   static Future<void> _autoPresentIfEligible() async {
+    if (_autoOpenHeld) {
+      Logger.instance
+          .debug('Auto-present deferred: host is holding auto-open (boot)');
+      return;
+    }
     final config = _configuration;
     if (config == null || _isSuspended || _cachedOptedOut) return;
 
@@ -259,7 +302,43 @@ class WINR {
     // Re-fetch the navigator context after the awaits above.
     final presentContext = navigatorKey.currentContext;
     if (presentContext == null || !presentContext.mounted) return;
-    unawaited(_present(presentContext));
+
+    _userDismissedExperience = false;
+    final pushedAt = DateTime.now();
+    DailyEntryGrant? grant;
+    try {
+      grant = await _present(presentContext);
+    } catch (_) {
+      return; // suspended / opted out — already logged by _present.
+    }
+
+    // Route completed with no grant and no user-tapped dismiss shortly after
+    // opening: host navigation (splash → Get.offAll etc.) destroyed the
+    // drawer before the user could interact. Refund the once-a-day flag and
+    // the impression, and retry after the boot navigation settles.
+    final killedExternally = grant == null &&
+        !_userDismissedExperience &&
+        DateTime.now().difference(pushedAt) < const Duration(seconds: 5);
+    if (killedExternally && _autoPresentRetries < _maxAutoPresentRetries) {
+      _autoPresentRetries += 1;
+      Logger.instance.info(
+          'Auto-presented experience was removed by host navigation — '
+          'retrying ($_autoPresentRetries/$_maxAutoPresentRetries). '
+          'If your app boots through a splash screen that clears the '
+          'navigation stack, call WINR.holdAutoOpen() during boot and '
+          'WINR.releaseAutoOpen() once your main screen is mounted.');
+      await prefs.remove(_lastAutoPresentKey);
+      if (pendingImpressionCount) {
+        final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
+        if (seen > 0) {
+          await prefs.setInt(_unregisteredImpressionsKey, seen - 1);
+        }
+      }
+      unawaited(Future<void>.delayed(
+          const Duration(seconds: 2), _autoPresentIfEligible));
+      return;
+    }
+    _autoPresentRetries = 0;
   }
 
   static String _dayString(DateTime date) {
@@ -814,6 +893,9 @@ class WINR {
     _registrationCompleter = null;
     _isSuspended = false;
     _isPresenting = false;
+    _autoOpenHeld = false;
+    _userDismissedExperience = false;
+    _autoPresentRetries = 0;
     if (_lifecycleObserver != null) {
       WidgetsBinding.instance.removeObserver(_lifecycleObserver!);
       _lifecycleObserver = null;

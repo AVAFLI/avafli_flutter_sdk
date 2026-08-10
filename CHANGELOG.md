@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.5.3 — 2026-08-10
+
+Auto-open now survives host boot navigation.
+
+- **Fixed the drawer being destroyed by splash-screen navigation.** Apps that
+  boot through a splash and navigate with stack-clearing calls (`Get.offAll`,
+  `pushAndRemoveUntil`) destroyed the auto-opened drawer moments after it
+  appeared — and the SDK had already burned its once-a-day flag, so it never
+  returned that day. The SDK now detects that the route was removed without
+  user interaction, refunds the daily flag and unregistered-impression count,
+  and retries (up to twice) after the navigation settles.
+- **New `WINR.holdAutoOpen()` / `WINR.releaseAutoOpen()`.** Hosts with a boot
+  flow can hold the once-a-day auto-open during startup and release it once
+  their main screen is mounted, so the drawer always presents over the right
+  screen.
+
 ## 2.5.2 — 2026-08-10
 
 Presentation polish — fixes a visibly broken dismiss animation.
