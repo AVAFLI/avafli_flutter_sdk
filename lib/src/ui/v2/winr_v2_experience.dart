@@ -1002,6 +1002,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           isSubmitting: _isSubmittingEmail,
           marketingConsentText:
               widget.sdkConfig?.copy?.resolvedEmailConsentText,
+          prefilledEmail: widget.configuration.user.email,
           onSubmit: (email, {required ageConfirmed, required marketingConsent}) =>
               unawaited(_submitEmail(
             email,

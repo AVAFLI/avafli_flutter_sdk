@@ -69,6 +69,7 @@ void main() {
     Future<void> pumpCapture(
       WidgetTester tester, {
       String? marketingConsentText,
+      String? prefilledEmail,
     }) async {
       submitted = [];
       await tester.pumpWidget(MaterialApp(
@@ -81,6 +82,7 @@ void main() {
             giveaway: _giveaway(),
             isSubmitting: false,
             marketingConsentText: marketingConsentText,
+            prefilledEmail: prefilledEmail,
             onSubmit: (
               email, {
               required ageConfirmed,
@@ -180,6 +182,33 @@ void main() {
       expect(find.text(serverCopy), findsOneWidget);
       expect(find.text(winrV2DefaultMarketingConsentText), findsNothing);
     });
+
+    testWidgets('partner email renders READ-ONLY and submits normalized',
+        (tester) async {
+      await pumpCapture(tester, prefilledEmail: '  Ada@Example.COM ');
+
+      // No editable field; the address is visible (informed consent) with a
+      // lock glyph, normalized the way the server will store it.
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('ada@example.com'), findsOneWidget);
+      expect(find.byIcon(Icons.lock), findsOneWidget);
+
+      // The locked address satisfies the email half of the CTA gate.
+      await tester.tap(find.text(_ageLabel));
+      await tester.pump();
+      await tester.tap(find.byType(WINRV2PillButton));
+      await tester.pump();
+      expect(submitted, ['ada@example.com', true, false]);
+    });
+
+    testWidgets('a malformed partner email degrades to the editable field',
+        (tester) async {
+      // A partner bug must not lock garbage into a read-only field.
+      await pumpCapture(tester, prefilledEmail: 'not-an-email');
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byIcon(Icons.lock), findsNothing);
+    });
+
   });
 
   group('SubmitEmailRequest body', () {
@@ -252,5 +281,6 @@ void main() {
         isNull,
       );
     });
+
   });
 }

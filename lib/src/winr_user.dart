@@ -23,6 +23,19 @@ class WINRUser {
   /// Optional phone number
   final String? phone;
 
+  /// The user's email from YOUR authenticated session (optional).
+  ///
+  /// When supplied, the WINR capture screen shows it pre-filled and READ-ONLY —
+  /// the user cannot swap in a different address. Deliberate: WINR links
+  /// accounts across devices by email, so a free-typed address lets a user
+  /// attach themselves to someone else's record, and a partner-authenticated
+  /// address is the most reliable destination for a winner notification.
+  ///
+  /// Supplying it never records any consent — the user still ticks the boxes
+  /// and submits inside the WINR flow. A malformed value is ignored and the
+  /// field stays editable.
+  final String? email;
+
   /// Creates a new [WINRUser].
   ///
   /// [id], [firstName], and [lastName] are required.
@@ -31,6 +44,7 @@ class WINRUser {
     required this.firstName,
     required this.lastName,
     this.phone,
+    this.email,
   });
 
   @override

@@ -208,7 +208,12 @@ class WINRV2CaptureView extends StatefulWidget {
     required this.onInfo,
     required this.onClose,
     this.marketingConsentText,
+    this.prefilledEmail,
   });
+
+  /// Partner-authenticated email (WINRUser.email). Well-formed → rendered
+  /// pre-filled and READ-ONLY; malformed or null → the editable field.
+  final String? prefilledEmail;
 
   @override
   State<WINRV2CaptureView> createState() => _WINRV2CaptureViewState();
@@ -222,11 +227,21 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   bool _isAdult = false;
 
   /// Marketing consent — permission to send promotional email, and NOTHING
-  /// else. Pre-checked, and deliberately absent from [_canSubmit]: unchecking
-  /// it must still let the user enter, and never affects winner contact.
-  // Unchecked by default: consent must be an affirmative act (pre-ticked boxes
-  // are invalid under GDPR and disfavored by US state regulators).
+  /// else. Unchecked by default (consent must be an affirmative act; pre-ticked
+  /// boxes are invalid under GDPR), and deliberately absent from [_canSubmit]:
+  /// leaving it unticked must still let the user enter, and never affects
+  /// winner contact.
   bool _marketingConsent = false;
+
+  /// Shape check only — the server revalidates. Its job is to pick pre-fill
+  /// vs editable, so a partner bug degrades to the normal typed flow instead
+  /// of locking a garbage value into a read-only field.
+  String? get _lockedEmail {
+    final e = widget.prefilledEmail?.trim().toLowerCase();
+    if (e == null) return null;
+    final ok = e.contains('@') && e.contains('.') && e.length >= 6 && e.length <= 254;
+    return ok ? e : null;
+  }
 
   int get _day1Entries {
     final ladder = widget.giveaway?.streakLadder;
@@ -234,7 +249,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   }
 
   bool get _canSubmit =>
-      _isAdult && _email.text.contains('@') && _email.text.contains('.');
+      _isAdult &&
+      (_lockedEmail != null ||
+          (_email.text.contains('@') && _email.text.contains('.')));
 
   @override
   void initState() {
@@ -308,7 +325,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                       isLoading: widget.isSubmitting,
                       enabled: _canSubmit,
                       onTap: () => widget.onSubmit(
-                        _email.text.trim(),
+                        _lockedEmail ?? _email.text.trim(),
                         ageConfirmed: _isAdult,
                         marketingConsent: _marketingConsent,
                       ),
@@ -413,25 +430,46 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
             color: WINRV2Colors.gunmetal.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              enableSuggestions: false,
-              style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
-              cursorColor: WINRV2Colors.gunmetal,
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                hintText: 'Enter your email address',
-                hintStyle: WINRV2Font.inter(
-                  16,
-                  color: WINRV2Colors.gunmetal.withValues(alpha: 0.5),
+          if (_lockedEmail != null) ...[
+            // Read-only but VISIBLE: the user must see exactly which address
+            // they are consenting for. Text, not a disabled field, so no
+            // keyboard affordance appears.
+            Expanded(
+              child: Text(
+                _lockedEmail!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
+              ),
+            ),
+            Semantics(
+              label: 'Email provided by this app',
+              child: Icon(
+                Icons.lock,
+                size: 14,
+                color: WINRV2Colors.gunmetal.withValues(alpha: 0.45),
+              ),
+            ),
+          ] else
+            Expanded(
+              child: TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                enableSuggestions: false,
+                style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
+                cursorColor: WINRV2Colors.gunmetal,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  hintText: 'Enter your email address',
+                  hintStyle: WINRV2Font.inter(
+                    16,
+                    color: WINRV2Colors.gunmetal.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -443,8 +481,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         onTap: () => setState(() => _isAdult = !_isAdult),
       );
 
-  /// Pre-checked MARKETING consent, sitting directly under the age gate and
-  /// styled identically to it (see [_checkbox]).
+  /// MARKETING consent (unchecked by default), sitting directly under the age
+  /// gate and styled identically to it (see [_checkbox]).
   Widget _marketingConsentCheckbox() => _checkbox(
         checked: _marketingConsent,
         label: widget.marketingConsentText?.isNotEmpty == true
