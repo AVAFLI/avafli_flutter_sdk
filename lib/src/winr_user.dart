@@ -34,6 +34,10 @@ class WINRUser {
   /// Supplying it never records any consent — the user still ticks the boxes
   /// and submits inside the WINR flow. A malformed value is ignored and the
   /// field stays editable.
+  ///
+  /// This is a plain email STRING. For an app with no signed-in user, don't
+  /// pass anything here — use [WINRUser.guest] as the entire `user:` value
+  /// instead (`user: WINRUser.guest`).
   final String? email;
 
   /// A guest session — the person is not signed in to YOUR app (or your app
