@@ -13,13 +13,16 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 
 **Key capabilities:**
 - **Daily entry sweepstakes** — Users earn entries every day they engage
-- **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically
-- **Streak ladder + milestone accelerators** — Escalating daily entry rewards, with server-configurable milestone bonuses
-- **Winner announcements** — "WE HAVE A WINNER!" banner and winner dialog, driven by the giveaway's `latestWinner`
+- **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically (requires `WINR.navigatorKey` on your `MaterialApp`)
+- **Daily streak + auto-claim** — Entries climb a +10/day ladder; the drawer auto-opens once per day and claims that day's entries — there is no manual present API
+- **Email capture** — The SDK captures an email through its own opt-in screen, with an UNCHECKED-by-default marketing-consent tick and a publisher-configurable age gate
+- **Cross-device verified adoption** — When a typed email matches an existing account, the SDK confirms a 6-digit code before merging the streak across devices
+- **Soft email verification** — A brand-new typed email shows a persistent, dismissible "Verify your email" chip; it never blocks play, only prize-draw eligibility
+- **Winner claim flow** — "WE HAVE A WINNER!" splash and an in-drawer prize-claim flow (name, shipping address incl. DC, claim number)
 - **Visit mode** — A never-resetting streak variant for low-frequency apps
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
 - **Server-driven branding** — Logo, prize image, and primary color update without app releases
-- **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out, and user data deletion
+- **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out via `optOut()`, and an in-app "Privacy choices → delete my data"
 - **Analytics forwarding** — Route SDK events to your existing analytics stack
 
 ## Quick Start
@@ -41,11 +44,18 @@ final config = WINRConfiguration(
 await WINR.configure(config);
 
 // 2. Attach the SDK navigator key so the experience can auto-open on the
-//    first app-open of each day
+//    first app-open of each day. This is REQUIRED for the daily auto-open.
 MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
 ```
 
 That's the whole integration — the experience presents itself once per day.
+
+> **Boot flows that clear the nav stack.** If your app boots through a splash
+> screen or auth gate that ends by clearing the navigation stack
+> (`Get.offAll`, `Navigator.pushAndRemoveUntil`, …), that navigation can destroy
+> the drawer the instant it auto-opens. Call `WINR.holdAutoOpen()` **before**
+> `configure()` during boot, then `WINR.releaseAutoOpen()` once your main screen
+> is mounted — it releases the hold and immediately opens if the day is due.
 
 ### Identity — pass what you have, the SDK captures the rest
 
@@ -95,7 +105,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^2.5.0
+  winr_flutter_sdk: ^2.7.0
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/winr_flutter_sdk). A git dependency on this repo also works if you need an unreleased revision.
@@ -164,6 +174,17 @@ There is no manual launch API — the WINR experience is exclusively SDK-driven.
 
 Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then land straight on the same celebrating dashboard — the toast just reads "YOU'RE IN!" on Day 1.
 
+If your app boots through a splash/auth flow that clears the navigation stack, guard the auto-open with `WINR.holdAutoOpen()` / `WINR.releaseAutoOpen()` (see [Quick Start](#quick-start)).
+
+## Email Capture & Verification
+
+Email is captured inside the SDK's own opt-in screen (see the identity section above). The screen shows a publisher-configurable **age gate** — an affirmative tick that gates the CTA — and a **marketing-consent** checkbox that is **unchecked by default** and never gates entry (declining it costs neither the entry nor, if drawn, winner contact).
+
+Two verification paths run from that screen:
+
+- **Cross-device verified adoption.** When the typed email matches an existing WINR account (from another device or install), the SDK asks for a **6-digit code** emailed to that address before the two identities are merged — so a streak follows the person across devices without letting anyone attach to someone else's record.
+- **Soft email verification (2.7.0).** A brand-new, never-before-seen typed email surfaces a persistent, dismissible **"Verify your email"** chip on the dashboard. It **never blocks play** — the user keeps earning entries — it only affects prize-draw eligibility until the address is confirmed.
+
 ## Winner Experience
 
 When one of your users is drawn as a giveaway winner, the drawer automatically opens on a winner splash instead of the dashboard, then walks them through a prize-claim form (name, shipping address) and a confirmation with their claim number. This requires no integration work — the flow appears only for the drawn winner and disappears once their claim is submitted.
@@ -205,7 +226,13 @@ Upload your FCM service account key via the [WINR Dashboard](https://avafli-webs
 
 ### 4. Enable Push Reminders
 
-Set `enablePushReminders: true` in `WINROptions` during configuration.
+Set `enablePushReminders: true` in `WINROptions` during configuration, then call
+`WINR.registerForPushNotifications()` after `configure()`. It is a no-op when
+`enablePushReminders` is false.
+
+```dart
+await WINR.registerForPushNotifications();
+```
 
 ## Customization
 
@@ -215,7 +242,7 @@ The V2 experience is hardcoded to the WINR design; publishers customize exactly 
 - **Prize image** — Art for the dashboard prize card
 - **Primary color** — Accent for CTAs, streak tiles, and highlights
 
-Plus prize configuration (active giveaways, ladder, milestones) and push reminder schedules.
+Plus prize configuration (active giveaways, the entry ladder) and push reminder schedules.
 
 Changes apply instantly across all app installations without requiring an app update.
 
@@ -244,7 +271,7 @@ await WINR.configure(WINRConfiguration(
 **Events emitted by the SDK:**
 - `winr_sdk_configured` — SDK configured successfully
 - `winr_experience_presented` — User opened the WINR experience
-- `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`, plus `weekly_bonus`, `monthly_bonus`, and `milestone_day` when awarded.
+- `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`.
 - `winr_experience_dismissed` — User closed the WINR experience without a new claim
 
 ## GDPR / CCPA
@@ -265,10 +292,8 @@ drawing was fair and that a prize went to a real eligible person, which a sweeps
 operator must be able to show; GDPR Art. 17(3) exempts data needed for legal claims.
 The person is erased, the proof is kept.
 
-> A previous `deleteUserData()` method was removed in 2.5.0. It hard-deleted entry
-> records, which both destroyed that evidence and — because it left no tombstone —
-> allowed delete-and-re-register to farm unlimited entries. Use `optOut()`.
-
+Users can also self-serve without any code from you: the experience's
+**Privacy choices → delete my data** flow runs the same erasure as `optOut()`.
 
 ## API Reference
 
@@ -277,13 +302,17 @@ The person is erased, the proof is kept.
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
-| `WINR.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open |
+| `WINR.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open (required) |
+| `WINR.holdAutoOpen()` | `void` | Pause the once-a-day auto-open during a boot flow that clears the nav stack |
+| `WINR.releaseAutoOpen()` | `Future<void>` | Release a `holdAutoOpen()` and open immediately if the day is due |
 | `WINR.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
 
 ### Push Notifications
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
+| `WINR.registerForPushNotifications()` | `Future<void>` | Enable streak reminders; no-op when `enablePushReminders` is false |
+| `WINR.registerPushToken(token)` | `Future<void>` | Forward an FCM token to WINR (one-line `onTokenRefresh` listener) |
 | `WINRPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to WINR |
 
 For detailed API documentation, see the [WINR Docs](https://avafli-website.web.app/sdk/flutter).
