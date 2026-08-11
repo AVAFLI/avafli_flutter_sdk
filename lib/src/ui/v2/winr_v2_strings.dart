@@ -34,6 +34,27 @@ abstract final class WINRV2Strings {
   static const String emailSubmitFailed =
       'Something went wrong sending your email. Please try again.';
 
+  // ── Adoption code entry (cross-device merge) ──
+
+  /// Code check failed because the code is stale (backend message mentions
+  /// "expired"). Actionable: the user should request a fresh one.
+  static const String codeExpired =
+      "That code expired. Tap 'Send a new code' to get a fresh one.";
+
+  /// Code check failed after too many wrong tries (backend message mentions
+  /// "attempts").
+  static const String codeTooManyAttempts =
+      'Too many attempts. Request a new code.';
+
+  /// Code check failed for any other reason (wrong digits) — the default.
+  static const String codeIncorrect =
+      "That code didn't match. Check the email and try again.";
+
+  /// Resend request failed in transit. The code screen STAYS UP; this shows
+  /// in the same inline error slot so the user is never stranded on capture.
+  static const String codeResendFailed =
+      "Couldn't send a new code. Check your connection and try again.";
+
   // ── Dashboard notices (non-blocking) ──
 
   /// Transient notice when the backend rejects a claim as already-claimed

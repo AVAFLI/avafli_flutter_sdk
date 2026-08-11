@@ -136,9 +136,14 @@ class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
 
 /// Nothing to pitch (or opted out / errored) — quiet empty state.
 class WINRV2EmptyStateView extends StatelessWidget {
+  final Color accent;
   final VoidCallback onClose;
 
-  const WINRV2EmptyStateView({super.key, required this.onClose});
+  const WINRV2EmptyStateView({
+    super.key,
+    required this.accent,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +164,7 @@ class WINRV2EmptyStateView extends StatelessWidget {
           SizedBox(
             width: 220,
             child: WINRV2PillButton(
-              accent: WINRV2Colors.winrBlue,
+              accent: accent,
               title: 'CLOSE',
               onTap: onClose,
             ),
@@ -174,9 +179,14 @@ class WINRV2EmptyStateView extends StatelessWidget {
 /// generic empty state: the person needs to know WHY there's nothing here
 /// (US-only sweepstakes) and that it isn't an outage on our side.
 class WINRV2GeoBlockedView extends StatelessWidget {
+  final Color accent;
   final VoidCallback onClose;
 
-  const WINRV2GeoBlockedView({super.key, required this.onClose});
+  const WINRV2GeoBlockedView({
+    super.key,
+    required this.accent,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +215,7 @@ class WINRV2GeoBlockedView extends StatelessWidget {
             SizedBox(
               width: 220,
               child: WINRV2PillButton(
-                accent: WINRV2Colors.winrBlue,
+                accent: accent,
                 title: 'CLOSE',
                 onTap: onClose,
               ),
@@ -349,6 +359,14 @@ typedef WINRV2CaptureSubmit = void Function(
 const String winrV2DefaultMarketingConsentText =
     'I agree to receive marketing emails from this app';
 
+/// SDK default for the AGE-GATE line, used only when the server sends no
+/// `ageGateText` AND no configured minimum age reaches this widget. The
+/// canonical fallback is BUILT from the publisher's minimum age
+/// ([WinrSdkConfig.resolvedAgeGateText]); this literal is the last-resort
+/// offline default (minimum age 18).
+const String winrV2DefaultAgeGateText =
+    'I confirm I am 18 years of age or older';
+
 class WINRV2CaptureView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
@@ -361,6 +379,11 @@ class WINRV2CaptureView extends StatefulWidget {
 
   /// Server-supplied consent copy; null → [winrV2DefaultMarketingConsentText].
   final String? marketingConsentText;
+
+  /// Fully-resolved AGE-GATE label (server text, else a sentence built from
+  /// the publisher's minimum age); null → [winrV2DefaultAgeGateText]. Passed
+  /// pre-resolved so this widget never hardcodes a minimum age.
+  final String? ageGateText;
 
   /// Inline, retryable submit failure from the experience (e.g. the email
   /// POST died in transit). Rendered under the email field in the same error
@@ -378,6 +401,7 @@ class WINRV2CaptureView extends StatefulWidget {
     required this.onInfo,
     required this.onClose,
     this.marketingConsentText,
+    this.ageGateText,
     this.prefilledEmail,
     this.submitError,
   });
@@ -693,7 +717,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
 
   Widget _ageCheckbox() => _checkbox(
         checked: _isAdult,
-        label: 'I confirm I am 18 years of age or older',
+        label: widget.ageGateText?.isNotEmpty == true
+            ? widget.ageGateText!
+            : winrV2DefaultAgeGateText,
         onTap: () => setState(() => _isAdult = !_isAdult),
       );
 

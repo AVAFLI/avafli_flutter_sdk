@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.6.2 — 2026-08-11
+
+Age-gate text honors publisher config; push notifications functional on
+Android/web; resend keeps the code screen; error screens pick up publisher
+branding.
+
+- **Age-gate compliance**: the capture screen's age checkbox no longer
+  hardcodes "18". The SDK now parses the server's `ageGateEnabled`,
+  `ageGateMinAge`, and `ageGateText` (nested `copy.emailCapture.ageGateText`,
+  then flat `copy.ageGateText`) and renders the publisher's `ageGateText`
+  verbatim when present; otherwise it BUILDS "I confirm I am {minAge} years of
+  age or older" from `ageGateMinAge` (default 18) — never a hardcoded 18.
+- **Resend keeps the code screen up**: requesting a fresh adoption code no
+  longer flips back to email capture first, so a failed resend can't strand
+  the user there. The code-entry screen stays up throughout; failures surface
+  in the inline code-error slot ("Couldn't send a new code…") and the original
+  consents are reused.
+- **Adoption-code error taxonomy**: code-check failures now map three ways
+  from the backend's reason — "expired" → "That code expired…", "attempts" →
+  "Too many attempts…", otherwise → "That code didn't match…" — instead of
+  collapsing everything to "didn't match".
+- **Error-screen branding**: the empty/no-giveaway and geo-blocked screens'
+  CLOSE button now uses the publisher accent color instead of WINR blue,
+  matching the dashboard and session-expired screens.
+- **SDK version string**: `sdkVersion` is now sent as "2.6.2" without a
+  leading `v`, matching the iOS/Android/web SDKs (both the constant and the
+  request-defaults fallback).
+
 ## 2.6.1 — 2026-08-11
 
 In-experience privacy opt-out (delete my data); District of Columbia added to

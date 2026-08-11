@@ -17,11 +17,21 @@ class WinrSdkConfig {
   /// Server-driven copy overrides. V2 uses only the email-consent line.
   final WinrSdkCopy? copy;
 
+  /// Whether the capture-screen age gate is shown (top-level config, mirrors
+  /// the web SDK's `SDKConfig.ageGateEnabled`). Absent → SDK default (true).
+  final bool? ageGateEnabled;
+
+  /// Publisher's configured minimum age. Drives the age-gate fallback
+  /// sentence when the server sends no explicit `ageGateText`. Absent → 18.
+  final int? ageGateMinAge;
+
   const WinrSdkConfig({
     this.branding,
     this.rulesUrl,
     this.experience,
     this.copy,
+    this.ageGateEnabled,
+    this.ageGateMinAge,
   });
 
   factory WinrSdkConfig.fromJson(Map<String, dynamic> json) {
@@ -36,7 +46,22 @@ class WinrSdkConfig {
       copy: json['copy'] is Map<String, dynamic>
           ? WinrSdkCopy.fromJson(json['copy'])
           : null,
+      ageGateEnabled: json['ageGateEnabled'] as bool?,
+      ageGateMinAge: (json['ageGateMinAge'] as num?)?.toInt(),
     );
+  }
+
+  /// Resolved AGE-GATE label for the capture screen. A COMPLIANCE string, so
+  /// it must never contradict the publisher's configured minimum age: the
+  /// server-provided `ageGateText` wins verbatim (nested per-screen, then flat
+  /// legacy); only when absent is the sentence BUILT from [ageGateMinAge]
+  /// (default 18) — never a hardcoded "18". Mirrors the web SDK's
+  /// `WINRV2Controller.ageGateText`.
+  String get resolvedAgeGateText {
+    final serverText = copy?.resolvedAgeGateText;
+    if (serverText != null) return serverText;
+    final minAge = ageGateMinAge ?? 18;
+    return 'I confirm I am $minAge years of age or older';
   }
 
   /// Null-tolerant convenience parser.
@@ -56,7 +81,14 @@ class WinrSdkCopy {
   /// Flat legacy field, kept as a fallback for older payloads.
   final String? emailConsentText;
 
-  const WinrSdkCopy({this.emailCapture, this.emailConsentText});
+  /// Flat legacy age-gate label, kept as a fallback for older payloads.
+  final String? ageGateText;
+
+  const WinrSdkCopy({
+    this.emailCapture,
+    this.emailConsentText,
+    this.ageGateText,
+  });
 
   factory WinrSdkCopy.fromJson(Map<String, dynamic> json) {
     return WinrSdkCopy(
@@ -64,7 +96,19 @@ class WinrSdkCopy {
           ? WinrEmailCaptureCopy.fromJson(json['emailCapture'])
           : null,
       emailConsentText: json['emailConsentText'] as String?,
+      ageGateText: json['ageGateText'] as String?,
     );
+  }
+
+  /// The publisher's explicit AGE-GATE label, if any. Nested per-screen value
+  /// wins; the flat legacy field is the fallback. Null when the server said
+  /// nothing, so the caller BUILDS the sentence from the minimum age instead.
+  String? get resolvedAgeGateText {
+    final nested = emailCapture?.ageGateText;
+    if (nested != null && nested.isNotEmpty) return nested;
+    final flat = ageGateText;
+    if (flat != null && flat.isNotEmpty) return flat;
+    return null;
   }
 
   /// The MARKETING consent line for the capture screen. The wire key is
@@ -91,11 +135,16 @@ class WinrEmailCaptureCopy {
   /// {PublisherName}" with the name already substituted by the backend.
   final String? emailConsentText;
 
-  const WinrEmailCaptureCopy({this.emailConsentText});
+  /// Publisher-authored AGE-GATE label, e.g. "I confirm I am 21 years of age
+  /// or older". Rendered verbatim; overrides the SDK's built sentence.
+  final String? ageGateText;
+
+  const WinrEmailCaptureCopy({this.emailConsentText, this.ageGateText});
 
   factory WinrEmailCaptureCopy.fromJson(Map<String, dynamic> json) {
     return WinrEmailCaptureCopy(
       emailConsentText: json['emailConsentText'] as String?,
+      ageGateText: json['ageGateText'] as String?,
     );
   }
 }

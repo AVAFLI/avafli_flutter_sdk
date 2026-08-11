@@ -1214,22 +1214,87 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       if (mounted) {
         setState(() {
           _isVerifyingCode = false;
-          _codeError = "That code didn't match. Check the email and try again.";
+          _codeError = _codeErrorFor(e);
         });
       }
     }
   }
 
-  /// Request a fresh code by re-submitting the ORIGINAL email + consents.
+  /// Map an adoption-code failure to fixed UI copy (never raw backend text).
+  /// The backend surfaces a distinguishable reason in the exception's server
+  /// message (verifyAdoptionCode returns invalid-argument/permission-denied
+  /// whose text mentions "expired" or "attempts"); a three-way taxonomy —
+  /// expired / too-many-attempts / incorrect — mirrors the web SDK exactly.
+  String _codeErrorFor(Object e) {
+    final message = e is WINRException
+        ? (e.serverMessage ?? e.toString())
+        : e.toString();
+    final lower = message.toLowerCase();
+    if (lower.contains('expired')) return WINRV2Strings.codeExpired;
+    if (lower.contains('attempts')) return WINRV2Strings.codeTooManyAttempts;
+    return WINRV2Strings.codeIncorrect;
+  }
+
+  /// Request a fresh code by re-submitting the ORIGINAL email + consents. The
+  /// CODE-entry screen STAYS UP throughout: a failed resend surfaces in the
+  /// code-error slot instead of dumping the user back on email capture with
+  /// no explanation (mirrors the web SDK's resendVerificationCode).
   Future<void> _resendVerificationCode() async {
     final email = _pendingVerificationEmail;
     if (email == null) return;
-    setState(() => _phase = _V2Phase.emailCapture);
-    await _submitEmail(
-      email,
-      ageConfirmed: _pendingAgeConfirmed,
-      marketingConsent: _pendingMarketingConsent,
-    );
+    if (_phase != _V2Phase.codeEntry || _isVerifyingCode || _isSubmittingEmail) {
+      return;
+    }
+    setState(() {
+      _isSubmittingEmail = true;
+      _codeError = null;
+    });
+    try {
+      // Re-submitting the ORIGINAL consent values is idempotent (same person,
+      // same choices) and re-triggers the code send. Fabricating values here
+      // would overwrite the marketing choice the person actually made.
+      final response = await widget.networkClient.send(SubmitEmailRequest(
+        email: email,
+        ageConfirmed: _pendingAgeConfirmed,
+        marketingConsent: _pendingMarketingConsent,
+        publisherUserId: widget.configuration.user.id,
+      ));
+      if (!mounted) return;
+      if (response.verificationRequired) {
+        // Fresh code sent — stay on the code screen, ready for input.
+        setState(() => _isSubmittingEmail = false);
+        return;
+      }
+      // Verification is no longer required (e.g. the merge already
+      // completed) — proceed exactly like a plain successful submit.
+      if (response.adopted && response.token != null && response.uuid != null) {
+        await widget.secureStorage.saveAuthToken(response.token!);
+        if (response.refreshToken != null) {
+          await widget.secureStorage.saveRefreshToken(response.refreshToken!);
+        }
+        await widget.secureStorage.saveUserUuid(response.uuid!);
+        widget.networkClient.setAuthToken(response.token!);
+      }
+      await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
+      WINR.markEmailConsentGranted();
+      if (mounted) {
+        setState(() {
+          _pendingVerificationEmail = null;
+          _isSubmittingEmail = false;
+          _phase = _V2Phase.loading;
+        });
+        await _load(claimBeforeDashboard: true);
+      }
+    } catch (e) {
+      Logger.instance.error('Resend verification code failed', e);
+      if (mounted) {
+        // Stay on the code screen; surface the failure in the code-error slot.
+        setState(() {
+          _isSubmittingEmail = false;
+          _codeError = WINRV2Strings.codeResendFailed;
+        });
+      }
+    }
   }
 
   Widget _drawerContent() {
@@ -1242,10 +1307,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         // Nothing to pitch (or opted out / errored) — quiet empty state.
         // Raw backend text (WINRException.serverMessage / displayMessage)
         // is never rendered; unknown errors always land here.
-        return WINRV2EmptyStateView(onClose: _requestDismiss);
+        return WINRV2EmptyStateView(accent: _accent, onClose: _requestDismiss);
 
       case _V2Phase.geoBlocked:
-        return WINRV2GeoBlockedView(onClose: _requestDismiss);
+        return WINRV2GeoBlockedView(accent: _accent, onClose: _requestDismiss);
 
       case _V2Phase.sessionExpired:
         return WINRV2SessionExpiredView(
@@ -1278,6 +1343,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           submitError: _emailSubmitError,
           marketingConsentText:
               widget.sdkConfig?.copy?.resolvedEmailConsentText,
+          ageGateText: widget.sdkConfig?.resolvedAgeGateText,
           prefilledEmail: widget.configuration.user.email,
           onSubmit: (email, {required ageConfirmed, required marketingConsent}) =>
               unawaited(_submitEmail(
