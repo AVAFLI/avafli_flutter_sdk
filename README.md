@@ -47,9 +47,34 @@ MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
 
 That's the whole integration — the experience presents itself once per day.
 
-### Guest / logged-out users
+### Identity — pass what you have, the SDK captures the rest
 
-No account system, or the user isn't signed in? Pass `WINRUser.guest`:
+Only `id` is required. Construct a `WINRUser` from whatever identity data you
+already hold — even just an id — and the SDK fills in the gaps: it captures the
+email through its own screen, and the name at prize-claim time if the user wins.
+There are three cases:
+
+**1. Signed-in user without an email (the common case, and WINR's main value).**
+Pass the id plus whatever you have and OMIT `email`. The SDK shows its capture
+screen and the user types their email — so you capture an address you didn't
+have before:
+
+```dart
+user: WINRUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe')   // no email
+```
+
+Even just `WINRUser(id: 'user_123')` is valid — name is collected later at
+prize-claim, only if they win.
+
+**2. Signed-in user with an email.** Pass `email` too and it pre-fills and
+**locks** the capture field (consent is still an explicit tick inside the flow).
+`email` is a plain `String`:
+
+```dart
+user: WINRUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com')
+```
+
+**3. No signed-in user at all.** Pass `WINRUser.guest`:
 
 ```dart
 await WINR.configure(WINRConfiguration(
@@ -122,12 +147,16 @@ final success = await WINR.configure(config);
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| `id` | `String` | ✅ | Unique, stable user identifier |
-| `firstName` | `String` | ✅ | User's first name |
-| `lastName` | `String` | ✅ | User's last name |
+| `id` | `String` | ✅ | Unique, stable user identifier (the only required field) |
+| `firstName` | `String` | — | User's first name; captured at prize-claim if omitted |
+| `lastName` | `String` | — | User's last name; captured at prize-claim if omitted |
 | `phone` | `String?` | — | Phone number in E.164 format |
+| `email` | `String?` | — | If passed, pre-fills and locks the capture field; if omitted, the SDK captures it |
 
-> **Email:** The SDK captures email through its own opt-in UI. Do not pass email via `WINRUser`.
+> **Email:** Omit it and the SDK captures an address through its own opt-in
+> screen (the common case). Pass it and that address pre-fills and locks —
+> consent is still an explicit tick inside the flow. See the three identity
+> cases above.
 
 ## The Experience Presents Itself
 

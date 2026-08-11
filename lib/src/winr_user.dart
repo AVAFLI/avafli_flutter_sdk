@@ -1,23 +1,21 @@
 /// Represents a user within the WINR system.
 ///
-/// All identity fields are required. Phone is optional.
+/// Only [id] is required; everything else is optional and the SDK captures what's
+/// missing (email via its capture screen, name via the winner prize-claim form).
+/// Phone is optional.
 ///
 /// Example:
 /// ```dart
-/// final user = WINRUser(
-///   id: 'user123',
-///   firstName: 'Jane',
-///   lastName: 'Doe',
-/// );
+/// final user = WINRUser(id: 'user123');
 /// ```
 class WINRUser {
   /// Your app's unique user ID (Firebase UID, database ID, etc.)
   final String id;
 
-  /// User's first name (required)
+  /// User's first name (optional — the SDK collects it at prize-claim if missing)
   final String firstName;
 
-  /// User's last name (required)
+  /// User's last name (optional — the SDK collects it at prize-claim if missing)
   final String lastName;
 
   /// Optional phone number
@@ -55,11 +53,12 @@ class WINRUser {
 
   /// Creates a new [WINRUser].
   ///
-  /// [id], [firstName], and [lastName] are required.
+  /// Only [id] is required; [firstName] and [lastName] default to empty and the
+  /// SDK captures them later (at prize-claim if the user wins).
   const WINRUser({
     required this.id,
-    required this.firstName,
-    required this.lastName,
+    this.firstName = '',
+    this.lastName = '',
     this.phone,
     this.email,
   });
