@@ -208,6 +208,43 @@ void main() {
     );
   });
 
+  testWidgets(
+      'soft email-verification chip shows only while unverified, and is '
+      'tappable', (tester) async {
+    var verifyTaps = 0;
+
+    Widget dash({required bool unverified}) => _host(WINRV2DashboardView(
+          accent: accent,
+          logoUrl: null,
+          rulesUrl: null,
+          giveaway: _giveaway(),
+          streakDay: 3,
+          totalEntries: 100,
+          entriesToday: 60,
+          ladder: const [10, 30, 60, 130, 240, 300, 500],
+          claimedToday: true,
+          onInfo: () {},
+          onClose: () {},
+          unverified: unverified,
+          onVerifyTap: () => verifyTaps++,
+        ));
+
+    // Unverified → the persistent "Verify your email" chip is present.
+    await tester.pumpWidget(dash(unverified: true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(WINRV2Strings.emailVerifyChip), findsOneWidget);
+
+    // Tapping it fires the callback (opens the code screen in the experience).
+    await tester.tap(find.text(WINRV2Strings.emailVerifyChip));
+    await tester.pump();
+    expect(verifyTaps, 1);
+
+    // Verified (emailVerified absent/null → unverified false) → no chip.
+    await tester.pumpWidget(dash(unverified: false));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(WINRV2Strings.emailVerifyChip), findsNothing);
+  });
+
   testWidgets('dashboard visit mode swaps copy', (tester) async {
     await tester.pumpWidget(_host(WINRV2DashboardView(
       accent: accent,

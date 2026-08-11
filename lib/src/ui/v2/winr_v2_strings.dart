@@ -55,6 +55,26 @@ abstract final class WINRV2Strings {
   static const String codeResendFailed =
       "Couldn't send a new code. Check your connection and try again.";
 
+  // ── Soft email verification (persistent dashboard chip → code screen) ──
+
+  /// The persistent, tappable chip on the streak dashboard shown while the
+  /// person's newly-typed email is unverified. Non-blocking nudge — daily play,
+  /// auto-claim, and the streak keep working; only prize-draw eligibility is
+  /// affected (server-side).
+  static const String emailVerifyChip = 'Verify your email';
+
+  /// Header on the reused 6-digit code screen when it's confirming an email
+  /// (rather than adopting a cross-device streak).
+  static const String emailVerifyTitle = 'Verify your email';
+
+  /// Subtitle on that screen — no address interpolation (unlike adoption).
+  static const String emailVerifySubtitle =
+      "Enter the 6-digit code we sent to your inbox so you're eligible to win.";
+
+  /// Brief transient dashboard notice shown after a successful confirm, just
+  /// before the chip disappears.
+  static const String emailVerifiedNotice = 'Email verified ✓';
+
   // ── Dashboard notices (non-blocking) ──
 
   /// Transient notice when the backend rejects a claim as already-claimed

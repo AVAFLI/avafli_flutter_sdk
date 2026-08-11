@@ -58,6 +58,13 @@ class RegisterDeviceResponse {
   /// True when this device/person has opted out (RTD) — never auto-present.
   final bool? optedOut;
 
+  /// Soft email-verification signal. Explicit `false` means the person typed a
+  /// brand-new email that hasn't been confirmed yet — drive the "Verify your
+  /// email" nudge. ABSENT/null for verified, partner-passed, adoption-verified,
+  /// and no-email users. Only an explicit `false` counts as "unverified"; this
+  /// NEVER gates play — it only affects prize-draw eligibility (server-side).
+  final bool? emailVerified;
+
   /// Present only when this person is the drawn winner of one of this
   /// publisher's giveaways (winner prize-claim flow).
   final PrizeClaimBlock? prizeClaim;
@@ -72,6 +79,7 @@ class RegisterDeviceResponse {
     this.totalEntries = 0,
     this.sdkConfig,
     this.optedOut,
+    this.emailVerified,
     this.prizeClaim,
   });
 
@@ -88,6 +96,7 @@ class RegisterDeviceResponse {
       totalEntries: json['totalEntries'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
+      emailVerified: json['emailVerified'] as bool?,
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
           : null,
@@ -169,6 +178,11 @@ class GetActiveGiveawayResponse {
   /// not yet have a confirmed email, in which case a claim would be blocked by
   /// the backend consent gate.
   final bool emailConsentStatus;
+
+  /// Soft email-verification signal (see [RegisterDeviceResponse.emailVerified]).
+  /// Explicit `false` → the person typed a new, unconfirmed email; show the
+  /// "Verify your email" nudge. ABSENT/null otherwise. NEVER gates play.
+  final bool? emailVerified;
   final Map<String, dynamic>? sdkConfig;
 
   /// True when this person has opted out (RTD) — the SDK must never
@@ -190,6 +204,7 @@ class GetActiveGiveawayResponse {
     this.monthlyCurrent = 0,
     this.lifetimeCount = 0,
     this.emailConsentStatus = false,
+    this.emailVerified,
     this.sdkConfig,
     this.optedOut,
     this.prizeClaim,
@@ -207,6 +222,7 @@ class GetActiveGiveawayResponse {
       monthlyCurrent: json['monthlyCurrent'] ?? 0,
       lifetimeCount: json['lifetimeCount'] ?? 0,
       emailConsentStatus: json['emailConsentStatus'] ?? false,
+      emailVerified: json['emailVerified'] as bool?,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
@@ -253,7 +269,7 @@ class WINRRequestDefaults {
   WINRRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '2.6.2';
+  static String sdkVersion = '2.7.0';
 }
 
 /// Response from claiming daily entries (mirrors iOS
@@ -525,6 +541,15 @@ class SubmitEmailResponse {
   final String? token;
   final String? refreshToken;
 
+  /// Soft email-verification signal (see [RegisterDeviceResponse.emailVerified]).
+  /// Explicit `false` means the person just typed a new, unconfirmed email —
+  /// the SDK flips the "Verify your email" nudge on. NEVER gates play.
+  final bool? emailVerified;
+
+  /// True when the backend just dispatched a verification code to the typed
+  /// inbox as part of this submit.
+  final bool? emailVerificationSent;
+
   const SubmitEmailResponse({
     this.success = true,
     this.adopted = false,
@@ -532,6 +557,8 @@ class SubmitEmailResponse {
     this.uuid,
     this.token,
     this.refreshToken,
+    this.emailVerified,
+    this.emailVerificationSent,
   });
 
   factory SubmitEmailResponse.fromJson(Map<String, dynamic> json) {
@@ -542,6 +569,8 @@ class SubmitEmailResponse {
       uuid: json['uuid'] as String?,
       token: json['token'] as String?,
       refreshToken: json['refreshToken'] as String?,
+      emailVerified: json['emailVerified'] as bool?,
+      emailVerificationSent: json['emailVerificationSent'] as bool?,
     );
   }
 }
@@ -562,6 +591,68 @@ class VerifyAdoptionCodeRequest extends PostRequest<SubmitEmailResponse> {
   SubmitEmailResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
     return SubmitEmailResponse.fromJson(data);
+  }
+}
+
+/// Confirms a soft email verification with the emailed 6-digit code. Same
+/// request/response envelope as [VerifyAdoptionCodeRequest]; on success the
+/// backend returns `{verified: true}`. Failures throw a [WINRException] whose
+/// server message mentions "expired"/"attempts"/mismatch — mapped to the same
+/// UI copy the adoption flow uses.
+class ConfirmEmailVerificationRequest
+    extends PostRequest<EmailVerificationResponse> {
+  final String code;
+  ConfirmEmailVerificationRequest({required this.code});
+
+  @override
+  String get endpoint => '/confirmEmailVerification';
+
+  @override
+  Map<String, dynamic> get body => {'code': code};
+
+  @override
+  EmailVerificationResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return EmailVerificationResponse.fromJson(data);
+  }
+}
+
+/// Response from [ConfirmEmailVerificationRequest].
+class EmailVerificationResponse {
+  final bool verified;
+
+  const EmailVerificationResponse({this.verified = false});
+
+  factory EmailVerificationResponse.fromJson(Map<String, dynamic> json) {
+    return EmailVerificationResponse(verified: json['verified'] ?? false);
+  }
+}
+
+/// Re-sends the soft email-verification code (no arguments). Mirrors the
+/// adoption resend contract; returns `{sent: bool}`.
+class ResendEmailVerificationRequest
+    extends PostRequest<ResendEmailVerificationResponse> {
+  @override
+  String get endpoint => '/resendEmailVerification';
+
+  @override
+  Map<String, dynamic> get body => {};
+
+  @override
+  ResendEmailVerificationResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return ResendEmailVerificationResponse.fromJson(data);
+  }
+}
+
+/// Response from [ResendEmailVerificationRequest].
+class ResendEmailVerificationResponse {
+  final bool sent;
+
+  const ResendEmailVerificationResponse({this.sent = false});
+
+  factory ResendEmailVerificationResponse.fromJson(Map<String, dynamic> json) {
+    return ResendEmailVerificationResponse(sent: json['sent'] ?? false);
   }
 }
 

@@ -49,6 +49,11 @@ enum _V2Phase {
   noActiveGiveaway,
   emailCapture,
   codeEntry,
+
+  /// Soft email-verification: the reused 6-digit code screen, opened from the
+  /// dashboard's "Verify your email" chip. Unlike [codeEntry] (adoption) this
+  /// is DISMISSIBLE — a back arrow returns to the dashboard; it gates nothing.
+  emailVerify,
   streak,
   howItWorks,
 
@@ -149,6 +154,16 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   bool _pendingMarketingConsent = false;
   bool _isVerifyingCode = false;
   String? _codeError;
+
+  /// Soft email verification (distinct from the adoption gate above). The
+  /// backend flags a brand-new, unconfirmed email with `emailVerified == false`
+  /// on register/status and submitEmail; only an explicit false counts. While
+  /// true the dashboard shows the persistent "Verify your email" chip. This
+  /// NEVER blocks daily play, auto-claim, or the streak — it only affects
+  /// prize-draw eligibility (enforced server-side).
+  bool _unverified = false;
+  bool _isVerifyingEmail = false;
+  String? _emailVerifyError;
 
   // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
   //
@@ -445,6 +460,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       _backendWeeklyCurrent = response.weeklyCurrent;
       _backendTotalEntries = response.totalEntries;
 
+      // Soft email verification: ONLY an explicit false is "unverified".
+      // Absent/null (verified, partner-passed, adoption-verified, no email)
+      // clears the nudge.
+      _unverified = response.emailVerified == false;
+
       // Backend is the source of truth for email consent. If it confirms an
       // email on file, seed the local "submitted" flag so a user whose local
       // flag was lost (e.g. reinstall) isn't re-prompted for email.
@@ -703,6 +723,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // complete forever: the capture gate never showed again while every
       // claim bounced off the backend consent gate.
       await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
+
+      // A user who just typed a BRAND-NEW email comes back unverified — flip
+      // the nudge on now so the chip is there the instant the dashboard mounts
+      // (the subsequent reload's status response will confirm it). Only an
+      // explicit false counts; absent/null (e.g. a partner-passed address)
+      // leaves the person verified.
+      _unverified = response.emailVerified == false;
 
       // The backend now holds a confirmed email + consent for this user, but
       // WINR's cached copy of that flag is only ever refreshed by
@@ -1297,6 +1324,91 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Soft email verification (dashboard chip → dismissible code screen)
+  // -------------------------------------------------------------------------
+
+  /// Open the dismissible verification screen from the dashboard chip.
+  void _openEmailVerify() {
+    if (_phase != _V2Phase.streak) return;
+    setState(() {
+      _emailVerifyError = null;
+      _phase = _V2Phase.emailVerify;
+    });
+  }
+
+  /// Back arrow / cancel — this flow gates nothing, so we simply return to the
+  /// dashboard with the chip still there.
+  void _cancelEmailVerify() {
+    if (_phase != _V2Phase.emailVerify) return;
+    setState(() {
+      _emailVerifyError = null;
+      _phase = _V2Phase.streak;
+    });
+  }
+
+  /// Confirm the soft email-verification code. On success the chip disappears
+  /// and a brief "Email verified ✓" notice shows on the dashboard. On failure
+  /// the code screen STAYS UP with the same three-way error copy the adoption
+  /// flow uses — nothing about play is affected either way.
+  Future<void> _confirmEmailVerification(String code) async {
+    if (_isVerifyingEmail) return;
+    setState(() {
+      _isVerifyingEmail = true;
+      _emailVerifyError = null;
+    });
+    try {
+      final response = await widget.networkClient
+          .send(ConfirmEmailVerificationRequest(code: code));
+      if (!mounted) return;
+      if (response.verified) {
+        Logger.instance.info('Email verified');
+        widget.configuration.options.analyticsAdapter
+            ?.track('winr_email_verified', const {});
+        setState(() {
+          _unverified = false;
+          _isVerifyingEmail = false;
+          _emailVerifyError = null;
+          _phase = _V2Phase.streak;
+        });
+        _showDashboardNotice(
+          WINRV2Strings.emailVerifiedNotice,
+          autoClear: _noticeAutoClear,
+        );
+        return;
+      }
+      // A non-throwing, unverified response (defensive) — treat as a mismatch.
+      setState(() {
+        _isVerifyingEmail = false;
+        _emailVerifyError = WINRV2Strings.codeIncorrect;
+      });
+    } catch (e) {
+      Logger.instance.error('Email verification code check failed', e);
+      if (!mounted) return;
+      setState(() {
+        _isVerifyingEmail = false;
+        _emailVerifyError = _codeErrorFor(e);
+      });
+    }
+  }
+
+  /// Request a fresh verification code. The code screen STAYS UP throughout: a
+  /// failed resend surfaces inline (same as the adoption resend fix), never
+  /// stranding the user.
+  Future<void> _resendEmailVerification() async {
+    if (_phase != _V2Phase.emailVerify || _isVerifyingEmail) return;
+    setState(() => _emailVerifyError = null);
+    try {
+      await widget.networkClient.send(ResendEmailVerificationRequest());
+      // Success (or a benign already-sent) — stay on the code screen, ready
+      // for input. Nothing else to do.
+    } catch (e) {
+      Logger.instance.error('Resend email verification code failed', e);
+      if (!mounted) return;
+      setState(() => _emailVerifyError = WINRV2Strings.codeResendFailed);
+    }
+  }
+
   Widget _drawerContent() {
     switch (_phase) {
       case _V2Phase.loading:
@@ -1329,6 +1441,26 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           errorText: _codeError,
           onSubmit: (code) => unawaited(_submitVerificationCode(code)),
           onResend: () => unawaited(_resendVerificationCode()),
+          onInfo: _showHowItWorks,
+          onClose: _requestDismiss,
+        );
+
+      case _V2Phase.emailVerify:
+        // Reuses the SAME 6-digit code widget as adoption — only the copy, the
+        // callables, and the (dismissible) back arrow differ.
+        return WINRV2CodeEntryView(
+          accent: _accent,
+          logoUrl: _logoUrl,
+          rulesUrl: _rulesUrl,
+          email: '',
+          isVerifying: _isVerifyingEmail,
+          errorText: _emailVerifyError,
+          title: WINRV2Strings.emailVerifyTitle,
+          subtitle: WINRV2Strings.emailVerifySubtitle,
+          showsBack: true,
+          onBack: _cancelEmailVerify,
+          onSubmit: (code) => unawaited(_confirmEmailVerification(code)),
+          onResend: () => unawaited(_resendEmailVerification()),
           onInfo: _showHowItWorks,
           onClose: _requestDismiss,
         );
@@ -1390,6 +1522,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           revealed: _claimRevealed,
           notice: _dashboardNotice,
           onNoticeRetry: _dashboardNoticeRetry,
+          unverified: _unverified,
+          onVerifyTap: _openEmailVerify,
         );
 
       case _V2Phase.winnerClaim:

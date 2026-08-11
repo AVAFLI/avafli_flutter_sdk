@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'winr_v2_effects.dart';
+import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
@@ -118,6 +119,63 @@ class WINRV2Header extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: child,
+      ),
+    );
+  }
+}
+
+/// Soft email-verification nudge: a small, persistent pill on the streak
+/// dashboard shown while the person's newly-typed email is unverified. A mail
+/// glyph + "Verify your email" in the publisher accent, tappable, subtle — it
+/// reads as a gentle prompt, not an error, and never blocks play.
+class WINRV2VerifyEmailChip extends StatelessWidget {
+  final Color accent;
+  final VoidCallback onTap;
+
+  const WINRV2VerifyEmailChip({
+    super.key,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: WINRV2Strings.emailVerifyChip,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            // A faint wash of the accent — tinted, not loud; a nudge.
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: accent.withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.mail_outline, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  WINRV2Strings.emailVerifyChip,
+                  style: WINRV2Font.inter(
+                    13,
+                    weight: FontWeight.w700,
+                    color: accent,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right, size: 16, color: accent),
+            ],
+          ),
+        ),
       ),
     );
   }

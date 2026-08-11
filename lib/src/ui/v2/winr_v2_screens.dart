@@ -793,6 +793,12 @@ class WINRV2DashboardView extends StatelessWidget {
   final String? notice;
   final VoidCallback? onNoticeRetry;
 
+  /// Soft email-verification: while true (and [onVerifyTap] is wired) a small,
+  /// persistent "Verify your email" chip sits near the top of the dashboard.
+  /// It NEVER blocks play — tapping it opens the dismissible code screen.
+  final bool unverified;
+  final VoidCallback? onVerifyTap;
+
   const WINRV2DashboardView({
     super.key,
     required this.accent,
@@ -811,6 +817,8 @@ class WINRV2DashboardView extends StatelessWidget {
     this.revealed = true,
     this.notice,
     this.onNoticeRetry,
+    this.unverified = false,
+    this.onVerifyTap,
   });
 
   bool get _visitMode => giveaway?.isVisitMode ?? false;
@@ -892,6 +900,18 @@ class WINRV2DashboardView extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  // Soft email-verification nudge — a gentle pill directly
+                  // under the header, above the streak content. Persistent
+                  // while unverified; never covers or gates the dashboard.
+                  if (unverified && onVerifyTap != null)
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 22, right: 22, bottom: 15),
+                      child: WINRV2VerifyEmailChip(
+                        accent: accent,
+                        onTap: onVerifyTap!,
+                      ),
+                    ),
                   if (giveaway?.latestWinner != null && onWinnerTap != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 15),
@@ -1341,6 +1361,10 @@ class WINRV2CodeEntryView extends StatefulWidget {
     required this.onResend,
     required this.onInfo,
     required this.onClose,
+    this.title,
+    this.subtitle,
+    this.showsBack = false,
+    this.onBack,
   });
 
   final Color accent;
@@ -1353,6 +1377,20 @@ class WINRV2CodeEntryView extends StatefulWidget {
   final VoidCallback onResend;
   final VoidCallback onInfo;
   final VoidCallback onClose;
+
+  /// Header copy override. Null → the cross-device adoption default
+  /// ('CHECK YOUR EMAIL'); the soft email-verification flow passes its own.
+  final String? title;
+
+  /// Subtitle override. Null → the adoption default (interpolates [email]);
+  /// the soft email-verification flow passes address-free copy.
+  final String? subtitle;
+
+  /// When true the header shows a back arrow (in place of the "?") that returns
+  /// to the dashboard — the soft-verification flow is dismissible and gates
+  /// nothing. The adoption flow leaves this false (that flow is a gate).
+  final bool showsBack;
+  final VoidCallback? onBack;
 
   @override
   State<WINRV2CodeEntryView> createState() => _WINRV2CodeEntryViewState();
@@ -1376,6 +1414,8 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
           children: [
             WINRV2Header(
               logoUrl: widget.logoUrl,
+              showsBack: widget.showsBack,
+              onBack: widget.onBack ?? widget.onInfo,
               onInfo: widget.onInfo,
               onClose: widget.onClose,
             ),
@@ -1385,16 +1425,17 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                 child: Column(
                   children: [
                     Text(
-                      'CHECK YOUR EMAIL',
+                      widget.title ?? 'CHECK YOUR EMAIL',
                       textAlign: TextAlign.center,
                       style: WINRV2Font.inter(28,
                           weight: FontWeight.w900, color: Colors.white),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'This email is already part of a WINR streak. Enter the '
-                      '6-digit code we sent to ${widget.email} to pick it up '
-                      'on this device.',
+                      widget.subtitle ??
+                          'This email is already part of a WINR streak. Enter '
+                              'the 6-digit code we sent to ${widget.email} to '
+                              'pick it up on this device.',
                       textAlign: TextAlign.center,
                       style: WINRV2Font.inter(14,
                           color: Colors.white.withValues(alpha: 0.75)),
