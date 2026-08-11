@@ -946,13 +946,31 @@ class WINRV2DashboardView extends StatelessWidget {
 // How it works
 // ---------------------------------------------------------------------------
 
-class WINRV2HowItWorksView extends StatelessWidget {
+/// The "Privacy choices" → delete-my-data confirmation's phase:
+///
+///     idle → confirming → inFlight → done → (dismiss whole experience)
+///                     ↘ failed (inline error, retryable) ↗
+///
+/// Failure NEVER pretends success — the confirmation stays up with the error
+/// and the destructive button remains available to retry.
+enum WINRV2OptOutPhase { idle, confirming, inFlight, failed, done }
+
+class WINRV2HowItWorksView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final int day1Entries;
   final bool visitMode;
   final VoidCallback onDone;
   final VoidCallback onClose;
+
+  /// Performs the RTD opt-out (the experience wires `WINR.optOut`). MUST
+  /// throw on failure so the confirmation can show an honest error instead
+  /// of pretending the deletion succeeded. Null (previews/tests that don't
+  /// care) renders the link but treats a confirm as a failure.
+  final Future<void> Function()? optOutAction;
+
+  /// How long "Your data has been deleted." holds before [onClose] fires.
+  static const Duration optOutSuccessHold = Duration(milliseconds: 1400);
 
   const WINRV2HowItWorksView({
     super.key,
@@ -962,10 +980,68 @@ class WINRV2HowItWorksView extends StatelessWidget {
     this.visitMode = false,
     required this.onDone,
     required this.onClose,
+    this.optOutAction,
   });
 
   @override
+  State<WINRV2HowItWorksView> createState() => _WINRV2HowItWorksViewState();
+}
+
+class _WINRV2HowItWorksViewState extends State<WINRV2HowItWorksView> {
+  WINRV2OptOutPhase _optOutPhase = WINRV2OptOutPhase.idle;
+
+  void _showOptOutConfirmation() {
+    if (_optOutPhase != WINRV2OptOutPhase.idle) return;
+    setState(() => _optOutPhase = WINRV2OptOutPhase.confirming);
+  }
+
+  void _cancelOptOut() {
+    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
+        _optOutPhase != WINRV2OptOutPhase.failed) {
+      return;
+    }
+    setState(() => _optOutPhase = WINRV2OptOutPhase.idle);
+  }
+
+  Future<void> _confirmOptOut() async {
+    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
+        _optOutPhase != WINRV2OptOutPhase.failed) {
+      return;
+    }
+    setState(() => _optOutPhase = WINRV2OptOutPhase.inFlight);
+    try {
+      final action = widget.optOutAction;
+      if (action == null) throw StateError('optOutAction not wired');
+      await action();
+      if (!mounted) return;
+      setState(() => _optOutPhase = WINRV2OptOutPhase.done);
+      // Hold the success copy a beat, then dismiss the WHOLE experience.
+      await Future<void>.delayed(WINRV2HowItWorksView.optOutSuccessHold);
+      if (!mounted) return;
+      widget.onClose();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _optOutPhase = WINRV2OptOutPhase.failed);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _content(),
+        if (_optOutPhase != WINRV2OptOutPhase.idle) _optOutDialog(),
+      ],
+    );
+  }
+
+  Widget _content() {
+    final accent = widget.accent;
+    final logoUrl = widget.logoUrl;
+    final day1Entries = widget.day1Entries;
+    final visitMode = widget.visitMode;
+    final onDone = widget.onDone;
+    final onClose = widget.onClose;
     return ColoredBox(
       color: WINRV2Colors.panel,
       child: Column(
@@ -1061,13 +1137,143 @@ class WINRV2HowItWorksView extends StatelessWidget {
                       onTap: onDone,
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 18),
+                  // Muted privacy opt-out entry point — deliberately quiet:
+                  // present for those who look for it, invisible to the pitch.
+                  GestureDetector(
+                    onTap: _showOptOutConfirmation,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        WINRV2Strings.privacyChoices,
+                        style: WINRV2Font.inter(
+                          12,
+                          color: WINRV2Colors.textTertiary,
+                        ).copyWith(decoration: TextDecoration.underline),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// The destructive confirmation (and its in-flight / failed / deleted
+  /// states) — same scrim-plus-card treatment as the winners dialog.
+  Widget _optOutDialog() {
+    final inFlight = _optOutPhase == WINRV2OptOutPhase.inFlight;
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: inFlight ? null : _cancelOptOut,
+          child: const ColoredBox(
+            color: Color(0x8C000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: GestureDetector(
+              onTap: () {}, // swallow taps inside the card
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 340),
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: WINRV2Colors.deepCharcoal,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0x1FFFFFFF)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _optOutPhase == WINRV2OptOutPhase.done
+                      ? [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Text(
+                              WINRV2Strings.optOutSuccess,
+                              textAlign: TextAlign.center,
+                              style: WINRV2Font.inter(
+                                18,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ]
+                      : [
+                          Text(
+                            WINRV2Strings.optOutTitle,
+                            textAlign: TextAlign.center,
+                            style: WINRV2Font.inter(
+                              18,
+                              weight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            WINRV2Strings.optOutBody,
+                            textAlign: TextAlign.center,
+                            style: WINRV2Font.inter(
+                              14,
+                              color: const Color(0xBFFFFFFF),
+                              height: 1.3,
+                            ),
+                          ),
+                          if (_optOutPhase == WINRV2OptOutPhase.failed) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              WINRV2Strings.optOutFailed,
+                              textAlign: TextAlign.center,
+                              style: WINRV2Font.inter(
+                                13,
+                                color: WINRV2Colors.errorRed,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 18),
+                          WINRV2PillButton(
+                            accent: WINRV2Colors.errorRed,
+                            title: WINRV2Strings.optOutConfirm,
+                            isLoading: inFlight,
+                            onTap: _confirmOptOut,
+                          ),
+                          const SizedBox(height: 14),
+                          GestureDetector(
+                            onTap: inFlight ? null : _cancelOptOut,
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              child: Text(
+                                WINRV2Strings.optOutCancel,
+                                style: WINRV2Font.inter(
+                                  14,
+                                  color: WINRV2Colors.textTertiary,
+                                ).copyWith(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

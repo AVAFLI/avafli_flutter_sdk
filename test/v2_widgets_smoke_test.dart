@@ -6,6 +6,7 @@ import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart'
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart'
     show winrV2MountRevealDelay;
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
+import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_strings.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_winner.dart';
 import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
@@ -318,5 +319,95 @@ void main() {
     expect(find.text('KEEP VISITING'), findsOneWidget);
     expect(find.text('Every visit counts - your streak never resets.'),
         findsOneWidget);
+  });
+
+  // ── Privacy choices → delete-my-data flow (2.6.1) ──
+
+  Widget hiw({
+    Future<void> Function()? optOutAction,
+    VoidCallback? onClose,
+  }) {
+    return _host(WINRV2HowItWorksView(
+      accent: accent,
+      logoUrl: null,
+      day1Entries: 10,
+      onDone: () {},
+      onClose: onClose ?? () {},
+      optOutAction: optOutAction,
+    ));
+  }
+
+  testWidgets('privacy choices link raises the destructive confirmation',
+      (tester) async {
+    await tester.pumpWidget(hiw());
+    await tester.pump();
+    expect(find.text(WINRV2Strings.privacyChoices), findsOneWidget);
+    expect(find.text(WINRV2Strings.optOutTitle), findsNothing);
+
+    await tester.scrollUntilVisible(
+        find.text(WINRV2Strings.privacyChoices), 200);
+    await tester.tap(find.text(WINRV2Strings.privacyChoices));
+    await tester.pump();
+
+    expect(find.text(WINRV2Strings.optOutTitle), findsOneWidget);
+    expect(find.text(WINRV2Strings.optOutBody), findsOneWidget);
+    expect(find.text(WINRV2Strings.optOutConfirm), findsOneWidget);
+
+    // Cancel returns to the plain screen.
+    await tester.tap(find.text(WINRV2Strings.optOutCancel));
+    await tester.pump();
+    expect(find.text(WINRV2Strings.optOutTitle), findsNothing);
+  });
+
+  testWidgets(
+      'confirming performs the opt-out, shows the deleted state, then '
+      'dismisses the whole experience', (tester) async {
+    var optOutCalls = 0;
+    var closed = 0;
+    await tester.pumpWidget(hiw(
+      optOutAction: () async => optOutCalls++,
+      onClose: () => closed++,
+    ));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+        find.text(WINRV2Strings.privacyChoices), 200);
+    await tester.tap(find.text(WINRV2Strings.privacyChoices));
+    await tester.pump();
+    await tester.tap(find.text(WINRV2Strings.optOutConfirm));
+    await tester.pump();
+    await tester.pump();
+
+    expect(optOutCalls, 1);
+    expect(find.text(WINRV2Strings.optOutSuccess), findsOneWidget);
+    // The success copy holds for the dismiss delay, THEN the whole
+    // experience closes.
+    expect(closed, 0);
+    await tester.pump(WINRV2HowItWorksView.optOutSuccessHold);
+    expect(closed, 1);
+  });
+
+  testWidgets(
+      'a failed opt-out shows the connection error and stays retryable — '
+      'never a pretended success', (tester) async {
+    var closed = 0;
+    await tester.pumpWidget(hiw(
+      optOutAction: () async => throw Exception('network down'),
+      onClose: () => closed++,
+    ));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+        find.text(WINRV2Strings.privacyChoices), 200);
+    await tester.tap(find.text(WINRV2Strings.privacyChoices));
+    await tester.pump();
+    await tester.tap(find.text(WINRV2Strings.optOutConfirm));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text(WINRV2Strings.optOutFailed), findsOneWidget);
+    expect(find.text(WINRV2Strings.optOutSuccess), findsNothing);
+    // Still confirmable (retry) and cancellable; nothing dismissed.
+    expect(find.text(WINRV2Strings.optOutConfirm), findsOneWidget);
+    expect(find.text(WINRV2Strings.optOutCancel), findsOneWidget);
+    expect(closed, 0);
   });
 }

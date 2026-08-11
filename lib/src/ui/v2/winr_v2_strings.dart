@@ -50,6 +50,34 @@ abstract final class WINRV2Strings {
   /// Retry affordance on [entryNotRecorded].
   static const String tryAgain = 'TRY AGAIN';
 
+  // ── Privacy choices / RTD opt-out (how-it-works screen) ──
+
+  /// Muted entry-point link at the bottom of the how-it-works screen.
+  static const String privacyChoices = 'Privacy choices';
+
+  /// The destructive confirmation's title.
+  static const String optOutTitle = 'Delete my data & stop participating';
+
+  /// The destructive confirmation's body.
+  static const String optOutBody =
+      'This permanently deletes your WINR data, ends your giveaway '
+      'participation, and cannot be undone. You can also email '
+      'info@avafli.com.';
+
+  /// The destructive confirm button.
+  static const String optOutConfirm = 'DELETE MY DATA';
+
+  /// The confirmation's cancel affordance.
+  static const String optOutCancel = 'Cancel';
+
+  /// Brief success state shown before the experience dismisses itself.
+  static const String optOutSuccess = 'Your data has been deleted.';
+
+  /// The opt-out call failed — the confirmation stays up and can retry. We
+  /// never pretend the deletion succeeded.
+  static const String optOutFailed =
+      'Something went wrong. Please check your connection and try again.';
+
   // ── Dedicated full-drawer states ──
 
   /// Geo-blocked ([WINRError.geographyNotAllowed]) headline.

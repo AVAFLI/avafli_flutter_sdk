@@ -96,9 +96,14 @@ void main() {
       expect(form.displayName, 'Sam');
     });
 
-    test('fifty states', () {
-      expect(WINRPrizeClaimForm.usStates.length, 50);
-      expect(WINRPrizeClaimForm.usStates.toSet().length, 50);
+    test('fifty states plus the District of Columbia', () {
+      // The official rules promise "50 states and the District of Columbia".
+      expect(WINRPrizeClaimForm.usStates.length, 51);
+      expect(WINRPrizeClaimForm.usStates.toSet().length, 51);
+      expect(WINRPrizeClaimForm.usStates, contains('District of Columbia'));
+      // Alphabetical placement: between Delaware and Florida.
+      final sorted = [...WINRPrizeClaimForm.usStates]..sort();
+      expect(WINRPrizeClaimForm.usStates, sorted);
     });
   });
 

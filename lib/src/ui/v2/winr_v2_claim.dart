@@ -153,7 +153,8 @@ class WINRPrizeClaimForm {
 
   static const List<String> usStates = [
     'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
-    'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+    'Connecticut', 'Delaware', 'District of Columbia', 'Florida',
+    'Georgia', 'Hawaii', 'Idaho',
     'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
     'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
     'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
@@ -1012,7 +1013,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     );
   }
 
-  /// The State dropdown: same box styling, menu of the 50 states, chevron.
+  /// The State dropdown: same box styling, menu of the 50 states + DC, chevron.
   Widget _statePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

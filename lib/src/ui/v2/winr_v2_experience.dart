@@ -1337,6 +1337,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           visitMode: _visitMode,
           onDone: _hideHowItWorks,
           onClose: _requestDismiss,
+          // The in-experience RTD opt-out ("Privacy choices" → DELETE MY
+          // DATA). WINR.optOut() throws on failure, so the confirmation can
+          // show an honest error instead of pretending success.
+          optOutAction: WINR.optOut,
         );
     }
   }
