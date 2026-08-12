@@ -32,7 +32,7 @@ import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 
 // 1. Configure the SDK
 final config = WINRConfiguration(
-  apiKey: 'YOUR_API_KEY',
+  apiKey: 'YOUR_API_KEY', // debug builds: use your winr_test_ sandbox key
   bundleId: 'com.example.myapp',
   environment: WINREnvironment.production,
   user: WINRUser(
