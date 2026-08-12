@@ -30,22 +30,27 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 ```dart
 import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
 
-// 1. Configure the SDK
-final config = WINRConfiguration(
+await WINR.configure(WINRConfiguration(
   apiKey: 'YOUR_API_KEY', // debug builds: use your winr_test_ sandbox key
   bundleId: 'com.example.myapp',
-  environment: WINREnvironment.production,
   user: WINRUser(
-    id: 'user_123',
+    id: 'user_123',             // only id is required — pass whatever identity you have
     firstName: 'Jane',
     lastName: 'Doe',
+    email: 'jane@example.com',  // include it when you have it — pre-fills & locks the capture form (consent stays explicit)
   ),
-);
-await WINR.configure(config);
+  // Nobody signed in? use user: WINRUser.guest
+  options: WINROptions(
+    logging: LoggingLevel.error,  // LoggingLevel.debug while integrating
+    enablePushReminders: true,    // streak reminders via YOUR Firebase project (upload the key in your dashboard)
+  ),
+));
 
-// 2. Attach the SDK navigator key so the experience can auto-open on the
-//    first app-open of each day. This is REQUIRED for the daily auto-open.
-MaterialApp(navigatorKey: WINR.navigatorKey, home: ...);
+// Attach the navigator key so the daily auto-open can present:
+//   MaterialApp(navigatorKey: WINR.navigatorKey, ...)
+// Splash screen that clears the nav stack? Call WINR.holdAutoOpen() before
+// configure, then WINR.releaseAutoOpen() once your main screen mounts.
+// Push reminders: forward FCM tokens with WINR.registerPushToken(token).
 ```
 
 That's the whole integration — the experience presents itself once per day.
