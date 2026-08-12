@@ -168,6 +168,27 @@ final success = await WINR.configure(config);
 > consent is still an explicit tick inside the flow. See the three identity
 > cases above.
 
+## Test in Development: Your Sandbox Key
+
+Your publisher dashboard shows two API keys:
+
+| Key | Use it in |
+| --- | --------- |
+| `winr_live_…` | Release builds — your real giveaway |
+| `winr_test_…` | Debug/dev builds and CI — an isolated sandbox |
+
+The sandbox key hits the **same production backend** with identical behavior —
+registration, streaks, entries, the full experience — but every user and entry
+lands in a separate sandbox tenant with its own always-active test giveaway.
+That means:
+
+- Your developers and testers **can never enter (or win) your real giveaway.**
+- Sandbox usage **never counts toward your MAU** or your bill.
+- Your registered bundle IDs work with both keys automatically.
+
+Swap keys per build configuration and nothing else about your integration
+changes.
+
 ## The Experience Presents Itself
 
 There is no manual launch API — the WINR experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
