@@ -75,3 +75,4 @@ build/
 example/ios/Flutter/Generated.xcconfig
 example/ios/Flutter/flutter_export_environment.sh
 *.iml
+.vscode/
