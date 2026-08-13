@@ -440,7 +440,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   String? get _lockedEmail {
     final e = widget.prefilledEmail?.trim().toLowerCase();
     if (e == null) return null;
-    final ok = e.contains('@') && e.contains('.') && e.length >= 6 && e.length <= 254;
+    final ok =
+        e.contains('@') && e.contains('.') && e.length >= 6 && e.length <= 254;
     return ok ? e : null;
   }
 
@@ -905,8 +906,8 @@ class WINRV2DashboardView extends StatelessWidget {
                   // while unverified; never covers or gates the dashboard.
                   if (unverified && onVerifyTap != null)
                     Padding(
-                      padding:
-                          const EdgeInsets.only(left: 22, right: 22, bottom: 15),
+                      padding: const EdgeInsets.only(
+                          left: 22, right: 22, bottom: 15),
                       child: WINRV2VerifyEmailChip(
                         accent: accent,
                         onTap: onVerifyTap!,
@@ -919,8 +920,8 @@ class WINRV2DashboardView extends StatelessWidget {
                     ),
                   if (notice != null)
                     Padding(
-                      padding:
-                          const EdgeInsets.only(left: 22, right: 22, bottom: 15),
+                      padding: const EdgeInsets.only(
+                          left: 22, right: 22, bottom: 15),
                       child: WINRV2DashboardNotice(
                         accent: accent,
                         notice: notice!,
@@ -1421,7 +1422,8 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                 child: Column(
                   children: [
                     Text(
@@ -1459,7 +1461,10 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                             color: WINRV2Colors.gunmetal),
                         decoration: InputDecoration(
                           isCollapsed: true,
+                          filled: false,
                           border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                           counterText: '',
                           hintText: '••••••',
                           hintStyle: WINRV2Font.inter(22,
@@ -1480,8 +1485,8 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                       Text(
                         widget.errorText!,
                         textAlign: TextAlign.center,
-                        style: WINRV2Font.inter(13,
-                            color: WINRV2Colors.errorRed),
+                        style:
+                            WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -1491,8 +1496,7 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                       isLoading: widget.isVerifying,
                       enabled: !widget.isVerifying,
                       onTap: () {
-                        final digits =
-                            _code.text.replaceAll(RegExp(r'\D'), '');
+                        final digits = _code.text.replaceAll(RegExp(r'\D'), '');
                         if (digits.length == 6) widget.onSubmit(digits);
                       },
                     ),

@@ -320,7 +320,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   void _clearDashboardNotice() {
     _dashboardNoticeTimer?.cancel();
     _dashboardNoticeTimer = null;
-    if (!mounted || (_dashboardNotice == null && _dashboardNoticeRetry == null)) {
+    if (!mounted ||
+        (_dashboardNotice == null && _dashboardNoticeRetry == null)) {
       _dashboardNotice = null;
       _dashboardNoticeRetry = null;
       return;
@@ -1155,51 +1156,62 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   @override
   Widget build(BuildContext context) {
     final latestWinner = _giveaway?.latestWinner;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: true,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              // Dimmed host app behind the drawer.
-              AnimatedOpacity(
-                opacity: _drawerAppeared ? 1 : 0,
-                duration: const Duration(milliseconds: 300),
-                child: const SizedBox.expand(
-                  child: ColoredBox(color: Color(0x73000000)),
+    // THEME ISOLATION: the drawer renders inside the HOST app's MaterialApp, so
+    // the host's InputDecorationTheme bleeds into every SDK TextField — a host
+    // with filled/rounded inputs (Skape does this) painted a second white pill
+    // inside our code-entry box. The SDK styles all of its inputs explicitly,
+    // so reset input theming to the framework default at the experience root.
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: const InputDecorationTheme(),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                // Dimmed host app behind the drawer.
+                AnimatedOpacity(
+                  opacity: _drawerAppeared ? 1 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: const SizedBox.expand(
+                    child: ColoredBox(color: Color(0x73000000)),
+                  ),
                 ),
-              ),
-              // The drawer: gunmetal sheet flush to bottom/sides, top corners
-              // rounded 30, ~90% screen height, spring slide-up.
-              AnimatedSlide(
-                offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
-                duration: const Duration(milliseconds: 450),
-                curve:
-                    _drawerAppeared ? Curves.easeOutCubic : Curves.easeInCubic,
-                child: SizedBox(
-                  height: constraints.maxHeight * 0.90,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(30)),
-                    child: ColoredBox(
-                      color: WINRV2Colors.gunmetal,
-                      child: _drawerContent(),
+                // The drawer: gunmetal sheet flush to bottom/sides, top corners
+                // rounded 30, ~90% screen height, spring slide-up.
+                AnimatedSlide(
+                  offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
+                  duration: const Duration(milliseconds: 450),
+                  curve: _drawerAppeared
+                      ? Curves.easeOutCubic
+                      : Curves.easeInCubic,
+                  child: SizedBox(
+                    height: constraints.maxHeight * 0.90,
+                    width: double.infinity,
+                    child: ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(30)),
+                      child: ColoredBox(
+                        color: WINRV2Colors.gunmetal,
+                        child: _drawerContent(),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (_showWinnerModal && latestWinner != null)
-                WINRV2WinnerModal(
-                  accent: _accent,
-                  winner: latestWinner,
-                  onDismiss: () => setState(() => _showWinnerModal = false),
-                ),
-            ],
-          );
-        },
+                if (_showWinnerModal && latestWinner != null)
+                  WINRV2WinnerModal(
+                    accent: _accent,
+                    winner: latestWinner,
+                    onDismiss: () => setState(() => _showWinnerModal = false),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1213,8 +1225,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       _codeError = null;
     });
     try {
-      final response =
-          await widget.networkClient.send(VerifyAdoptionCodeRequest(code: code));
+      final response = await widget.networkClient
+          .send(VerifyAdoptionCodeRequest(code: code));
       if (response.adopted && response.token != null && response.uuid != null) {
         await widget.secureStorage.saveAuthToken(response.token!);
         if (response.refreshToken != null) {
@@ -1222,7 +1234,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         }
         await widget.secureStorage.saveUserUuid(response.uuid!);
         widget.networkClient.setAuthToken(response.token!);
-        Logger.instance.info('Adoption verified — streak unified across devices');
+        Logger.instance
+            .info('Adoption verified — streak unified across devices');
       }
       // The email flow is only now truly complete — persist the non-PII
       // "email submitted" flag here, not at submit time (see _submitEmail).
@@ -1253,9 +1266,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// whose text mentions "expired" or "attempts"); a three-way taxonomy —
   /// expired / too-many-attempts / incorrect — mirrors the web SDK exactly.
   String _codeErrorFor(Object e) {
-    final message = e is WINRException
-        ? (e.serverMessage ?? e.toString())
-        : e.toString();
+    final message =
+        e is WINRException ? (e.serverMessage ?? e.toString()) : e.toString();
     final lower = message.toLowerCase();
     if (lower.contains('expired')) return WINRV2Strings.codeExpired;
     if (lower.contains('attempts')) return WINRV2Strings.codeTooManyAttempts;
@@ -1269,7 +1281,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   Future<void> _resendVerificationCode() async {
     final email = _pendingVerificationEmail;
     if (email == null) return;
-    if (_phase != _V2Phase.codeEntry || _isVerifyingCode || _isSubmittingEmail) {
+    if (_phase != _V2Phase.codeEntry ||
+        _isVerifyingCode ||
+        _isSubmittingEmail) {
       return;
     }
     setState(() {
@@ -1477,7 +1491,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
               widget.sdkConfig?.copy?.resolvedEmailConsentText,
           ageGateText: widget.sdkConfig?.resolvedAgeGateText,
           prefilledEmail: widget.configuration.user.email,
-          onSubmit: (email, {required ageConfirmed, required marketingConsent}) =>
+          onSubmit: (email,
+                  {required ageConfirmed, required marketingConsent}) =>
               unawaited(_submitEmail(
             email,
             ageConfirmed: ageConfirmed,

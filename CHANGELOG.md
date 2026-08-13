@@ -1,3 +1,7 @@
+## 2.8.1 — 2026-08-13
+
+- Theme isolation: the experience no longer inherits the host app's `InputDecorationTheme`. A host with filled/rounded inputs was painting a second white pill inside the SDK's code-entry box (and could distort any SDK text field).
+
 ## 2.8.0 — 2026-08-13
 
 - Version alignment with the 2.8.0 platform release. No functional changes; `environment` already defaulted to `production`, and sandbox API keys (`winr_test_…`) are the supported way to test.
