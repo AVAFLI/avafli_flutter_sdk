@@ -1,3 +1,7 @@
+## 2.8.0 — 2026-08-13
+
+- Version alignment with the 2.8.0 platform release. No functional changes; `environment` already defaulted to `production`, and sandbox API keys (`winr_test_…`) are the supported way to test.
+
 # Changelog
 
 ## 2.7.0 — 2026-08-11
