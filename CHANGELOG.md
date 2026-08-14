@@ -1,3 +1,11 @@
+## 2.9.1 — 2026-08-14
+
+- **Official share icons**: the share screen's social row (Instagram /
+  Facebook / X / Snapchat / TikTok) now draws the official WINR brand set —
+  the Figma 48×48 white-fill glyphs, rendered in-code from their SVG path
+  data via a new dependency-free path painter — replacing the previous
+  hand-approximated glyphs. Button sizing and behavior are unchanged.
+
 ## 2.9.0 — 2026-08-14
 
 Keyboard-safe forms, a flatter capture screen, a streamlined claim review, a

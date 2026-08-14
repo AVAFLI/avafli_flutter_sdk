@@ -99,7 +99,7 @@ class WINR {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '2.9.0';
+  static const String sdkVersion = '2.9.1';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.

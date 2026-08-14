@@ -284,7 +284,7 @@ class WINRRequestDefaults {
   WINRRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '2.9.0';
+  static String sdkVersion = '2.9.1';
 }
 
 /// Response from claiming daily entries (mirrors iOS
