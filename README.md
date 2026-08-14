@@ -121,7 +121,7 @@ Then run:
 flutter pub get
 ```
 
-> **Note:** Contact [AVAFLI](https://avafli-website.web.app/sdk/pricing) to obtain an API key.
+> **Note:** Contact [AVAFLI](https://winrmedia.com/sdk/pricing) to obtain an API key.
 
 ## Configuration
 
@@ -248,7 +248,7 @@ FirebaseMessaging.instance.onTokenRefresh.listen(WINR.registerPushToken);
 
 ### 3. Upload FCM Service Account Key
 
-Upload your FCM service account key via the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard) to enable push notifications.
+Upload your FCM service account key via the [WINR Dashboard](https://winrmedia.com/sdk/dashboard) to enable push notifications.
 
 ### 4. Enable Push Reminders
 
@@ -262,7 +262,7 @@ await WINR.registerForPushNotifications();
 
 ## Customization
 
-The V2 experience is hardcoded to the WINR design; publishers customize exactly three things through the [WINR Dashboard](https://avafli-website.web.app/sdk/dashboard):
+The V2 experience is hardcoded to the WINR design; publishers customize exactly three things through the [WINR Dashboard](https://winrmedia.com/sdk/dashboard):
 
 - **Logo** — Shown in the drawer header
 - **Prize image** — Art for the dashboard prize card
@@ -341,12 +341,12 @@ Users can also self-serve without any code from you: the experience's
 | `WINR.registerPushToken(token)` | `Future<void>` | Forward an FCM token to WINR (one-line `onTokenRefresh` listener) |
 | `WINRPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to WINR |
 
-For detailed API documentation, see the [WINR Docs](https://avafli-website.web.app/sdk/flutter).
+For detailed API documentation, see the [WINR Docs](https://winrmedia.com/sdk/flutter).
 
 ## Links
 
-- **Dashboard:** [https://avafli-website.web.app/sdk/dashboard](https://avafli-website.web.app/sdk/dashboard)
-- **Documentation:** [https://avafli-website.web.app/sdk/flutter](https://avafli-website.web.app/sdk/flutter)
+- **Dashboard:** [https://winrmedia.com/sdk/dashboard](https://winrmedia.com/sdk/dashboard)
+- **Documentation:** [https://winrmedia.com/sdk/flutter](https://winrmedia.com/sdk/flutter)
 - **Support:** [info@avafli.com](mailto:info@avafli.com)
 
 ---
