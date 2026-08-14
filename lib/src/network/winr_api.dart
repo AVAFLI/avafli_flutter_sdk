@@ -14,7 +14,7 @@ class RegisterDeviceRequest extends PostRequest<RegisterDeviceResponse> {
   final String timezone;
   final String platformOS;
   final String sdkVersion;
-  
+
   RegisterDeviceRequest({
     required this.apiKey,
     required this.deviceFingerprint,
@@ -23,20 +23,20 @@ class RegisterDeviceRequest extends PostRequest<RegisterDeviceResponse> {
     required this.platformOS,
     required this.sdkVersion,
   });
-  
+
   @override
   String get endpoint => '/registerDevice';
-  
+
   @override
   Map<String, dynamic> get body => {
-    'apiKey': apiKey,
-    'deviceFingerprint': deviceFingerprint,
-    'bundleId': bundleId,
-    'timezone': timezone,
-    'platformOS': platformOS,
-    'sdkVersion': sdkVersion,
-  };
-  
+        'apiKey': apiKey,
+        'deviceFingerprint': deviceFingerprint,
+        'bundleId': bundleId,
+        'timezone': timezone,
+        'platformOS': platformOS,
+        'sdkVersion': sdkVersion,
+      };
+
   @override
   RegisterDeviceResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
@@ -69,6 +69,12 @@ class RegisterDeviceResponse {
   /// publisher's giveaways (winner prize-claim flow).
   final PrizeClaimBlock? prizeClaim;
 
+  /// OPTIONAL (2.9, absent from current prod): true when this person started
+  /// a verification-gated adoption (typed an existing email, never entered
+  /// the 6-digit code). The next open calls `restageAdoption` and re-shows
+  /// the code screen instead of email capture. Absent/null → normal flow.
+  final bool? adoptionPending;
+
   const RegisterDeviceResponse({
     required this.token,
     required this.refreshToken,
@@ -81,6 +87,7 @@ class RegisterDeviceResponse {
     this.optedOut,
     this.emailVerified,
     this.prizeClaim,
+    this.adoptionPending,
   });
 
   factory RegisterDeviceResponse.fromJson(Map<String, dynamic> json) {
@@ -88,9 +95,8 @@ class RegisterDeviceResponse {
       token: json['token'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       uuid: json['uuid'] ?? '',
-      giveaway: json['giveaway'] != null
-          ? Giveaway.fromJson(json['giveaway'])
-          : null,
+      giveaway:
+          json['giveaway'] != null ? Giveaway.fromJson(json['giveaway']) : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,
       totalEntries: json['totalEntries'] ?? 0,
@@ -100,6 +106,7 @@ class RegisterDeviceResponse {
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
           : null,
+      adoptionPending: json['adoptionPending'] as bool?,
     );
   }
 }
@@ -110,17 +117,17 @@ class RefreshTokenRequest extends PostRequest<RefreshTokenResponse> {
   bool get requiresAuth => false;
 
   final String refreshToken;
-  
+
   RefreshTokenRequest({required this.refreshToken});
-  
+
   @override
   String get endpoint => '/refreshToken';
-  
+
   @override
   Map<String, dynamic> get body => {
-    'refreshToken': refreshToken,
-  };
-  
+        'refreshToken': refreshToken,
+      };
+
   @override
   RefreshTokenResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
@@ -132,12 +139,12 @@ class RefreshTokenRequest extends PostRequest<RefreshTokenResponse> {
 class RefreshTokenResponse {
   final String token;
   final String refreshToken;
-  
+
   const RefreshTokenResponse({
     required this.token,
     required this.refreshToken,
   });
-  
+
   factory RefreshTokenResponse.fromJson(Map<String, dynamic> json) {
     return RefreshTokenResponse(
       token: json['token'] ?? '',
@@ -152,10 +159,10 @@ class RefreshTokenResponse {
 class GetActiveGiveawayRequest extends PostRequest<GetActiveGiveawayResponse> {
   @override
   String get endpoint => '/getActiveGiveaway';
-  
+
   @override
   Map<String, dynamic> get body => {};
-  
+
   @override
   GetActiveGiveawayResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
@@ -195,6 +202,13 @@ class GetActiveGiveawayResponse {
   /// `"submitted"` means the form was already sent (normal dashboard shows).
   final PrizeClaimBlock? prizeClaim;
 
+  /// OPTIONAL adoption re-entry signal (2.9) — see
+  /// [RegisterDeviceResponse.adoptionPending]. Parsed here too because a
+  /// device with a live token never re-registers; the status call is where
+  /// the pending flag would actually arrive on a warm open. Null-safe against
+  /// current prod (absent → null → normal flow).
+  final bool? adoptionPending;
+
   const GetActiveGiveawayResponse({
     this.giveaway,
     this.claimedToday = false,
@@ -208,13 +222,13 @@ class GetActiveGiveawayResponse {
     this.sdkConfig,
     this.optedOut,
     this.prizeClaim,
+    this.adoptionPending,
   });
 
   factory GetActiveGiveawayResponse.fromJson(Map<String, dynamic> json) {
     return GetActiveGiveawayResponse(
-      giveaway: json['giveaway'] != null
-          ? Giveaway.fromJson(json['giveaway'])
-          : null,
+      giveaway:
+          json['giveaway'] != null ? Giveaway.fromJson(json['giveaway']) : null,
       claimedToday: json['claimedToday'] ?? false,
       streakDay: json['streakDay'] ?? 1,
       totalEntries: json['totalEntries'] ?? 0,
@@ -228,6 +242,7 @@ class GetActiveGiveawayResponse {
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
           : null,
+      adoptionPending: json['adoptionPending'] as bool?,
     );
   }
 }
@@ -418,6 +433,12 @@ class SubmitPrizeClaimRequest extends PostRequest<SubmitPrizeClaimResponse> {
   final String? photoBase64;
   final String? story;
 
+  /// The (optional) likeness/promo checkbox on the review screen — permission
+  /// to use the winner's name/likeness in promotional announcements. 2.9:
+  /// the ONLY consent left on the review screen, no longer gates submit, and
+  /// always sent so the backend records the actual choice.
+  final bool promoConsentGranted;
+
   SubmitPrizeClaimRequest({
     required this.giveawayId,
     required this.firstName,
@@ -431,6 +452,7 @@ class SubmitPrizeClaimRequest extends PostRequest<SubmitPrizeClaimResponse> {
     required this.country,
     this.photoBase64,
     this.story,
+    this.promoConsentGranted = false,
   });
 
   @override
@@ -446,6 +468,7 @@ class SubmitPrizeClaimRequest extends PostRequest<SubmitPrizeClaimResponse> {
         'state': state,
         'zip': zip,
         'country': country,
+        'promoConsentGranted': promoConsentGranted,
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
         if (apt != null && apt!.isNotEmpty) 'apt': apt,
         if (photoBase64 != null) 'photoBase64': photoBase64,
@@ -511,11 +534,11 @@ class SubmitEmailRequest extends PostRequest<SubmitEmailResponse> {
 
   @override
   Map<String, dynamic> get body => {
-    'email': email,
-    'ageConfirmed': ageConfirmed,
-    'marketingConsent': marketingConsent,
-    if (publisherUserId != null) 'publisherUserId': publisherUserId,
-  };
+        'email': email,
+        'ageConfirmed': ageConfirmed,
+        'marketingConsent': marketingConsent,
+        if (publisherUserId != null) 'publisherUserId': publisherUserId,
+      };
 
   @override
   SubmitEmailResponse parseResponse(http.Response response) {
@@ -594,6 +617,74 @@ class VerifyAdoptionCodeRequest extends PostRequest<SubmitEmailResponse> {
   }
 }
 
+/// Re-stages an interrupted verification-gated adoption (2.9): the person
+/// typed an existing email, the code screen showed, and the app was killed
+/// before they entered the 6-digit code. When a later register/status
+/// response carries `adoptionPending: true`, the SDK calls this to have the
+/// backend send a FRESH code to the email already on the pending adoption
+/// (the SDK never persisted the raw address), then re-shows the code screen.
+/// Same network-client pattern as [VerifyAdoptionCodeRequest]; the response
+/// is `{sent: bool}`.
+class RestageAdoptionRequest extends PostRequest<RestageAdoptionResponse> {
+  @override
+  String get endpoint => '/restageAdoption';
+
+  @override
+  Map<String, dynamic> get body => {};
+
+  @override
+  RestageAdoptionResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return RestageAdoptionResponse.fromJson(data);
+  }
+}
+
+/// Response from [RestageAdoptionRequest].
+class RestageAdoptionResponse {
+  final bool sent;
+
+  const RestageAdoptionResponse({this.sent = false});
+
+  factory RestageAdoptionResponse.fromJson(Map<String, dynamic> json) {
+    return RestageAdoptionResponse(sent: json['sent'] ?? false);
+  }
+}
+
+/// Attaches the optional "please share a little" story to an ALREADY
+/// SUBMITTED prize claim (2.9): the share step now runs post-submit, so the
+/// story can't ride the submitPrizeClaim payload anymore. Fire-and-forget
+/// from the SDK's side — the claim is already banked, so a failure must
+/// never block or surface. Request `{story}`, response `{saved}`; same
+/// authed client pattern as [RestageAdoptionRequest].
+class AttachClaimStoryRequest extends PostRequest<AttachClaimStoryResponse> {
+  final String story;
+
+  AttachClaimStoryRequest({required this.story});
+
+  @override
+  String get endpoint => '/attachClaimStory';
+
+  @override
+  Map<String, dynamic> get body => {'story': story};
+
+  @override
+  AttachClaimStoryResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return AttachClaimStoryResponse.fromJson(data);
+  }
+}
+
+/// Response from [AttachClaimStoryRequest].
+class AttachClaimStoryResponse {
+  final bool saved;
+
+  const AttachClaimStoryResponse({this.saved = false});
+
+  factory AttachClaimStoryResponse.fromJson(Map<String, dynamic> json) {
+    return AttachClaimStoryResponse(saved: json['saved'] ?? false);
+  }
+}
+
 /// Confirms a soft email verification with the emailed 6-digit code. Same
 /// request/response envelope as [VerifyAdoptionCodeRequest]; on success the
 /// backend returns `{verified: true}`. Failures throw a [WINRException] whose
@@ -664,7 +755,7 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
   final bool? smsConsent;
   final String? maidId;
   final String? publisherUserId;
-  
+
   SubmitUserProfileRequest({
     this.firstName,
     this.lastName,
@@ -673,20 +764,20 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
     this.maidId,
     this.publisherUserId,
   });
-  
+
   @override
   String get endpoint => '/submitUserProfile';
-  
+
   @override
   Map<String, dynamic> get body => {
-    if (firstName != null) 'firstName': firstName,
-    if (lastName != null) 'lastName': lastName,
-    if (phone != null) 'phone': phone,
-    if (smsConsent != null) 'smsConsent': smsConsent,
-    if (maidId != null) 'maidId': maidId,
-    if (publisherUserId != null) 'publisherUserId': publisherUserId,
-  };
-  
+        if (firstName != null) 'firstName': firstName,
+        if (lastName != null) 'lastName': lastName,
+        if (phone != null) 'phone': phone,
+        if (smsConsent != null) 'smsConsent': smsConsent,
+        if (maidId != null) 'maidId': maidId,
+        if (publisherUserId != null) 'publisherUserId': publisherUserId,
+      };
+
   @override
   SuccessResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);
@@ -698,22 +789,22 @@ class SubmitUserProfileRequest extends PostRequest<SuccessResponse> {
 class RegisterPushTokenRequest extends PostRequest<SuccessResponse> {
   final String pushToken;
   final String platform;
-  
+
   RegisterPushTokenRequest({
     required this.pushToken,
     required this.platform,
   });
-  
+
   @override
   String get endpoint => '/registerPushToken';
-  
+
   @override
   Map<String, dynamic> get body => {
-    // Backend contract is {token, platform} — 'pushToken' is rejected.
-    'token': pushToken,
-    'platform': platform,
-  };
-  
+        // Backend contract is {token, platform} — 'pushToken' is rejected.
+        'token': pushToken,
+        'platform': platform,
+      };
+
   @override
   SuccessResponse parseResponse(http.Response response) {
     final data = parseJsonResponse(response);

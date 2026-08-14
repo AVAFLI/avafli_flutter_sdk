@@ -14,9 +14,6 @@ WINRPrizeClaimForm _validForm() => WINRPrizeClaimForm(
       city: 'Brooklyn',
       state: 'New York',
       zip: '11737',
-      confirmsAccuracy: true,
-      authorizesLikeness: true,
-      agreesToRules: true,
     );
 
 void main() {
@@ -35,14 +32,16 @@ void main() {
       expect((_validForm()..story = 'So excited!').isValid, isTrue);
     });
 
-    test('consents default to on — pre-checked per CTO decision', () {
-      // Aug 2026 CTO decision: the review screen shows the three consents
-      // PRE-CHECKED (defaults true); unticking any of them disables SUBMIT.
+    test(
+        'promo consent is optional, unchecked by default, and never gates '
+        'submit (2.9)', () {
+      // 14 Aug 2026 team decision: the review screen keeps ONLY the
+      // likeness/promo checkbox, OPTIONAL — consent must be an affirmative
+      // act, so it starts unchecked, and SUBMIT is enabled either way.
       final fresh = WINRPrizeClaimForm();
-      expect(fresh.confirmsAccuracy, isTrue);
-      expect(fresh.authorizesLikeness, isTrue);
-      expect(fresh.agreesToRules, isTrue);
-      expect(fresh.hasAllConsents, isTrue);
+      expect(fresh.promoConsentGranted, isFalse);
+      expect((_validForm()..promoConsentGranted = false).isValid, isTrue);
+      expect((_validForm()..promoConsentGranted = true).isValid, isTrue);
     });
 
     test('per-step validity', () {
@@ -71,12 +70,6 @@ void main() {
       expect((_validForm()..street = '   ').isValid, isFalse);
       expect((_validForm()..city = '   ').isValid, isFalse);
       expect((_validForm()..state = '   ').isValid, isFalse);
-    });
-
-    test('all three consents are required', () {
-      expect((_validForm()..confirmsAccuracy = false).isValid, isFalse);
-      expect((_validForm()..authorizesLikeness = false).isValid, isFalse);
-      expect((_validForm()..agreesToRules = false).isValid, isFalse);
     });
 
     test('zip validation', () {
@@ -228,6 +221,49 @@ void main() {
       });
       expect(with_.prizeClaim?.isPending, isTrue);
     });
+
+    test('adoptionPending decodes optionally on both responses (2.9)', () {
+      // Absent from current prod → null → normal flow.
+      expect(
+        GetActiveGiveawayResponse.fromJson(const {}).adoptionPending,
+        isNull,
+      );
+      expect(
+        GetActiveGiveawayResponse.fromJson(const {'adoptionPending': true})
+            .adoptionPending,
+        isTrue,
+      );
+      final register = RegisterDeviceResponse.fromJson(const {
+        'token': 't',
+        'refreshToken': 'r',
+        'uuid': 'u',
+        'adoptionPending': true,
+      });
+      expect(register.adoptionPending, isTrue);
+      expect(
+        RegisterDeviceResponse.fromJson(
+          const {'token': 't', 'refreshToken': 'r', 'uuid': 'u'},
+        ).adoptionPending,
+        isNull,
+      );
+    });
+
+    test('restageAdoption request/response contract (2.9)', () {
+      expect(RestageAdoptionRequest().endpoint, '/restageAdoption');
+      expect(RestageAdoptionRequest().body, isEmpty);
+      expect(
+          RestageAdoptionResponse.fromJson(const {'sent': true}).sent, isTrue);
+      expect(RestageAdoptionResponse.fromJson(const {}).sent, isFalse);
+    });
+
+    test('attachClaimStory request/response contract (2.9)', () {
+      final request = AttachClaimStoryRequest(story: 'So excited!');
+      expect(request.endpoint, '/attachClaimStory');
+      expect(request.body, {'story': 'So excited!'});
+      expect(AttachClaimStoryResponse.fromJson(const {'saved': true}).saved,
+          isTrue);
+      expect(AttachClaimStoryResponse.fromJson(const {}).saved, isFalse);
+    });
   });
 
   group('SubmitPrizeClaimRequest', () {
@@ -250,10 +286,28 @@ void main() {
       final body = request.body;
       expect(body['giveawayId'], 'gw_123');
       expect(body['country'], 'United States');
+      // 2.9: the promo consent is ALWAYS sent (the backend records the
+      // actual choice), defaulting to false.
+      expect(body['promoConsentGranted'], isFalse);
       expect(body.containsKey('phone'), isFalse);
       expect(body.containsKey('apt'), isFalse);
       expect(body.containsKey('photoBase64'), isFalse);
       expect(body.containsKey('story'), isFalse);
+    });
+
+    test('body carries an affirmed promo consent', () {
+      final request = SubmitPrizeClaimRequest(
+        giveawayId: 'gw_123',
+        firstName: 'Catherine',
+        lastName: 'Cinosta',
+        street: '5 Haide Pl.',
+        city: 'Brooklyn',
+        state: 'New York',
+        zip: '11737',
+        country: 'United States',
+        promoConsentGranted: true,
+      );
+      expect(request.body['promoConsentGranted'], isTrue);
     });
 
     test('body includes provided optionals', () {

@@ -57,6 +57,10 @@ enum _V2Phase {
   streak,
   howItWorks,
 
+  /// The dedicated "Privacy choices" screen (2.9) — policy link + the
+  /// delete-my-data action, reached from the how-it-works screen.
+  privacyChoices,
+
   /// This person is the drawn winner and hasn't submitted their claim yet —
   /// the drawer shows the winner splash → claim form → confirmation flow
   /// instead of the dashboard. Takes precedence on open.
@@ -71,9 +75,9 @@ enum _V2Phase {
   error,
 }
 
-/// Sub-screen of the winner claim flow (`_phase == winnerClaim`) — mirrors
-/// iOS `WinnerClaimStep`.
-enum _WinnerClaimStep { splash, form, confirmation }
+/// Sub-screen of the winner claim flow (`_phase == winnerClaim`). 2.9: the
+/// share step now comes AFTER submit — form → submit → share → confirmation.
+enum _WinnerClaimStep { splash, form, share, confirmation }
 
 /// Tiny mount-settle delay before the Day 2+ celebration fires — just enough
 /// for Flutter to render the staged "before" frame so every transition and
@@ -93,6 +97,11 @@ class WINRV2Experience extends StatefulWidget {
   final int? cachedStreakDay;
   final WinrSdkConfig? sdkConfig;
 
+  /// Adoption re-entry (2.9): true when the register response carried
+  /// `adoptionPending: true` — an interrupted verification-gated adoption.
+  /// Null-safe against current prod (absent → null → normal flow).
+  final bool? adoptionPending;
+
   const WINRV2Experience({
     super.key,
     required this.configuration,
@@ -104,6 +113,7 @@ class WINRV2Experience extends StatefulWidget {
     this.cachedClaimedToday,
     this.cachedStreakDay,
     this.sdkConfig,
+    this.adoptionPending,
   });
 
   @override
@@ -154,6 +164,17 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   bool _pendingMarketingConsent = false;
   bool _isVerifyingCode = false;
   String? _codeError;
+
+  /// Adoption re-entry (2.9): the current code screen was re-staged from an
+  /// INTERRUPTED adoption (`adoptionPending: true` + `restageAdoption`).
+  /// There is no locally-held email in this mode (the raw address was never
+  /// persisted), so resends go through `restageAdoption` again instead of
+  /// re-submitting the email.
+  bool _isRestagedAdoption = false;
+
+  /// Freshest `adoptionPending` signal from the status call (overrides the
+  /// register-time value passed in via the widget).
+  bool? _backendAdoptionPending;
 
   /// Soft email verification (distinct from the adoption gate above). The
   /// backend flags a brand-new, unconfirmed email with `emailVerified == false`
@@ -466,6 +487,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // clears the nudge.
       _unverified = response.emailVerified == false;
 
+      // Adoption re-entry (2.9): remember the freshest pending-adoption
+      // signal; the email gate below routes to the re-staged code screen.
+      _backendAdoptionPending = response.adoptionPending;
+
       // Backend is the source of truth for email consent. If it confirms an
       // email on file, seed the local "submitted" flag so a user whose local
       // flag was lost (e.g. reinstall) isn't re-prompted for email.
@@ -526,6 +551,15 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
     // Email-capture gate: shown until the user completes the consent flow.
     if (!await _hasEmailConsent) {
+      // Adoption re-entry (2.9): the person typed an existing email last
+      // time but never entered the 6-digit code. Instead of restarting at
+      // email capture, re-stage the adoption (fresh code) and pick up on the
+      // code screen. Falls back to capture when the restage fails.
+      final adoptionPending = _backendAdoptionPending ?? widget.adoptionPending;
+      if (adoptionPending == true) {
+        await _restageAdoption();
+        return;
+      }
       _setPhase(_V2Phase.emailCapture);
       return;
     }
@@ -699,6 +733,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
             _pendingVerificationEmail = email;
             _pendingAgeConfirmed = ageConfirmed;
             _pendingMarketingConsent = marketingConsent;
+            _isRestagedAdoption = false;
             _codeError = null;
             _isSubmittingEmail = false;
             _phase = _V2Phase.codeEntry;
@@ -1023,7 +1058,39 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     setState(() => _winnerClaimStep = _WinnerClaimStep.form);
   }
 
-  /// SUBMIT on the claim form. Success → confirmation screen. A backend
+  /// Share step CONTINUE (2.9, post-submit) → the confirmation screen.
+  void _winnerShareDone() {
+    if (_phase != _V2Phase.winnerClaim) return;
+    setState(() => _winnerClaimStep = _WinnerClaimStep.confirmation);
+  }
+
+  /// Attaches the story typed on the post-submit share screen to the
+  /// already-submitted claim via `attachClaimStory`. Fire-and-forget with
+  /// ONE retry: the claim is already banked, so a failure must never block
+  /// the flow or surface an error — logged only.
+  void _attachClaimStory(String story) {
+    final trimmed = story.trim();
+    if (trimmed.isEmpty) return;
+    unawaited(() async {
+      for (var attempt = 1; attempt <= 2; attempt++) {
+        try {
+          final response = await widget.networkClient
+              .send(AttachClaimStoryRequest(story: trimmed));
+          Logger.instance
+              .debug('Claim story attached (saved: ${response.saved})');
+          return;
+        } catch (e) {
+          Logger.instance.info('attachClaimStory attempt $attempt failed: $e');
+          if (attempt == 1) {
+            await Future<void>.delayed(const Duration(seconds: 2));
+          }
+        }
+      }
+    }());
+  }
+
+  /// SUBMIT on the claim form. Success → the share/celebrate step (2.9 —
+  /// the claim is banked first, so closing share loses nothing). A backend
   /// "Not the winner"/"Already submitted" rejection falls back to the normal
   /// dashboard silently (logged); transport failures surface inline.
   Future<void> _submitPrizeClaim(WINRPrizeClaimForm form) async {
@@ -1050,7 +1117,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         zip: form.zip.trim(),
         country: form.country,
         photoBase64: form.photoBase64,
-        story: form.story.trim().isEmpty ? null : form.story.trim(),
+        // 2.9: the story is typed on the POST-submit share screen and rides
+        // the dedicated attachClaimStory callable, never this payload.
+        promoConsentGranted: form.promoConsentGranted,
       ));
       if (!mounted) return;
       setState(() {
@@ -1058,7 +1127,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _submittedClaimForm = form;
         _claimNumber = response.claimNumber;
         _claimSubmittedAt = response.submittedAt;
-        _winnerClaimStep = _WinnerClaimStep.confirmation;
+        // 2.9: celebrate/share AFTER the claim is banked.
+        _winnerClaimStep = _WinnerClaimStep.share;
       });
       widget.configuration.options.analyticsAdapter?.track(
         'winr_prize_claim_submitted',
@@ -1131,6 +1201,19 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         unawaited(_load());
       }
     });
+  }
+
+  /// "Privacy choices" (2.9): reached from the how-it-works screen; back
+  /// returns there ([_lastPrimaryPhase] stays intact for the eventual return
+  /// to the primary phase).
+  void _showPrivacyChoices() {
+    if (_phase != _V2Phase.howItWorks) return;
+    setState(() => _phase = _V2Phase.privacyChoices);
+  }
+
+  void _hidePrivacyChoices() {
+    if (_phase != _V2Phase.privacyChoices) return;
+    setState(() => _phase = _V2Phase.howItWorks);
   }
 
   /// Close the whole experience (X buttons / GOT IT on the dashboard):
@@ -1241,9 +1324,14 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // "email submitted" flag here, not at submit time (see _submitEmail).
       await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
       WINR.markEmailConsentGranted();
+      // The pending adoption (if this code screen was a 2.9 re-stage) is now
+      // resolved — clear every cached copy so future opens don't re-stage.
+      _backendAdoptionPending = false;
+      WINR.clearAdoptionPending();
       if (mounted) {
         setState(() {
           _pendingVerificationEmail = null;
+          _isRestagedAdoption = false;
           _isVerifyingCode = false;
           _phase = _V2Phase.loading;
         });
@@ -1274,18 +1362,74 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     return WINRV2Strings.codeIncorrect;
   }
 
+  /// Adoption re-entry (2.9): re-stages an INTERRUPTED verification-gated
+  /// adoption. Asks the backend to send a fresh 6-digit code to the email on
+  /// the pending adoption (the SDK never persisted the raw address), then
+  /// shows the code screen with the "pick up where you left off" copy. Any
+  /// failure — or a backend that says nothing is pending after all — falls
+  /// back to the normal email-capture screen.
+  Future<void> _restageAdoption() async {
+    try {
+      final response =
+          await widget.networkClient.send(RestageAdoptionRequest());
+      if (!mounted) return;
+      if (response.sent) {
+        Logger.instance
+            .info('Adoption re-staged — fresh code sent, showing code entry');
+        setState(() {
+          _isRestagedAdoption = true;
+          _pendingVerificationEmail = null;
+          _codeError = null;
+          _phase = _V2Phase.codeEntry;
+        });
+        return;
+      }
+      // Backend reports nothing pending after all — clear the stale flag and
+      // take the normal capture path.
+      _backendAdoptionPending = false;
+      WINR.clearAdoptionPending();
+      _setPhase(_V2Phase.emailCapture);
+    } catch (e) {
+      Logger.instance
+          .info('restageAdoption failed — falling back to email capture: $e');
+      _setPhase(_V2Phase.emailCapture);
+    }
+  }
+
   /// Request a fresh code by re-submitting the ORIGINAL email + consents. The
   /// CODE-entry screen STAYS UP throughout: a failed resend surfaces in the
   /// code-error slot instead of dumping the user back on email capture with
   /// no explanation (mirrors the web SDK's resendVerificationCode).
+  ///
+  /// In the 2.9 re-staged mode there is no locally-held email, so the resend
+  /// goes through `restageAdoption` again instead.
   Future<void> _resendVerificationCode() async {
-    final email = _pendingVerificationEmail;
-    if (email == null) return;
     if (_phase != _V2Phase.codeEntry ||
         _isVerifyingCode ||
         _isSubmittingEmail) {
       return;
     }
+    if (_isRestagedAdoption) {
+      setState(() {
+        _isSubmittingEmail = true;
+        _codeError = null;
+      });
+      try {
+        await widget.networkClient.send(RestageAdoptionRequest());
+        if (mounted) setState(() => _isSubmittingEmail = false);
+      } catch (e) {
+        Logger.instance.error('Adoption re-stage resend failed', e);
+        if (mounted) {
+          setState(() {
+            _isSubmittingEmail = false;
+            _codeError = WINRV2Strings.codeResendFailed;
+          });
+        }
+      }
+      return;
+    }
+    final email = _pendingVerificationEmail;
+    if (email == null) return;
     setState(() {
       _isSubmittingEmail = true;
       _codeError = null;
@@ -1453,6 +1597,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           email: _pendingVerificationEmail ?? '',
           isVerifying: _isVerifyingCode,
           errorText: _codeError,
+          // Re-staged adoption (2.9): no locally-held email to interpolate —
+          // the "pick up where you left off" copy replaces the default.
+          subtitle: _isRestagedAdoption
+              ? WINRV2Strings.adoptionRestagedSubtitle
+              : null,
           onSubmit: (code) => unawaited(_submitVerificationCode(code)),
           onResend: () => unawaited(_resendVerificationCode()),
           onInfo: _showHowItWorks,
@@ -1552,9 +1701,21 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           visitMode: _visitMode,
           onDone: _hideHowItWorks,
           onClose: _requestDismiss,
-          // The in-experience RTD opt-out ("Privacy choices" → DELETE MY
-          // DATA). WINR.optOut() throws on failure, so the confirmation can
-          // show an honest error instead of pretending success.
+          // 2.9: opens the dedicated Privacy choices screen — the delete
+          // action lives there now.
+          onPrivacyChoices: _showPrivacyChoices,
+        );
+
+      case _V2Phase.privacyChoices:
+        return WINRV2PrivacyChoicesView(
+          accent: _accent,
+          logoUrl: _logoUrl,
+          rulesUrl: _rulesUrl,
+          onBack: _hidePrivacyChoices,
+          onClose: _requestDismiss,
+          // The in-experience RTD opt-out (DELETE MY DATA). WINR.optOut()
+          // throws on failure, so the confirmation can show an honest error
+          // instead of pretending success.
           optOutAction: WINR.optOut,
         );
     }
@@ -1587,14 +1748,27 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
           maskedEmail: claim.maskedEmail,
-          prizeHeadline: winrV2StripHeadline(
-            claim.prizeDescription,
-            claim.prizeValue.toInt(),
-          ),
           initialForm: _claimFormPrefill,
           isSubmitting: _isSubmittingClaim,
           submitError: _claimSubmitError,
           onSubmit: (form) => unawaited(_submitPrizeClaim(form)),
+          onClose: _requestDismiss,
+        );
+      case _WinnerClaimStep.share:
+        step = WINRV2ClaimShareView(
+          key: const ValueKey('winner-share'),
+          accent: _accent,
+          logoUrl: _logoUrl,
+          prizeHeadline: winrV2StripHeadline(
+            claim.prizeDescription,
+            claim.prizeValue.toInt(),
+          ),
+          appName: widget.sdkConfig?.appName,
+          shareUrl: widget.sdkConfig?.shareUrl,
+          // A typed story is delivered exactly once (DONE or close) and
+          // forwarded fire-and-forget — never lost, never blocking.
+          onStory: _attachClaimStory,
+          onDone: _winnerShareDone,
           onClose: _requestDismiss,
         );
       case _WinnerClaimStep.confirmation:

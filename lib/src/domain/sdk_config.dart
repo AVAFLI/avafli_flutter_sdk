@@ -11,6 +11,17 @@ class WinrSdkConfig {
   /// Publisher-level official-rules URL fallback.
   final String? rulesUrl;
 
+  /// OPTIONAL (2.9, arriving in sdkConfig): the publisher's share landing
+  /// URL, appended to the winner-share text (X intent) and used as the
+  /// Facebook sharer target. Absent from current prod → the share actions
+  /// degrade gracefully (text-only tweet, clipboard fallback for Facebook).
+  final String? shareUrl;
+
+  /// OPTIONAL publisher display name for the winner-share line
+  /// ("I just won {prize} in {appName}!"). Absent → the "in {appName}"
+  /// clause is dropped rather than interpolating a guess.
+  final String? appName;
+
   /// Experience behavior (V2 auto-open flow). Absent → SDK defaults apply.
   final WinrExperienceConfig? experience;
 
@@ -28,6 +39,8 @@ class WinrSdkConfig {
   const WinrSdkConfig({
     this.branding,
     this.rulesUrl,
+    this.shareUrl,
+    this.appName,
     this.experience,
     this.copy,
     this.ageGateEnabled,
@@ -40,6 +53,8 @@ class WinrSdkConfig {
           ? WinrSdkBranding.fromJson(json['branding'])
           : null,
       rulesUrl: json['rulesUrl'] as String?,
+      shareUrl: json['shareUrl'] as String?,
+      appName: json['appName'] as String?,
       experience: json['experience'] is Map<String, dynamic>
           ? WinrExperienceConfig.fromJson(json['experience'])
           : null,

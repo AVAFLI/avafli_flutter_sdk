@@ -1,21 +1,32 @@
-// Winner prize-claim flow (Joe's stepped Figma design): winner splash →
-// stepped form + review → confirmation with the OFFICIAL WINNER card.
+// Winner prize-claim flow (Joe's stepped Figma design, 2.9 revision):
+// winner splash → stepped form (about you → address) → review + SUBMIT →
+// share/celebrate → confirmation with the OFFICIAL WINNER card.
 // Shown when the giveaway payload carries prizeClaim.status == "pending".
 //
 // Mirrors the iOS SDK's WINRV2Claim.swift + WINRV2ClaimSteps/.
 //
-// Photo step note: iOS/Android step 3 ("SHOW OFF YOUR WIN!") attaches an
-// optional photo via the system pickers. This package deliberately has no
-// image-picker dependency (pure-Dart SDK, no heavy plugins), so the photo
-// step is SKIPPED on Flutter and the flow renumbers to 3 steps
-// (about you → address → story/share) — showing a step whose only actions
-// are disabled would be a dead end. The photo is OPTIONAL in the backend
-// contract (functions/src/prizeclaim.ts) and
-// `SubmitPrizeClaimRequest.photoBase64` stays wired for future use.
+// 2.9 reorder (14 Aug team decision): the "PLEASE SHARE A LITTLE" step now
+// comes AFTER submit — the claim is banked first, then the person is invited
+// to share; closing the share screen loses nothing. The story textarea lives
+// on the post-submit share screen and rides the new `attachClaimStory`
+// callable (fire-and-forget; sent on DONE and on dismiss so a typed story is
+// never lost) — it no longer rides the submitPrizeClaim payload.
 //
-// Social share note: pure-Dart has no system share sheet either, so the
-// step's social glyphs copy the winner line to the clipboard with a small
-// "Copied to clipboard!" confirmation.
+// Photo step note: iOS/Android's "SHOW OFF YOUR WIN!" attaches an optional
+// photo via the system pickers. This package deliberately has no
+// image-picker dependency (pure-Dart SDK, no heavy plugins), so the photo
+// step is SKIPPED on Flutter. The photo is OPTIONAL in the backend contract
+// (functions/src/prizeclaim.ts) and `SubmitPrizeClaimRequest.photoBase64`
+// stays wired for future use.
+//
+// Social share note (2.9): X opens the tweet intent with a prefilled winner
+// line (+ publisher shareUrl when configured); Facebook opens the sharer
+// with the shareUrl only (FB forbids prefilled text). Instagram / Snapchat /
+// TikTok have no text-prefill APIs and this package ships no share-sheet
+// plugin, so those (and Facebook without a shareUrl) copy the winner line to
+// the clipboard with a "Copied — paste it in your post" confirmation.
+
+import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -50,17 +61,17 @@ class WINRPrizeClaimForm {
   /// Always null on Flutter — see the photo note at the top of this file.
   String? photoBase64;
 
-  /// Optional "please share a little" story (the story step). Sent trimmed;
-  /// omitted when empty.
+  /// Optional "please share a little" story. 2.9: the story is typed on the
+  /// POST-submit share screen and rides the dedicated `attachClaimStory`
+  /// callable — never this form's claim payload. Kept (like [photoBase64])
+  /// only for request-shape compatibility.
   String story;
 
-  /// Explicit consents (Joe's "review and agree" checkboxes). All three are
-  /// REQUIRED for submit, and PRE-CHECKED by default (CTO decision, Aug
-  /// 2026) — the user can still untick any of them on the review screen,
-  /// which disables SUBMIT until re-affirmed.
-  bool confirmsAccuracy;
-  bool authorizesLikeness;
-  bool agreesToRules;
+  /// The likeness/promo consent — the ONLY checkbox left on the review
+  /// screen (14 Aug 2026 team decision). OPTIONAL: it never gates SUBMIT,
+  /// and consent must be an affirmative act, so it starts UNCHECKED. The
+  /// actual choice is sent as `promoConsentGranted` on the claim payload.
+  bool promoConsentGranted;
 
   WINRPrizeClaimForm({
     this.firstName = '',
@@ -73,9 +84,7 @@ class WINRPrizeClaimForm {
     this.zip = '',
     this.photoBase64,
     this.story = '',
-    this.confirmsAccuracy = true,
-    this.authorizesLikeness = true,
-    this.agreesToRules = true,
+    this.promoConsentGranted = false,
   });
 
   static bool isValidZip(String zip) {
@@ -85,8 +94,7 @@ class WINRPrizeClaimForm {
 
   /// Name characters per the Master Field List: unicode letters plus
   /// spaces, apostrophes (straight or curly), hyphens, and periods.
-  static final RegExp _nameChars =
-      RegExp(r"^[\p{L} .'’\-]+$", unicode: true);
+  static final RegExp _nameChars = RegExp(r"^[\p{L} .'’\-]+$", unicode: true);
   static final RegExp _anyLetter = RegExp(r'\p{L}', unicode: true);
 
   /// A valid first/last name: non-empty trimmed, allowed characters only,
@@ -132,16 +140,10 @@ class WINRPrizeClaimForm {
       state.trim().isNotEmpty &&
       isValidZip(zip);
 
-  // The story step is fully optional — always advanceable.
-
-  /// All three review-screen consents affirmed.
-  bool get hasAllConsents =>
-      confirmsAccuracy && authorizesLikeness && agreesToRules;
-
-  /// SUBMIT enables when every required field across the steps is present,
-  /// the zip is a 5-digit US code, and all three consents are affirmed.
-  /// Phone, apartment, and story are optional.
-  bool get isValid => isStep1Valid && isStep2Valid && hasAllConsents;
+  /// SUBMIT enables when every required field across the steps is present
+  /// and the zip is a 5-digit US code. Phone, apartment, and the promo
+  /// consent are optional — consent NEVER gates submit (2.9).
+  bool get isValid => isStep1Valid && isStep2Valid;
 
   /// "First L." — the public display name on the winner card.
   String get displayName {
@@ -152,17 +154,57 @@ class WINRPrizeClaimForm {
   }
 
   static const List<String> usStates = [
-    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
-    'Connecticut', 'Delaware', 'District of Columbia', 'Florida',
-    'Georgia', 'Hawaii', 'Idaho',
-    'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
-    'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
-    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
-    'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
-    'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
-    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
-    'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
-    'West Virginia', 'Wisconsin', 'Wyoming',
+    'Alabama',
+    'Alaska',
+    'Arizona',
+    'Arkansas',
+    'California',
+    'Colorado',
+    'Connecticut',
+    'Delaware',
+    'District of Columbia',
+    'Florida',
+    'Georgia',
+    'Hawaii',
+    'Idaho',
+    'Illinois',
+    'Indiana',
+    'Iowa',
+    'Kansas',
+    'Kentucky',
+    'Louisiana',
+    'Maine',
+    'Maryland',
+    'Massachusetts',
+    'Michigan',
+    'Minnesota',
+    'Mississippi',
+    'Missouri',
+    'Montana',
+    'Nebraska',
+    'Nevada',
+    'New Hampshire',
+    'New Jersey',
+    'New Mexico',
+    'New York',
+    'North Carolina',
+    'North Dakota',
+    'Ohio',
+    'Oklahoma',
+    'Oregon',
+    'Pennsylvania',
+    'Rhode Island',
+    'South Carolina',
+    'South Dakota',
+    'Tennessee',
+    'Texas',
+    'Utah',
+    'Vermont',
+    'Virginia',
+    'Washington',
+    'West Virginia',
+    'Wisconsin',
+    'Wyoming',
   ];
 }
 
@@ -175,8 +217,18 @@ class WINRClaimDates {
   WINRClaimDates._();
 
   static const List<String> _months = [
-    'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-    'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
+    'JANUARY',
+    'FEBRUARY',
+    'MARCH',
+    'APRIL',
+    'MAY',
+    'JUNE',
+    'JULY',
+    'AUGUST',
+    'SEPTEMBER',
+    'OCTOBER',
+    'NOVEMBER',
+    'DECEMBER',
   ];
 
   /// "AUGUST, 2026" from an ISO date string (falls back to [now] / the current
@@ -349,8 +401,7 @@ class WINRV2WinnerSplashView extends StatelessWidget {
             Container(
               width: double.infinity,
               color: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
@@ -435,14 +486,15 @@ class WINRV2WinnerSplashView extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Stepped claim form (Joe's Figma flow) — 3 steps + review on Flutter
+// Stepped claim form (Joe's Figma flow, 2.9) — 2 steps + review on Flutter
 // ---------------------------------------------------------------------------
 // Ported from iOS WINRV2ClaimSteps/: a persistent gold-sparkle backdrop +
 // header + animated step indicator, with the form steps and the review
 // screen sliding horizontally beneath them (push left on advance, push right
 // on back). Flutter SKIPS the photo step (no image-picker dependency — see
-// the note at the top of this file) and renumbers to 3 steps: about you →
-// address → story/share, then review.
+// the note at the top of this file), and 2.9 moved the share step AFTER
+// submit ([WINRV2ClaimShareView]), so the numbered steps are: about you →
+// address, then review + SUBMIT.
 
 /// Field styling from the claim-step frames: #212832 fill, #3D424B border, r10.
 class _WINRStepTheme {
@@ -458,11 +510,12 @@ class _WINRStepTheme {
       );
 }
 
-/// Total numbered steps on Flutter (photo step skipped — see file header).
-const int _kClaimStepCount = 3;
+/// Total numbered steps on Flutter (photo step skipped, share step moved
+/// post-submit — see file header).
+const int _kClaimStepCount = 2;
 
-/// 1..3 are the numbered steps; 4 is the review screen (no indicator).
-const int _kClaimReviewStep = 4;
+/// 1..2 are the numbered steps; 3 is the review screen (no indicator).
+const int _kClaimReviewStep = 3;
 
 class WINRV2ClaimStepsFlow extends StatefulWidget {
   final Color accent;
@@ -475,10 +528,6 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
   /// Backend-masked winning email ("d********r@winr.example.com"); null for
   /// older backends → generic locked copy.
   final String? maskedEmail;
-
-  /// The prize-derived headline ("$1,000.00 CASH PRIZE") — used for the
-  /// story step's copied share line.
-  final String prizeHeadline;
 
   /// Host-app-provided identity prefill (first/last name, phone).
   final WINRPrizeClaimForm initialForm;
@@ -497,7 +546,6 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
     required this.logoUrl,
     this.rulesUrl,
     this.maskedEmail,
-    required this.prizeHeadline,
     required this.initialForm,
     required this.isSubmitting,
     required this.submitError,
@@ -517,23 +565,17 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   late final TextEditingController _apt;
   late final TextEditingController _city;
   late final TextEditingController _zip;
-  late final TextEditingController _story;
   String _state = '';
 
-  // Joe's "review and agree" consents — PRE-CHECKED (CTO decision, Aug 2026);
-  // unticking any of them disables SUBMIT.
-  late bool _confirmsAccuracy;
-  late bool _authorizesLikeness;
-  late bool _agreesToRules;
+  /// The likeness/promo consent — the only checkbox left on the review
+  /// screen. Optional; never gates SUBMIT (2.9).
+  late bool _promoConsent;
 
-  /// 1..3 form steps, 4 = review.
+  /// 1..2 form steps, 3 = review.
   int _step = 1;
 
   /// Direction of the last navigation — drives the slide edges.
   bool _advancing = true;
-
-  /// Transient "Copied to clipboard!" confirmation on the story step.
-  bool _shareCopied = false;
 
   late final TapGestureRecognizer _rulesTap;
   late final TapGestureRecognizer _privacyTap;
@@ -549,15 +591,18 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     _apt = TextEditingController(text: form.apt);
     _city = TextEditingController(text: form.city);
     _zip = TextEditingController(text: form.zip);
-    _story = TextEditingController(text: form.story);
     _state = form.state;
-    _confirmsAccuracy = form.confirmsAccuracy;
-    _authorizesLikeness = form.authorizesLikeness;
-    _agreesToRules = form.agreesToRules;
+    _promoConsent = form.promoConsentGranted;
     _rulesTap = TapGestureRecognizer()..onTap = _openRules;
     _privacyTap = TapGestureRecognizer()..onTap = _openRules;
     for (final c in [
-      _firstName, _lastName, _phone, _street, _apt, _city, _zip, _story,
+      _firstName,
+      _lastName,
+      _phone,
+      _street,
+      _apt,
+      _city,
+      _zip,
     ]) {
       c.addListener(() => setState(() {}));
     }
@@ -566,7 +611,13 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   @override
   void dispose() {
     for (final c in [
-      _firstName, _lastName, _phone, _street, _apt, _city, _zip, _story,
+      _firstName,
+      _lastName,
+      _phone,
+      _street,
+      _apt,
+      _city,
+      _zip,
     ]) {
       c.dispose();
     }
@@ -594,10 +645,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
         city: _city.text,
         state: _state,
         zip: _zip.text,
-        story: _story.text,
-        confirmsAccuracy: _confirmsAccuracy,
-        authorizesLikeness: _authorizesLikeness,
-        agreesToRules: _agreesToRules,
+        promoConsentGranted: _promoConsent,
       );
 
   void _go(int next) {
@@ -767,9 +815,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: i <= current
-                        ? widget.accent
-                        : const Color(0x990B0D12),
+                    color:
+                        i <= current ? widget.accent : const Color(0x990B0D12),
                     shape: BoxShape.circle,
                     border: Border.all(color: widget.accent, width: 1.5),
                   ),
@@ -821,8 +868,6 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
         return _step1();
       case 2:
         return _step2();
-      case 3:
-        return _step3();
       default:
         return _review();
     }
@@ -841,6 +886,11 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     required List<Widget> children,
   }) {
     return SingleChildScrollView(
+      // Keyboard-aware: keep the last field and the CTA reachable above the
+      // software keyboard. Inside the experience's resizing Scaffold the
+      // inset is already consumed (this resolves to 0); the padding guards
+      // hosts/tests that mount the flow without that chrome.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
@@ -978,17 +1028,24 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
               const SizedBox(height: 21),
               _WINRStepField(label: 'City', controller: _city),
               const SizedBox(height: 21),
+              // State + Zip row. The zip column used to be a fixed 101px —
+              // with the field's 25px side padding that left ~50px for five
+              // 20px digits, clipping the value (and the label) on narrow
+              // screens. Flex-share the row instead (state names shrink via
+              // their FittedBox) and relax the zip field's inner padding so
+              // "12345" always fits whole.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _statePicker()),
+                  Expanded(flex: 11, child: _statePicker()),
                   const SizedBox(width: 13),
-                  SizedBox(
-                    width: 101,
+                  Expanded(
+                    flex: 9,
                     child: _WINRStepField(
                       label: 'Zip Code',
                       controller: _zip,
                       keyboardType: TextInputType.number,
+                      horizontalPadding: 16,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(5),
@@ -1067,112 +1124,12 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     );
   }
 
-  // ── Step 3: PLEASE SHARE A LITTLE (story + social) ──
-
-  static const String _storyPlaceholder =
-      'Please share anything. What you’re going to do with the prize, why '
-      'you love our app, your favorite food, etc.';
-
-  /// Generic winner line for the social buttons. Pure-Dart has no system
-  /// share sheet, so tapping a glyph copies it to the clipboard.
-  String get _shareLine => 'I just won ${widget.prizeHeadline}!';
-
-  void _share() {
-    Clipboard.setData(ClipboardData(text: _shareLine));
-    setState(() => _shareCopied = true);
-    Future<void>.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _shareCopied = false);
-    });
-  }
-
-  Widget _step3() {
-    return _page(
-      title: 'PLEASE SHARE A LITTLE',
-      subtitle: 'This helps us show real people like you win!',
-      onCTA: () => _go(_kClaimReviewStep),
-      children: [
-        const SizedBox(height: 29),
-        // 199px multiline text area in the Figma field styling.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Container(
-            height: 215,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: _WINRStepTheme.fieldDecoration,
-            child: TextField(
-              controller: _story,
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
-              style: WINRV2Font.inter(20, height: 1.25),
-              cursorColor: Colors.white,
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                hintText: _storyPlaceholder,
-                hintStyle:
-                    WINRV2Font.inter(20, color: const Color(0x99FFFFFF)),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 38),
-        Text(
-          'Share on Social Media:',
-          style: WINRV2Font.inter(
-            18,
-            weight: FontWeight.w500,
-            letterSpacing: -0.54,
-          ),
-        ),
-        const SizedBox(height: 15),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (final kind in _WINRSocialGlyphKind.values) ...[
-              if (kind != _WINRSocialGlyphKind.values.first)
-                const SizedBox(width: 26),
-              Semantics(
-                label: 'Share on ${kind.displayName}',
-                button: true,
-                child: GestureDetector(
-                  onTap: _share,
-                  behavior: HitTestBehavior.opaque,
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: _WINRSocialGlyph(kind: kind),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        SizedBox(
-          height: 24,
-          child: AnimatedOpacity(
-            opacity: _shareCopied ? 1 : 0,
-            duration: const Duration(milliseconds: 150),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Copied to clipboard!',
-                style: WINRV2Font.inter(12, color: const Color(0xB3FFFFFF)),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   // ── Review: ALMOST DONE! ──
 
   Widget _review() {
     return _page(
       title: 'ALMOST DONE!',
-      subtitle: 'Please review and agree to claim your prize.',
+      subtitle: 'Review your details and claim your prize.',
       ctaTitle: 'SUBMIT PRIZE CLAIM',
       ctaEnabled: _form.isValid,
       ctaLoading: widget.isSubmitting,
@@ -1226,44 +1183,32 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     );
   }
 
-  /// Joe's "review and agree" consents — pre-checked; all three required
-  /// before SUBMIT.
+  /// 2.9 review consents: ONLY the likeness/promo checkbox remains, and it
+  /// is OPTIONAL (never gates SUBMIT). The "information is accurate" and
+  /// "agree to Official Rules" checkboxes are gone — the rules/privacy links
+  /// stay as plain tappable text beneath.
   Widget _consentSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _WINRClaimConsentRow(
-          key: const ValueKey('consent-accuracy'),
-          accent: widget.accent,
-          isOn: _confirmsAccuracy,
-          onToggle: () =>
-              setState(() => _confirmsAccuracy = !_confirmsAccuracy),
-          label: const TextSpan(
-            text: 'I confirm my information is accurate.',
-          ),
-        ),
-        const SizedBox(height: 32),
-        _WINRClaimConsentRow(
           key: const ValueKey('consent-likeness'),
           accent: widget.accent,
-          isOn: _authorizesLikeness,
-          onToggle: () =>
-              setState(() => _authorizesLikeness = !_authorizesLikeness),
+          isOn: _promoConsent,
+          onToggle: () => setState(() => _promoConsent = !_promoConsent),
           label: const TextSpan(
-            text: "I authorize this app's publisher and its promotional "
-                'partners to use my name, city, profile photo, and likeness '
-                'for winner announcements and promotional purposes.',
+            text: "(Optional) I authorize this app's publisher and its "
+                'promotional partners to use my name, city, profile photo, '
+                'and likeness for winner announcements and promotional '
+                'purposes.',
           ),
         ),
-        const SizedBox(height: 32),
-        _WINRClaimConsentRow(
-          key: const ValueKey('consent-rules'),
-          accent: widget.accent,
-          isOn: _agreesToRules,
-          onToggle: () => setState(() => _agreesToRules = !_agreesToRules),
-          label: TextSpan(
+        const SizedBox(height: 28),
+        Text.rich(
+          TextSpan(
+            style: WINRV2Font.inter(14, height: 1.35),
             children: [
-              const TextSpan(text: 'I agree to the '),
+              const TextSpan(text: 'By submitting you agree to the '),
               TextSpan(
                 text: 'Official Rules',
                 style: const TextStyle(
@@ -1374,12 +1319,20 @@ class _WINRStepFieldLabel extends StatelessWidget {
 /// A labeled claim-step text field per the frames: 12px label, 59px box,
 /// #212832 fill / #3D424B 1px border / r10, 20px input text. An optional
 /// [errorText] renders inline under the box in the shared error red.
-class _WINRStepField extends StatelessWidget {
+///
+/// Stateful (2.9): each field owns a [FocusNode] wrapped in
+/// [WINRV2EnsureVisible], so focusing any field scrolls it — label, box, and
+/// error — clear of the software keyboard even on small screens.
+class _WINRStepField extends StatefulWidget {
   final String label;
   final TextEditingController controller;
   final TextInputType keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final String? errorText;
+
+  /// Inner side padding of the box. The frames use 25; tight columns (the
+  /// zip field) pass less so the value never clips.
+  final double horizontalPadding;
 
   const _WINRStepField({
     required this.label,
@@ -1387,45 +1340,63 @@ class _WINRStepField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     this.errorText,
+    this.horizontalPadding = 25,
   });
 
   @override
+  State<_WINRStepField> createState() => _WINRStepFieldState();
+}
+
+class _WINRStepFieldState extends State<_WINRStepField> {
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _WINRStepFieldLabel(label),
-        const SizedBox(height: 6),
-        Container(
-          height: 59,
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          decoration: _WINRStepTheme.fieldDecoration,
-          alignment: Alignment.centerLeft,
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            inputFormatters: inputFormatters,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: WINRV2Font.inter(20),
-            cursorColor: Colors.white,
-            decoration: const InputDecoration(
-              isCollapsed: true,
-              border: InputBorder.none,
-            ),
-          ),
-        ),
-        if (errorText != null) ...[
+    return WINRV2EnsureVisible(
+      focusNode: _focus,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _WINRStepFieldLabel(widget.label),
           const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Text(
-              errorText!,
-              style: WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
+          Container(
+            height: 59,
+            padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
+            decoration: _WINRStepTheme.fieldDecoration,
+            alignment: Alignment.centerLeft,
+            child: TextField(
+              controller: widget.controller,
+              focusNode: _focus,
+              keyboardType: widget.keyboardType,
+              inputFormatters: widget.inputFormatters,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: WINRV2Font.inter(20),
+              cursorColor: Colors.white,
+              decoration: const InputDecoration(
+                isCollapsed: true,
+                border: InputBorder.none,
+              ),
             ),
           ),
+          if (widget.errorText != null) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                widget.errorText!,
+                style: WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -1630,6 +1601,311 @@ class _WINRGhostPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ---------------------------------------------------------------------------
+// Post-submit share step ("PLEASE SHARE A LITTLE") — 2.9
+// ---------------------------------------------------------------------------
+
+/// The share/celebrate screen shown AFTER the claim is submitted (14 Aug
+/// 2026 reorder): the claim is already banked, so closing this screen loses
+/// nothing. CONTINUE advances to the confirmation.
+///
+/// The optional story textarea lives here too. A typed story is handed to
+/// [onStory] EXACTLY ONCE — on CONTINUE or on close, whichever comes first —
+/// so it is never lost; the experience forwards it to the backend's
+/// `attachClaimStory` callable fire-and-forget.
+///
+/// Per-network behavior:
+/// - X: tweet intent with the prefilled winner line (+ [shareUrl] appended
+///   when the publisher configured one).
+/// - Facebook: the sharer URL with [shareUrl] only (FB forbids prefilled
+///   text); no shareUrl → clipboard fallback.
+/// - Instagram / Snapchat / TikTok: no text-prefill APIs and no share-sheet
+///   plugin in this package → copy the line + "Copied — paste it in your
+///   post".
+class WINRV2ClaimShareView extends StatefulWidget {
+  final Color accent;
+  final String? logoUrl;
+
+  /// The prize-derived headline ("$1,000.00 CASH PRIZE") for the share line.
+  final String prizeHeadline;
+
+  /// Publisher display name for "I just won {prize} in {appName}!". Null →
+  /// the "in {appName}" clause is dropped.
+  final String? appName;
+
+  /// Publisher share landing URL (new optional sdkConfig field). Null →
+  /// text-only tweet, clipboard fallback for Facebook.
+  final String? shareUrl;
+
+  final VoidCallback onDone;
+  final VoidCallback onClose;
+
+  /// Receives the typed story (non-empty, trimmed) at most once — fired on
+  /// CONTINUE or close, whichever comes first. Null → the textarea still
+  /// renders but the text goes nowhere (previews/tests).
+  final ValueChanged<String>? onStory;
+
+  const WINRV2ClaimShareView({
+    super.key,
+    required this.accent,
+    required this.logoUrl,
+    required this.prizeHeadline,
+    this.appName,
+    this.shareUrl,
+    required this.onDone,
+    required this.onClose,
+    this.onStory,
+  });
+
+  /// The winner share line — "I just won {prize} in {appName}!" (the app
+  /// clause drops when no name is configured). Exposed for tests.
+  static String shareLine(String prizeHeadline, String? appName) {
+    final app = appName?.trim();
+    return (app == null || app.isEmpty)
+        ? 'I just won $prizeHeadline!'
+        : 'I just won $prizeHeadline in $app!';
+  }
+
+  @override
+  State<WINRV2ClaimShareView> createState() => _WINRV2ClaimShareViewState();
+}
+
+class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
+  static const String _storyPlaceholder =
+      'Please share anything. What you’re going to do with the prize, why '
+      'you love our app, your favorite food, etc.';
+
+  final TextEditingController _story = TextEditingController();
+  final FocusNode _storyFocus = FocusNode();
+
+  /// One-shot guard: the typed story is delivered at most once (CONTINUE or
+  /// close, whichever comes first) — never lost, never duplicated.
+  bool _storyDelivered = false;
+
+  /// Transient "Copied — paste it in your post" confirmation.
+  bool _copied = false;
+  Timer? _copiedTimer;
+
+  @override
+  void dispose() {
+    _copiedTimer?.cancel();
+    _story.dispose();
+    _storyFocus.dispose();
+    super.dispose();
+  }
+
+  void _deliverStory() {
+    if (_storyDelivered) return;
+    final text = _story.text.trim();
+    if (text.isEmpty) return;
+    _storyDelivered = true;
+    widget.onStory?.call(text);
+  }
+
+  void _handleDone() {
+    _deliverStory();
+    widget.onDone();
+  }
+
+  void _handleClose() {
+    _deliverStory();
+    widget.onClose();
+  }
+
+  String get _shareLine =>
+      WINRV2ClaimShareView.shareLine(widget.prizeHeadline, widget.appName);
+
+  /// Clipboard payload: the line plus the share URL when configured.
+  String get _clipboardText {
+    final url = widget.shareUrl;
+    return (url == null || url.isEmpty) ? _shareLine : '$_shareLine $url';
+  }
+
+  void _shareTo(_WINRSocialGlyphKind kind) {
+    switch (kind) {
+      case _WINRSocialGlyphKind.x:
+        // Tweet intent: prefilled text (+ shareUrl appended).
+        final uri = Uri.parse('https://twitter.com/intent/tweet')
+            .replace(queryParameters: {'text': _clipboardText});
+        launchUrl(uri, mode: LaunchMode.externalApplication);
+      case _WINRSocialGlyphKind.facebook:
+        final url = widget.shareUrl;
+        if (url != null && url.isNotEmpty) {
+          final uri = Uri.parse('https://www.facebook.com/sharer/sharer.php')
+              .replace(queryParameters: {'u': url});
+          launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          _copyToClipboard();
+        }
+      case _WINRSocialGlyphKind.instagram:
+      case _WINRSocialGlyphKind.snapchat:
+      case _WINRSocialGlyphKind.tiktok:
+        _copyToClipboard();
+    }
+  }
+
+  void _copyToClipboard() {
+    Clipboard.setData(ClipboardData(text: _clipboardText));
+    setState(() => _copied = true);
+    _copiedTimer?.cancel();
+    _copiedTimer = Timer(const Duration(seconds: 2), () {
+      _copiedTimer = null;
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: WINRV2Colors.deepCharcoal,
+      child: SingleChildScrollView(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Column(
+          children: [
+            const SizedBox(height: 18),
+            _WINRClaimHeader(logoUrl: widget.logoUrl, onClose: _handleClose),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Text(
+                'PLEASE SHARE A LITTLE',
+                textAlign: TextAlign.center,
+                style: WINRV2Font.inter(
+                  27,
+                  weight: FontWeight.w900,
+                  letterSpacing: -0.81,
+                  height: 1.15,
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'Your claim is in! Sharing your win helps us show real '
+                'people like you win.',
+                textAlign: TextAlign.center,
+                style: WINRV2Font.inter(
+                  18,
+                  weight: FontWeight.w500,
+                  letterSpacing: -0.54,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Optional story textarea (Figma field styling). Typed text is
+            // delivered once via attachClaimStory — on CONTINUE or close —
+            // never with the (already submitted) claim payload.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: WINRV2EnsureVisible(
+                focusNode: _storyFocus,
+                child: Container(
+                  height: 150,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: _WINRStepTheme.fieldDecoration,
+                  child: TextField(
+                    controller: _story,
+                    focusNode: _storyFocus,
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                    style: WINRV2Font.inter(17, height: 1.25),
+                    cursorColor: Colors.white,
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      hintText: _storyPlaceholder,
+                      hintStyle:
+                          WINRV2Font.inter(17, color: const Color(0x99FFFFFF)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // The line being shared — visible so the person knows exactly
+            // what a tap posts/copies.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: _WINRStepTheme.fieldDecoration,
+                child: Text(
+                  _shareLine,
+                  textAlign: TextAlign.center,
+                  style: WINRV2Font.inter(16, height: 1.3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            Text(
+              'Share on Social Media:',
+              style: WINRV2Font.inter(
+                18,
+                weight: FontWeight.w500,
+                letterSpacing: -0.54,
+              ),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final kind in _WINRSocialGlyphKind.values) ...[
+                  if (kind != _WINRSocialGlyphKind.values.first)
+                    const SizedBox(width: 26),
+                  Semantics(
+                    label: 'Share on ${kind.displayName}',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () => _shareTo(kind),
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: _WINRSocialGlyph(kind: kind),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(
+              height: 24,
+              child: AnimatedOpacity(
+                opacity: _copied ? 1 : 0,
+                duration: const Duration(milliseconds: 150),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    WINRV2Strings.shareCopied,
+                    style: WINRV2Font.inter(12, color: const Color(0xB3FFFFFF)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 21),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: WINRV2PillButton(
+                accent: widget.accent,
+                title: 'CONTINUE',
+                onTap: _handleDone,
+              ),
+            ),
+            const SizedBox(height: 34),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

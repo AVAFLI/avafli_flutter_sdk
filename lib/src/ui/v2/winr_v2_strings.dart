@@ -55,6 +55,14 @@ abstract final class WINRV2Strings {
   static const String codeResendFailed =
       "Couldn't send a new code. Check your connection and try again.";
 
+  /// Subtitle on the reused 6-digit code screen when an INTERRUPTED adoption
+  /// is re-staged (register/status carried `adoptionPending: true` and
+  /// `restageAdoption` just sent a fresh code). No address interpolation —
+  /// the raw email was never persisted locally.
+  static const String adoptionRestagedSubtitle =
+      "Let's pick up where you left off. We just sent a fresh 6-digit code "
+      'to your email — enter it below to continue.';
+
   // ── Soft email verification (persistent dashboard chip → code screen) ──
 
   /// The persistent, tappable chip on the streak dashboard shown while the
@@ -91,10 +99,24 @@ abstract final class WINRV2Strings {
   /// Retry affordance on [entryNotRecorded].
   static const String tryAgain = 'TRY AGAIN';
 
-  // ── Privacy choices / RTD opt-out (how-it-works screen) ──
+  // ── Winner share (post-submit share step) ──
 
-  /// Muted entry-point link at the bottom of the how-it-works screen.
+  /// Confirmation shown after a share action copied the winner line to the
+  /// clipboard (Instagram/Snapchat/TikTok have no text-prefill APIs, and
+  /// Facebook falls back here when no shareUrl is configured).
+  static const String shareCopied = 'Copied — paste it in your post';
+
+  // ── Privacy choices / RTD opt-out ──
+
+  /// Entry-point link at the bottom of the how-it-works screen — 2.9: opens
+  /// the dedicated Privacy choices screen (policy link + delete action).
   static const String privacyChoices = 'Privacy choices';
+
+  /// Title strip on the dedicated Privacy choices screen.
+  static const String privacyChoicesTitle = 'PRIVACY CHOICES';
+
+  /// The policy link row on the Privacy choices screen.
+  static const String privacyPolicyLink = 'Privacy Policy';
 
   /// The destructive confirmation's title.
   static const String optOutTitle = 'Delete my data & stop participating';

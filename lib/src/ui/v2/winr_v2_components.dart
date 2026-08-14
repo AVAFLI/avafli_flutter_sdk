@@ -124,6 +124,82 @@ class WINRV2Header extends StatelessWidget {
   }
 }
 
+/// Keyboard-aware focus helper: scrolls its child into view whenever
+/// [focusNode] gains focus, so a field near the bottom of a form screen is
+/// never left hidden under the software keyboard.
+///
+/// Flutter's built-in caret-reveal only nudges the caret line visible; on
+/// short drawers (the experience sheet is ~90% of a possibly-small screen,
+/// shrunk further by the keyboard via `resizeToAvoidBottomInset`) that can
+/// leave the field's label or error clipped. This waits one beat for the
+/// keyboard animation to change the viewport, then centers the whole wrapped
+/// field in the nearest enclosing [Scrollable]. No-op when there is no
+/// enclosing scrollable or the focus was lost meanwhile.
+class WINRV2EnsureVisible extends StatefulWidget {
+  final FocusNode focusNode;
+  final Widget child;
+
+  const WINRV2EnsureVisible({
+    super.key,
+    required this.focusNode,
+    required this.child,
+  });
+
+  @override
+  State<WINRV2EnsureVisible> createState() => _WINRV2EnsureVisibleState();
+}
+
+class _WINRV2EnsureVisibleState extends State<WINRV2EnsureVisible> {
+  Timer? _settleTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(WINRV2EnsureVisible oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_onFocusChanged);
+      widget.focusNode.addListener(_onFocusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _settleTimer?.cancel();
+    widget.focusNode.removeListener(_onFocusChanged);
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!widget.focusNode.hasFocus) {
+      _settleTimer?.cancel();
+      _settleTimer = null;
+      return;
+    }
+    // Let the keyboard resize the viewport first — ensureVisible against the
+    // pre-keyboard geometry would scroll to a position that is immediately
+    // stale. A cancelable timer so a disposed field never fires.
+    _settleTimer?.cancel();
+    _settleTimer = Timer(const Duration(milliseconds: 320), () {
+      _settleTimer = null;
+      if (!mounted || !widget.focusNode.hasFocus) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// Soft email-verification nudge: a small, persistent pill on the streak
 /// dashboard shown while the person's newly-typed email is unverified. A mail
 /// glyph + "Verify your email" in the publisher accent, tappable, subtle — it

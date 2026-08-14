@@ -60,6 +60,12 @@ class WINR {
   /// (drives the unregistered impression cap for auto-present).
   static bool? _cachedEmailConsent;
 
+  /// Adoption re-entry (2.9): true when the latest register/status response
+  /// carried `adoptionPending: true` — an interrupted verification-gated
+  /// adoption the experience should re-stage (fresh code + code screen)
+  /// instead of showing email capture. Null-safe against current prod.
+  static bool? _cachedAdoptionPending;
+
   /// RTD opt-out — from the backend or the local persisted flag. Once true
   /// the experience is never auto-presented.
   static bool _cachedOptedOut = false;
@@ -322,12 +328,12 @@ class WINR {
         DateTime.now().difference(pushedAt) < const Duration(seconds: 5);
     if (killedExternally && _autoPresentRetries < _maxAutoPresentRetries) {
       _autoPresentRetries += 1;
-      Logger.instance.info(
-          'Auto-presented experience was removed by host navigation — '
-          'retrying ($_autoPresentRetries/$_maxAutoPresentRetries). '
-          'If your app boots through a splash screen that clears the '
-          'navigation stack, call WINR.holdAutoOpen() during boot and '
-          'WINR.releaseAutoOpen() once your main screen is mounted.');
+      Logger.instance
+          .info('Auto-presented experience was removed by host navigation — '
+              'retrying ($_autoPresentRetries/$_maxAutoPresentRetries). '
+              'If your app boots through a splash screen that clears the '
+              'navigation stack, call WINR.holdAutoOpen() during boot and '
+              'WINR.releaseAutoOpen() once your main screen is mounted.');
       await prefs.remove(_lastAutoPresentKey);
       if (pendingImpressionCount) {
         final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
@@ -410,6 +416,13 @@ class WINR {
     _cachedEmailConsent = true;
   }
 
+  /// @internal — Clears the cached pending-adoption flag once the person
+  /// completes (or the backend disowns) the re-staged adoption, so later
+  /// drawer opens don't re-stage a resolved flow.
+  static void clearAdoptionPending() {
+    _cachedAdoptionPending = null;
+  }
+
   /// Presents the WINR experience (the V2 bottom drawer) over the host app.
   ///
   /// Internal-only: the experience is exclusively SDK-driven — it is opened by
@@ -477,6 +490,7 @@ class WINR {
             cachedClaimedToday: _cachedClaimedToday,
             cachedStreakDay: _cachedStreakDay,
             sdkConfig: _cachedSdkConfig,
+            adoptionPending: _cachedAdoptionPending,
           ),
         ),
       );
@@ -606,6 +620,7 @@ class WINR {
       _cachedStreakDay = response.streakDay;
       _cachedSdkConfigRaw = response.sdkConfig;
       _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
+      _cachedAdoptionPending = response.adoptionPending;
       if (response.optedOut == true) markOptedOut();
 
       // Cache streak state
@@ -669,6 +684,7 @@ class WINR {
       _cachedSdkConfigRaw = response.sdkConfig;
       _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
       _cachedEmailConsent = response.emailConsentStatus;
+      _cachedAdoptionPending = response.adoptionPending;
       if (response.optedOut == true) markOptedOut();
 
       // Update cached data
@@ -807,7 +823,8 @@ class WINR {
     if (existing != null && existing.isNotEmpty) return existing;
     // 128 bits from the platform CSPRNG — collision-safe without a uuid dep.
     final rng = Random.secure();
-    final hex = List.generate(16, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    final hex = List.generate(
+        16, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
     final fresh = 'winr_guest_$hex';
     await _preferencesStorage?.setString(key, fresh);
     return fresh;
@@ -904,6 +921,7 @@ class WINR {
     _cachedClaimedToday = null;
     _cachedStreakDay = null;
     _cachedEmailConsent = null;
+    _cachedAdoptionPending = null;
     _cachedOptedOut = false;
     _isRegistering = false;
     _registrationCompleter = null;

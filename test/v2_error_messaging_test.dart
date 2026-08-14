@@ -274,7 +274,8 @@ void main() {
             giveaway: _giveaway(),
             isSubmitting: false,
             submitError: submitError,
-            onSubmit: (email, {required ageConfirmed, required marketingConsent}) {},
+            onSubmit: (email,
+                {required ageConfirmed, required marketingConsent}) {},
             onInfo: () {},
             onClose: () {},
           ),
@@ -312,16 +313,13 @@ void main() {
       expect(find.text(WINRV2Strings.invalidEmail), findsOneWidget);
     });
 
-    testWidgets('an empty field dims the CTA but never scolds',
-        (tester) async {
+    testWidgets('an empty field dims the CTA but never scolds', (tester) async {
       await pumpCapture(tester);
       tester.binding.focusManager.primaryFocus?.unfocus();
       await tester.pump();
       expect(find.text(WINRV2Strings.invalidEmail), findsNothing);
       expect(
-        tester
-            .widget<WINRV2PillButton>(find.byType(WINRV2PillButton))
-            .enabled,
+        tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled,
         isFalse,
       );
     });
@@ -346,7 +344,6 @@ void main() {
             accent: WINRV2Accent(null).color,
             logoUrl: null,
             maskedEmail: 'c******a@winr.example.com',
-            prizeHeadline: r'$1,000.00 CASH PRIZE',
             initialForm: WINRPrizeClaimForm(),
             isSubmitting: false,
             submitError: null,
@@ -385,7 +382,8 @@ void main() {
       expect(continueEnabled(tester), isTrue);
     });
 
-    testWidgets('a junk phone shows the 10-digit error and blocks CONTINUE; '
+    testWidgets(
+        'a junk phone shows the 10-digit error and blocks CONTINUE; '
         'blank stays allowed', (tester) async {
       await pumpSteps(tester);
       final fields = find.byType(TextField);
@@ -513,11 +511,10 @@ void main() {
       'transient duplicate-entry notice', (tester) async {
     await seedConsentedDay2();
     final client = _FakeNetworkClient()
-      ..onClaim =
-          (() => throw const WINRException(WINRError.ineligibleToday));
+      ..onClaim = (() => throw const WINRException(WINRError.ineligibleToday));
     // First status says unclaimed (stale); the re-sync load says claimed.
-    client.onGetActiveGiveaway = () =>
-        _statusResponse(claimedToday: client.getCalls > 1);
+    client.onGetActiveGiveaway =
+        () => _statusResponse(claimedToday: client.getCalls > 1);
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
@@ -539,7 +536,8 @@ void main() {
   // Experience — dedicated geo-blocked and session-expired states
   // -------------------------------------------------------------------------
 
-  testWidgets('geographyNotAllowed renders the dedicated geo state, not the '
+  testWidgets(
+      'geographyNotAllowed renders the dedicated geo state, not the '
       'generic empty state', (tester) async {
     final client = _FakeNetworkClient()
       ..onGetActiveGiveaway =
@@ -554,7 +552,8 @@ void main() {
     expect(find.text('Nothing to see here yet'), findsNothing);
   });
 
-  testWidgets('a dead session renders the session-expired state and RETRY '
+  testWidgets(
+      'a dead session renders the session-expired state and RETRY '
       'reloads into the dashboard', (tester) async {
     await seedConsentedDay2();
     final client = _FakeNetworkClient()
@@ -581,7 +580,8 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
-  testWidgets('other load errors keep the quiet empty state — raw backend '
+  testWidgets(
+      'other load errors keep the quiet empty state — raw backend '
       'text never renders', (tester) async {
     final client = _FakeNetworkClient()
       ..onGetActiveGiveaway = (() => throw const WINRException(

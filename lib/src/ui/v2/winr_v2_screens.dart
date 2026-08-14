@@ -6,6 +6,7 @@
 // Mirrors the iOS SDK's WINRV2Screens.swift.
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/giveaway.dart';
 import 'winr_v2_components.dart';
@@ -487,8 +488,16 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        WINRV2TopGlow(accent: widget.accent),
+        // 2.9: the accent-blue radial glow is gone — the capture screen sits
+        // on the SAME flat dark surface as the streak dashboard drawer
+        // (WINRV2Colors.gunmetal), so Day 1 and Day 2+ read as one product.
+        const ColoredBox(color: WINRV2Colors.gunmetal),
         SingleChildScrollView(
+          // Keyboard-aware: inside the experience's resizing Scaffold this
+          // resolves to 0; it guards hosts/tests without that chrome so the
+          // email field and CTA always scroll clear of the keyboard.
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
           child: Column(
             children: [
               const SizedBox(height: 18),
@@ -530,7 +539,12 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Column(
                   children: [
-                    _emailField(),
+                    // Focusing the email field scrolls it (and the CTA
+                    // below) clear of the software keyboard.
+                    WINRV2EnsureVisible(
+                      focusNode: _emailFocus,
+                      child: _emailField(),
+                    ),
                     if (_showsEmailError || widget.submitError != null) ...[
                       const SizedBox(height: 8),
                       Align(
@@ -1002,7 +1016,7 @@ class WINRV2DashboardView extends StatelessWidget {
 /// and the destructive button remains available to retry.
 enum WINRV2OptOutPhase { idle, confirming, inFlight, failed, done }
 
-class WINRV2HowItWorksView extends StatefulWidget {
+class WINRV2HowItWorksView extends StatelessWidget {
   final Color accent;
   final String? logoUrl;
   final int day1Entries;
@@ -1010,14 +1024,10 @@ class WINRV2HowItWorksView extends StatefulWidget {
   final VoidCallback onDone;
   final VoidCallback onClose;
 
-  /// Performs the RTD opt-out (the experience wires `WINR.optOut`). MUST
-  /// throw on failure so the confirmation can show an honest error instead
-  /// of pretending the deletion succeeded. Null (previews/tests that don't
-  /// care) renders the link but treats a confirm as a failure.
-  final Future<void> Function()? optOutAction;
-
-  /// How long "Your data has been deleted." holds before [onClose] fires.
-  static const Duration optOutSuccessHold = Duration(milliseconds: 1400);
+  /// Opens the dedicated Privacy choices screen (2.9: the delete-my-data
+  /// action moved OFF this screen onto that surface). Null (previews/tests
+  /// that don't care) leaves the link inert.
+  final VoidCallback? onPrivacyChoices;
 
   const WINRV2HowItWorksView({
     super.key,
@@ -1027,68 +1037,11 @@ class WINRV2HowItWorksView extends StatefulWidget {
     this.visitMode = false,
     required this.onDone,
     required this.onClose,
-    this.optOutAction,
+    this.onPrivacyChoices,
   });
 
   @override
-  State<WINRV2HowItWorksView> createState() => _WINRV2HowItWorksViewState();
-}
-
-class _WINRV2HowItWorksViewState extends State<WINRV2HowItWorksView> {
-  WINRV2OptOutPhase _optOutPhase = WINRV2OptOutPhase.idle;
-
-  void _showOptOutConfirmation() {
-    if (_optOutPhase != WINRV2OptOutPhase.idle) return;
-    setState(() => _optOutPhase = WINRV2OptOutPhase.confirming);
-  }
-
-  void _cancelOptOut() {
-    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
-        _optOutPhase != WINRV2OptOutPhase.failed) {
-      return;
-    }
-    setState(() => _optOutPhase = WINRV2OptOutPhase.idle);
-  }
-
-  Future<void> _confirmOptOut() async {
-    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
-        _optOutPhase != WINRV2OptOutPhase.failed) {
-      return;
-    }
-    setState(() => _optOutPhase = WINRV2OptOutPhase.inFlight);
-    try {
-      final action = widget.optOutAction;
-      if (action == null) throw StateError('optOutAction not wired');
-      await action();
-      if (!mounted) return;
-      setState(() => _optOutPhase = WINRV2OptOutPhase.done);
-      // Hold the success copy a beat, then dismiss the WHOLE experience.
-      await Future<void>.delayed(WINRV2HowItWorksView.optOutSuccessHold);
-      if (!mounted) return;
-      widget.onClose();
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _optOutPhase = WINRV2OptOutPhase.failed);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        _content(),
-        if (_optOutPhase != WINRV2OptOutPhase.idle) _optOutDialog(),
-      ],
-    );
-  }
-
-  Widget _content() {
-    final accent = widget.accent;
-    final logoUrl = widget.logoUrl;
-    final day1Entries = widget.day1Entries;
-    final visitMode = widget.visitMode;
-    final onDone = widget.onDone;
-    final onClose = widget.onClose;
     return ColoredBox(
       color: WINRV2Colors.panel,
       child: Column(
@@ -1185,10 +1138,12 @@ class _WINRV2HowItWorksViewState extends State<WINRV2HowItWorksView> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  // Muted privacy opt-out entry point — deliberately quiet:
-                  // present for those who look for it, invisible to the pitch.
+                  // Muted privacy entry point — deliberately quiet: present
+                  // for those who look for it, invisible to the pitch. 2.9:
+                  // opens the dedicated Privacy choices screen (which holds
+                  // the policy link and the delete-my-data action).
                   GestureDetector(
-                    onTap: _showOptOutConfirmation,
+                    onTap: onPrivacyChoices,
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -1210,6 +1165,240 @@ class _WINRV2HowItWorksViewState extends State<WINRV2HowItWorksView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static void _noop() {}
+
+  Widget _item(String number, String title, String body) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$number.', style: WINRV2Font.inter(18, weight: FontWeight.w900)),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: WINRV2Font.inter(18, weight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text(body, style: WINRV2Font.inter(16, height: 1.25)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The dedicated "Privacy choices" screen (2.9): the delete-my-data action
+/// moved here off the how-it-works screen. Holds the privacy-policy link and
+/// the DELETE MY DATA action with its existing destructive confirmation
+/// (idle → confirming → inFlight → done/failed — see [WINRV2OptOutPhase]).
+class WINRV2PrivacyChoicesView extends StatefulWidget {
+  final Color accent;
+  final String? logoUrl;
+
+  /// Destination of the privacy-policy link (same URL as the legal links).
+  /// Null → the link is inert.
+  final String? rulesUrl;
+
+  /// Back arrow — returns to the how-it-works screen.
+  final VoidCallback onBack;
+
+  /// Closes the whole experience (X, and after a completed deletion).
+  final VoidCallback onClose;
+
+  /// Performs the RTD opt-out (the experience wires `WINR.optOut`). MUST
+  /// throw on failure so the confirmation can show an honest error instead
+  /// of pretending the deletion succeeded. Null (previews/tests that don't
+  /// care) renders the action but treats a confirm as a failure.
+  final Future<void> Function()? optOutAction;
+
+  /// How long "Your data has been deleted." holds before [onClose] fires.
+  static const Duration optOutSuccessHold = Duration(milliseconds: 1400);
+
+  const WINRV2PrivacyChoicesView({
+    super.key,
+    required this.accent,
+    required this.logoUrl,
+    this.rulesUrl,
+    required this.onBack,
+    required this.onClose,
+    this.optOutAction,
+  });
+
+  @override
+  State<WINRV2PrivacyChoicesView> createState() =>
+      _WINRV2PrivacyChoicesViewState();
+}
+
+class _WINRV2PrivacyChoicesViewState extends State<WINRV2PrivacyChoicesView> {
+  WINRV2OptOutPhase _optOutPhase = WINRV2OptOutPhase.idle;
+
+  void _openPolicy() {
+    final url = widget.rulesUrl;
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _showOptOutConfirmation() {
+    if (_optOutPhase != WINRV2OptOutPhase.idle) return;
+    setState(() => _optOutPhase = WINRV2OptOutPhase.confirming);
+  }
+
+  void _cancelOptOut() {
+    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
+        _optOutPhase != WINRV2OptOutPhase.failed) {
+      return;
+    }
+    setState(() => _optOutPhase = WINRV2OptOutPhase.idle);
+  }
+
+  Future<void> _confirmOptOut() async {
+    if (_optOutPhase != WINRV2OptOutPhase.confirming &&
+        _optOutPhase != WINRV2OptOutPhase.failed) {
+      return;
+    }
+    setState(() => _optOutPhase = WINRV2OptOutPhase.inFlight);
+    try {
+      final action = widget.optOutAction;
+      if (action == null) throw StateError('optOutAction not wired');
+      await action();
+      if (!mounted) return;
+      setState(() => _optOutPhase = WINRV2OptOutPhase.done);
+      // Hold the success copy a beat, then dismiss the WHOLE experience.
+      await Future<void>.delayed(WINRV2PrivacyChoicesView.optOutSuccessHold);
+      if (!mounted) return;
+      widget.onClose();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _optOutPhase = WINRV2OptOutPhase.failed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _content(),
+        if (_optOutPhase != WINRV2OptOutPhase.idle) _optOutDialog(),
+      ],
+    );
+  }
+
+  Widget _content() {
+    return ColoredBox(
+      color: WINRV2Colors.panel,
+      child: Column(
+        children: [
+          const SizedBox(height: 18),
+          WINRV2Header(
+            logoUrl: widget.logoUrl,
+            showsBack: true,
+            onBack: widget.onBack,
+            onInfo: _noop,
+            onClose: widget.onClose,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 39,
+            width: double.infinity,
+            color: const Color(0x80FFFFFF),
+            alignment: Alignment.center,
+            child: Text(
+              WINRV2Strings.privacyChoicesTitle,
+              style: WINRV2Font.inter(
+                26,
+                weight: FontWeight.w900,
+                color: WINRV2Colors.gunmetal,
+                letterSpacing: -0.78,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text(
+                      'How your information is used is described in our '
+                      'Privacy Policy. You can also permanently delete your '
+                      'WINR data and stop participating at any time.',
+                      style: WINRV2Font.inter(
+                        14,
+                        color: WINRV2Colors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _row(
+                      icon: Icons.description_outlined,
+                      label: WINRV2Strings.privacyPolicyLink,
+                      onTap: _openPolicy,
+                    ),
+                    const SizedBox(height: 14),
+                    _row(
+                      icon: Icons.delete_outline,
+                      label: WINRV2Strings.optOutConfirm,
+                      color: WINRV2Colors.errorRed,
+                      onTap: _showOptOutConfirmation,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One tappable action row in the info-card styling.
+  Widget _row({
+    required IconData icon,
+    required String label,
+    Color color = Colors.white,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0x14FFFFFF), // white 8%
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: WINRV2Font.inter(
+                    15,
+                    weight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 20, color: color),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1325,26 +1514,6 @@ class _WINRV2HowItWorksViewState extends State<WINRV2HowItWorksView> {
   }
 
   static void _noop() {}
-
-  Widget _item(String number, String title, String body) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$number.', style: WINRV2Font.inter(18, weight: FontWeight.w900)),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: WINRV2Font.inter(18, weight: FontWeight.w900)),
-              const SizedBox(height: 2),
-              Text(body, style: WINRV2Font.inter(16, height: 1.25)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 /// Verification code entry — shown when the typed email matches an EXISTING
@@ -1399,10 +1568,12 @@ class WINRV2CodeEntryView extends StatefulWidget {
 
 class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
   final TextEditingController _code = TextEditingController();
+  final FocusNode _codeFocus = FocusNode();
 
   @override
   void dispose() {
     _code.dispose();
+    _codeFocus.dispose();
     super.dispose();
   }
 
@@ -1422,8 +1593,14 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                // Keyboard-aware bottom padding (0 inside the resizing
+                // experience Scaffold; guards bare hosts/tests).
+                padding: EdgeInsets.only(
+                  left: 22,
+                  right: 22,
+                  top: 18,
+                  bottom: 18 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
                 child: Column(
                   children: [
                     Text(
@@ -1443,41 +1620,45 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                           color: Colors.white.withValues(alpha: 0.75)),
                     ),
                     const SizedBox(height: 22),
-                    Container(
-                      height: 54,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: TextField(
-                        controller: _code,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        autofillHints: const [AutofillHints.oneTimeCode],
-                        textAlign: TextAlign.center,
-                        style: WINRV2Font.inter(22,
-                            weight: FontWeight.w700,
-                            color: WINRV2Colors.gunmetal),
-                        decoration: InputDecoration(
-                          isCollapsed: true,
-                          filled: false,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          counterText: '',
-                          hintText: '••••••',
-                          hintStyle: WINRV2Font.inter(22,
-                              color:
-                                  WINRV2Colors.gunmetal.withValues(alpha: 0.4)),
+                    WINRV2EnsureVisible(
+                      focusNode: _codeFocus,
+                      child: Container(
+                        height: 54,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        onChanged: (v) {
-                          // Auto-submit on the sixth digit.
-                          final digits = v.replaceAll(RegExp(r'\D'), '');
-                          if (digits.length == 6 && !widget.isVerifying) {
-                            widget.onSubmit(digits);
-                          }
-                        },
+                        child: TextField(
+                          controller: _code,
+                          focusNode: _codeFocus,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          autofillHints: const [AutofillHints.oneTimeCode],
+                          textAlign: TextAlign.center,
+                          style: WINRV2Font.inter(22,
+                              weight: FontWeight.w700,
+                              color: WINRV2Colors.gunmetal),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            counterText: '',
+                            hintText: '••••••',
+                            hintStyle: WINRV2Font.inter(22,
+                                color: WINRV2Colors.gunmetal
+                                    .withValues(alpha: 0.4)),
+                          ),
+                          onChanged: (v) {
+                            // Auto-submit on the sixth digit.
+                            final digits = v.replaceAll(RegExp(r'\D'), '');
+                            if (digits.length == 6 && !widget.isVerifying) {
+                              widget.onSubmit(digits);
+                            }
+                          },
+                        ),
                       ),
                     ),
                     if (widget.errorText != null) ...[
