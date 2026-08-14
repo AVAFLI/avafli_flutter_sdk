@@ -1,3 +1,44 @@
+## 2.9.0 — 2026-08-14
+
+Keyboard-safe forms, a flatter capture screen, a streamlined claim review, a
+post-submit share step, a dedicated privacy-choices surface, and adoption
+re-entry.
+
+- **Keyboard-safe forms**: every SDK text input (email capture, 6-digit code
+  entry, claim fields, share-step story) now ensures the focused field is
+  scrolled into view after the keyboard settles, and form scrollables gained
+  IME-aware (`viewInsets`) bottom padding — fields are never hidden behind the
+  keyboard, even in hosts that don't resize for it.
+- **Flat capture background**: the capture screen's accent-blue radial glow is
+  replaced with the streak dashboard's flat gunmetal surface for a consistent
+  look across the experience.
+- **Streamlined claim review**: the accuracy and rules checkboxes are gone
+  (rules/privacy remain as tappable links); the only checkbox left is the
+  likeness/promo one — optional, unchecked by default, and never gating
+  SUBMIT. An explicit `promoConsentGranted` boolean now always rides
+  `submitPrizeClaim`.
+- **Share step after submit**: the claim form is now 2 steps + review; on
+  successful submission a celebration/share screen appears. The winner-story
+  textarea lives there and is delivered via the new `attachClaimStory`
+  callable (fire-and-forget with one retry, sent exactly once on CONTINUE or
+  close) — closing the screen loses nothing.
+- **Share actions**: X opens a tweet intent with a prefilled winner line (plus
+  the publisher `shareUrl` when configured); Facebook uses the sharer with
+  `shareUrl`; Instagram/Snapchat/TikTok (and Facebook without a `shareUrl`)
+  copy the winner line to the clipboard with a "Copied — paste it in your
+  post" confirmation.
+- **Publisher config**: new optional `sdkConfig` fields `shareUrl` and
+  `appName`, both null-safe against current production responses.
+- **Zip field fix**: the fixed-width zip column was clipping five-digit codes;
+  the state/zip row now flex-shares the width with relaxed inner padding.
+- **Privacy choices**: DELETE MY DATA moved off "How it works" onto a
+  dedicated privacy-choices surface (privacy-policy link + the existing
+  delete-my-data confirmation flow); the how-it-works link now opens it.
+- **Adoption re-entry**: when register/status responses report a pending
+  adoption, the new `restageAdoption` callable re-shows the 6-digit code
+  screen with "pick up where you left off" copy; resends re-stage the code,
+  success clears the cached flag, and failures fall back to email capture.
+
 ## 2.8.2 — 2026-08-14
 
 - `flutter_secure_storage` floor raised to v10 and the removed `encryptedSharedPreferences` flag dropped (Android encryption is always on in v10+; the flag's removal in v11 broke compilation under latest-dependency analysis and zeroed the pub.dev score). Values written by older versions migrate automatically.
