@@ -33,6 +33,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../network/places_autocomplete.dart';
 import 'winr_v2_components.dart';
 import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
@@ -206,6 +207,63 @@ class WINRPrizeClaimForm {
     'Wisconsin',
     'Wyoming',
   ];
+
+  /// USPS code → the picker's canonical full name, so a Places-resolved
+  /// `administrative_area_level_1` shortText ("CA") lands in the State
+  /// dropdown as the same value a person would have picked ("California").
+  static const Map<String, String> usStateNamesByCode = {
+    'AL': 'Alabama',
+    'AK': 'Alaska',
+    'AZ': 'Arizona',
+    'AR': 'Arkansas',
+    'CA': 'California',
+    'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DE': 'Delaware',
+    'DC': 'District of Columbia',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
+    'IA': 'Iowa',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'ME': 'Maine',
+    'MD': 'Maryland',
+    'MA': 'Massachusetts',
+    'MI': 'Michigan',
+    'MN': 'Minnesota',
+    'MS': 'Mississippi',
+    'MO': 'Missouri',
+    'MT': 'Montana',
+    'NE': 'Nebraska',
+    'NV': 'Nevada',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NY': 'New York',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
+    'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
+    'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VT': 'Vermont',
+    'VA': 'Virginia',
+    'WA': 'Washington',
+    'WV': 'West Virginia',
+    'WI': 'Wisconsin',
+    'WY': 'Wyoming',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -531,6 +589,16 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
 
   /// Host-app-provided identity prefill (first/last name, phone).
   final WINRPrizeClaimForm initialForm;
+
+  /// Google Places (New) API key from `sdkConfig.placesApiKey`. Non-empty →
+  /// the Street Address field offers address autocomplete; null/empty → the
+  /// field is a plain text input (exactly the pre-autocomplete behavior).
+  final String? placesApiKey;
+
+  /// Test seam: an injected Places client (wins over [placesApiKey]).
+  @visibleForTesting
+  final WINRPlacesClient? placesClient;
+
   final bool isSubmitting;
 
   /// Transport-level submit failure surfaced inline on the review screen
@@ -547,6 +615,8 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
     this.rulesUrl,
     this.maskedEmail,
     required this.initialForm,
+    this.placesApiKey,
+    this.placesClient,
     required this.isSubmitting,
     required this.submitError,
     required this.onSubmit,
@@ -580,6 +650,16 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   late final TapGestureRecognizer _rulesTap;
   late final TapGestureRecognizer _privacyTap;
 
+  /// Street-field address autocomplete. Null when no `placesApiKey` was
+  /// configured (and no test client injected) — the field is then a plain
+  /// text input.
+  WINRAddressAutocomplete? _places;
+  WINRPlacesClient? _placesClient;
+
+  /// Whether this state built [_placesClient] itself (and must dispose it);
+  /// an injected test client belongs to the test.
+  bool _ownsPlacesClient = false;
+
   @override
   void initState() {
     super.initState();
@@ -606,6 +686,16 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     ]) {
       c.addListener(() => setState(() {}));
     }
+
+    final injectedClient = widget.placesClient;
+    final placesKey = widget.placesApiKey?.trim();
+    final client = injectedClient ??
+        ((placesKey != null && placesKey.isNotEmpty)
+            ? WINRPlacesClient(apiKey: placesKey)
+            : null);
+    _placesClient = client;
+    _ownsPlacesClient = injectedClient == null && client != null;
+    _places = client == null ? null : WINRAddressAutocomplete(client: client);
   }
 
   @override
@@ -621,6 +711,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     ]) {
       c.dispose();
     }
+    _places?.dispose();
+    if (_ownsPlacesClient) _placesClient?.dispose();
     _rulesTap.dispose();
     _privacyTap.dispose();
     super.dispose();
@@ -650,10 +742,40 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
 
   void _go(int next) {
     if (next == _step || next < 1 || next > _kClaimReviewStep) return;
+    // Leaving the address step must not leave a stale suggestions list
+    // behind for the return trip.
+    _places?.dismiss();
     setState(() {
       _advancing = next > _step;
       _step = next;
     });
+  }
+
+  /// A tapped street suggestion: resolve it to a full address and fill the
+  /// four address fields (all stay hand-editable). Resolution failure →
+  /// nothing changes — the person keeps typing (silent degradation).
+  Future<void> _selectPlaceSuggestion(WINRPlaceSuggestion suggestion) async {
+    final places = _places;
+    if (places == null) return;
+    final address = await places.select(suggestion);
+    if (!mounted || address == null) return;
+    setState(() {
+      if (address.street.isNotEmpty) _street.text = address.street;
+      if (address.city.isNotEmpty) _city.text = address.city;
+      if (address.zip.isNotEmpty) _zip.text = address.zip;
+      final stateName = _statePickerValue(address.state);
+      if (stateName != null) _state = stateName;
+    });
+  }
+
+  /// Maps the resolved `administrative_area_level_1` shortText ("CA") onto
+  /// the State picker's canonical full name ("California"). Anything not a
+  /// known USPS code passes through verbatim; empty → null (keep whatever
+  /// the person already picked rather than wiping it).
+  static String? _statePickerValue(String raw) {
+    final code = raw.trim();
+    if (code.isEmpty) return null;
+    return WINRPrizeClaimForm.usStateNamesByCode[code.toUpperCase()] ?? code;
   }
 
   @override
@@ -1019,7 +1141,12 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _WINRStepField(label: 'Street Address', controller: _street),
+              _WINRStreetAddressField(
+                controller: _street,
+                places: _places,
+                onSuggestionTap: (suggestion) =>
+                    unawaited(_selectPlaceSuggestion(suggestion)),
+              ),
               const SizedBox(height: 21),
               _WINRStepField(
                 label: 'Apartment, Suite, etc. (optional)',
@@ -1330,6 +1457,11 @@ class _WINRStepField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? errorText;
 
+  /// USER edits only (never programmatic `controller.text` fills) — the
+  /// street field wires this to the autocomplete query stream so filling
+  /// the field from a selected suggestion doesn't re-open the list.
+  final ValueChanged<String>? onChanged;
+
   /// Inner side padding of the box. The frames use 25; tight columns (the
   /// zip field) pass less so the value never clips.
   final double horizontalPadding;
@@ -1340,6 +1472,7 @@ class _WINRStepField extends StatefulWidget {
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     this.errorText,
+    this.onChanged,
     this.horizontalPadding = 25,
   });
 
@@ -1375,6 +1508,7 @@ class _WINRStepFieldState extends State<_WINRStepField> {
               focusNode: _focus,
               keyboardType: widget.keyboardType,
               inputFormatters: widget.inputFormatters,
+              onChanged: widget.onChanged,
               autocorrect: false,
               enableSuggestions: false,
               style: WINRV2Font.inter(20),
@@ -1395,6 +1529,151 @@ class _WINRStepFieldState extends State<_WINRStepField> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The Street Address field. Without a Places setup ([places] == null) it is
+/// exactly the plain [_WINRStepField] it always was. With one, typing
+/// (debounced, min 3 chars — see [WINRAddressAutocomplete]) surfaces up to
+/// five address suggestions in a dropdown card directly beneath the box,
+/// styled like the other step fields. Tap → [onSuggestionTap] (the flow
+/// resolves and fills the address); tap outside or the system back → the
+/// list dismisses and typing continues untouched.
+///
+/// Keyboard safety: the card renders inline in the step's scrollable (which
+/// already carries IME-aware bottom padding), and [_WINRAddressSuggestionsCard]
+/// ensures itself visible when it appears — suggestions are never stranded
+/// under the keyboard.
+class _WINRStreetAddressField extends StatelessWidget {
+  final TextEditingController controller;
+  final WINRAddressAutocomplete? places;
+  final ValueChanged<WINRPlaceSuggestion> onSuggestionTap;
+
+  const _WINRStreetAddressField({
+    required this.controller,
+    required this.places,
+    required this.onSuggestionTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final places = this.places;
+    final field = _WINRStepField(
+      label: 'Street Address',
+      controller: controller,
+      onChanged: places?.onQueryChanged,
+    );
+    if (places == null) return field;
+
+    return ListenableBuilder(
+      listenable: places,
+      builder: (context, _) {
+        final suggestions = places.suggestions;
+        return PopScope(
+          // System back with the list open closes the LIST, not the screen.
+          canPop: suggestions.isEmpty,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) places.dismiss();
+          },
+          child: TapRegion(
+            onTapOutside: (_) => places.dismiss(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                field,
+                if (suggestions.isNotEmpty)
+                  _WINRAddressSuggestionsCard(
+                    suggestions: suggestions,
+                    onSuggestionTap: onSuggestionTap,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The dropdown card of street suggestions: field-styled dark card, one row
+/// per suggestion, hairline dividers, and the required "powered by Google"
+/// attribution row (mandatory when Places data is shown without a map).
+class _WINRAddressSuggestionsCard extends StatefulWidget {
+  final List<WINRPlaceSuggestion> suggestions;
+  final ValueChanged<WINRPlaceSuggestion> onSuggestionTap;
+
+  const _WINRAddressSuggestionsCard({
+    required this.suggestions,
+    required this.onSuggestionTap,
+  });
+
+  @override
+  State<_WINRAddressSuggestionsCard> createState() =>
+      _WINRAddressSuggestionsCardState();
+}
+
+class _WINRAddressSuggestionsCardState
+    extends State<_WINRAddressSuggestionsCard> {
+  @override
+  void initState() {
+    super.initState();
+    // The card just appeared under the (focused, keyboard-up) street field —
+    // scroll it clear of the keyboard. Composes with WINRV2EnsureVisible's
+    // field centering: last write wins, and this one shows field + list.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.7,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: _WINRStepTheme.fieldDecoration,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final suggestion in widget.suggestions) ...[
+            Semantics(
+              button: true,
+              label: suggestion.description,
+              child: GestureDetector(
+                onTap: () => widget.onSuggestionTap(suggestion),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text(
+                    suggestion.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: WINRV2Font.inter(15, height: 1.25),
+                  ),
+                ),
+              ),
+            ),
+            Container(height: 1, color: _WINRStepTheme.fieldBorder),
+          ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'powered by Google',
+                style: WINRV2Font.inter(11, color: const Color(0x80FFFFFF)),
+              ),
+            ),
+          ),
         ],
       ),
     );

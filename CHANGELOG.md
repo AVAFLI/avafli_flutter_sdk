@@ -29,6 +29,15 @@ re-entry.
   post" confirmation.
 - **Publisher config**: new optional `sdkConfig` fields `shareUrl` and
   `appName`, both null-safe against current production responses.
+- **Address autocomplete**: when the backend ships `sdkConfig.placesApiKey`,
+  the claim form's Street Address field suggests US addresses via the Google
+  Places API (New) — debounced typing shows up to five suggestions (with the
+  required "powered by Google" attribution) styled to the V2 dark UI; tapping
+  one fills street/city/state/zip, all still hand-editable. Uses the SDK's
+  existing `package:http` stack (no new dependencies), stays visible above
+  the keyboard, dismisses on outside tap or back, and every failure degrades
+  silently to plain typing — autocomplete never blocks entry. No key → the
+  field behaves exactly as before.
 - **Zip field fix**: the fixed-width zip column was clipping five-digit codes;
   the state/zip row now flex-shares the width with relaxed inner padding.
 - **Privacy choices**: DELETE MY DATA moved off "How it works" onto a

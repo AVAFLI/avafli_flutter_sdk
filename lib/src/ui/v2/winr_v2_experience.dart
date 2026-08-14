@@ -1749,6 +1749,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           rulesUrl: _rulesUrl,
           maskedEmail: claim.maskedEmail,
           initialForm: _claimFormPrefill,
+          // Present → the street field offers Google Places address
+          // autocomplete; absent → plain typing (current prod behavior).
+          placesApiKey: widget.sdkConfig?.placesApiKey,
           isSubmitting: _isSubmittingClaim,
           submitError: _claimSubmitError,
           onSubmit: (form) => unawaited(_submitPrizeClaim(form)),

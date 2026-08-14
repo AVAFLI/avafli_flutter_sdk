@@ -22,6 +22,13 @@ class WinrSdkConfig {
   /// clause is dropped rather than interpolating a guess.
   final String? appName;
 
+  /// OPTIONAL Google Places (New) API key
+  /// (config/integrations.placesApiKey, client-shippable by design).
+  /// Present → the claim address step's street field offers address
+  /// autocomplete; absent → the field is a plain text input (exactly the
+  /// pre-2.9 behavior).
+  final String? placesApiKey;
+
   /// Experience behavior (V2 auto-open flow). Absent → SDK defaults apply.
   final WinrExperienceConfig? experience;
 
@@ -41,6 +48,7 @@ class WinrSdkConfig {
     this.rulesUrl,
     this.shareUrl,
     this.appName,
+    this.placesApiKey,
     this.experience,
     this.copy,
     this.ageGateEnabled,
@@ -55,6 +63,7 @@ class WinrSdkConfig {
       rulesUrl: json['rulesUrl'] as String?,
       shareUrl: json['shareUrl'] as String?,
       appName: json['appName'] as String?,
+      placesApiKey: json['placesApiKey'] as String?,
       experience: json['experience'] is Map<String, dynamic>
           ? WinrExperienceConfig.fromJson(json['experience'])
           : null,
