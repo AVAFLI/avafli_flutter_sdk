@@ -17,12 +17,12 @@ class SecureStorage implements Storage {
   }) {
     _storage = FlutterSecureStorage(
       // Explicitly use EncryptedSharedPreferences on Android (spec: user_uid /
-      // tokens must be stored in EncryptedSharedPreferences, AES-256 at rest).
-      // NOTE: flutter_secure_storage v11+ deprecates this flag (Jetpack Security
-      // is EOL) and auto-migrates to custom AES ciphers; at our pinned v10 it is
-      // still the correct way to force encryption. Revisit when bumping to v11.
-      // ignore: deprecated_member_use
-      aOptions: const AndroidOptions(encryptedSharedPreferences: true),
+      // tokens must be stored encrypted, AES-256 at rest). In
+      // flutter_secure_storage v10+ Android encryption is ALWAYS ON and the old
+      // encryptedSharedPreferences flag is gone (removed in v11 — passing it
+      // was a compile error under pana's latest-deps analysis, which zeroed the
+      // pub.dev score). v11 auto-migrates values written by older versions.
+      aOptions: const AndroidOptions(),
       iOptions: IOSOptions(
         groupId: groupId,
         accountName: accountName ?? 'winr_flutter_sdk',

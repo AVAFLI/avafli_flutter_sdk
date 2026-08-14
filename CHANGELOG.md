@@ -1,3 +1,7 @@
+## 2.8.2 — 2026-08-14
+
+- `flutter_secure_storage` floor raised to v10 and the removed `encryptedSharedPreferences` flag dropped (Android encryption is always on in v10+; the flag's removal in v11 broke compilation under latest-dependency analysis and zeroed the pub.dev score). Values written by older versions migrate automatically.
+
 ## 2.8.1 — 2026-08-13
 
 - Theme isolation: the experience no longer inherits the host app's `InputDecorationTheme`. A host with filled/rounded inputs was painting a second white pill inside the SDK's code-entry box (and could distort any SDK text field).
