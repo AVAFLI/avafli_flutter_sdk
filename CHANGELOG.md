@@ -1,3 +1,23 @@
+## 2.9.2 — 2026-08-14
+
+- **Single legal instance on email capture**: the capture screen's legal
+  sentence now carries underlined, tappable "Official Rules" and "Privacy
+  Policy" spans (opening the publisher's rules URL externally, exactly as the
+  old links row did), and the separate "OFFICIAL RULES • PRIVACY POLICY" row
+  was removed from that screen only — other screens keep theirs. The
+  "Powered by © WINR Media" line remains.
+- **Bottom-anchored capture footer**: the legal sentence and powered-by line
+  now anchor to the bottom of the capture screen instead of sitting directly
+  under the CTA; on short screens or with the keyboard up the layout degrades
+  to normal scrolling with a guaranteed minimum gap below the button.
+- **Privacy Policy links open the real policy**: every "Privacy Policy"
+  link/span (capture sentence, dashboard and how-it-works legal rows, claim
+  consent text, privacy-choices screen) previously opened the publisher's
+  rules URL because no privacy URL existed in config. They now open
+  https://winrmedia.com/sdk/privacy (new `winrV2PrivacyPolicyUrl` constant,
+  mirroring iOS `WINRConstants.privacyURL`). "Official Rules" links keep
+  `rulesUrl`.
+
 ## 2.9.1 — 2026-08-14
 
 - **Official share icons**: the share screen's social row (Instagram /

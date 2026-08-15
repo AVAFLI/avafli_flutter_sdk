@@ -1342,6 +1342,21 @@ class WINRV2PillButton extends StatelessWidget {
   }
 }
 
+/// Canonical WINR privacy policy, mirroring iOS `WINRConstants.privacyURL`.
+/// Publisher config carries no privacy URL (`rulesUrl` covers the Official
+/// Rules only), so every "Privacy Policy" link/span falls back to this —
+/// previously they silently opened `rulesUrl` instead.
+const String winrV2PrivacyPolicyUrl = 'https://winrmedia.com/sdk/privacy';
+
+/// Opens [winrV2PrivacyPolicyUrl] externally — the ONE opener shared by every
+/// Privacy Policy link and span, so the destination can never drift per
+/// screen.
+void winrV2OpenPrivacyPolicy() {
+  final uri = Uri.tryParse(winrV2PrivacyPolicyUrl);
+  if (uri == null) return;
+  launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class WINRV2LegalLinks extends StatelessWidget {
   final String? rulesUrl;
   final bool showPoweredBy;
@@ -1352,7 +1367,7 @@ class WINRV2LegalLinks extends StatelessWidget {
     this.showPoweredBy = false,
   });
 
-  void _open() {
+  void _openRules() {
     final url = rulesUrl;
     if (url == null || url.isEmpty) return;
     final uri = Uri.tryParse(url);
@@ -1368,7 +1383,7 @@ class WINRV2LegalLinks extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _link('OFFICIAL RULES'),
+            _link('OFFICIAL RULES', _openRules),
             const SizedBox(width: 8),
             Container(
               width: 4,
@@ -1379,7 +1394,8 @@ class WINRV2LegalLinks extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            _link('PRIVACY POLICY'),
+            // The real policy, not rulesUrl — see [winrV2PrivacyPolicyUrl].
+            _link('PRIVACY POLICY', winrV2OpenPrivacyPolicy),
           ],
         ),
         if (showPoweredBy) ...[
@@ -1393,9 +1409,9 @@ class WINRV2LegalLinks extends StatelessWidget {
     );
   }
 
-  Widget _link(String title) {
+  Widget _link(String title, VoidCallback onTap) {
     return GestureDetector(
-      onTap: _open,
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Text(
         title,

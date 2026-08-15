@@ -580,8 +580,9 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
-  /// Destination of the Official Rules / Privacy Policy consent links (the
-  /// same URL the dashboard legal links open). Null → the links are inert.
+  /// Destination of the Official Rules consent link (the same URL the
+  /// dashboard legal links open). Null → that link is inert. The Privacy
+  /// Policy link always opens [winrV2PrivacyPolicyUrl].
   final String? rulesUrl;
 
   /// Backend-masked winning email ("d********r@winr.example.com"); null for
@@ -675,7 +676,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     _state = form.state;
     _promoConsent = form.promoConsentGranted;
     _rulesTap = TapGestureRecognizer()..onTap = _openRules;
-    _privacyTap = TapGestureRecognizer()..onTap = _openRules;
+    // The real policy, not rulesUrl — see [winrV2PrivacyPolicyUrl].
+    _privacyTap = TapGestureRecognizer()..onTap = winrV2OpenPrivacyPolicy;
     for (final c in [
       _firstName,
       _lastName,
@@ -719,8 +721,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     super.dispose();
   }
 
-  /// Official Rules / Privacy Policy destination — the same URL the
-  /// dashboard's legal links open.
+  /// Official Rules destination — the same URL the dashboard's legal links
+  /// open.
   void _openRules() {
     final url = widget.rulesUrl;
     if (url == null || url.isEmpty) return;

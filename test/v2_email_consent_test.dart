@@ -7,6 +7,7 @@
 //     declining it changes nothing about entry or winner contact;
 //   * submitEmail carries the real state of both, never a literal.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,7 +102,8 @@ void main() {
     bool ctaEnabled(WidgetTester tester) =>
         tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled;
 
-    testWidgets('BOTH checkboxes start unchecked — consent is an affirmative act',
+    testWidgets(
+        'BOTH checkboxes start unchecked — consent is an affirmative act',
         (tester) async {
       // Marketing was pre-checked until Aug 2026. Changed on governance
       // review: pre-ticked consent boxes are invalid under GDPR and
@@ -208,7 +210,62 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
       expect(find.byIcon(Icons.lock), findsNothing);
     });
+  });
 
+  group('capture legal footer (2.9.2)', () {
+    Future<void> pump(WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Material(
+          child: WINRV2CaptureView(
+            accent: WINRV2Accent(null).color,
+            logoUrl: null,
+            rulesUrl: 'https://example.com/rules',
+            giveaway: _giveaway(),
+            isSubmitting: false,
+            onSubmit: (
+              email, {
+              required ageConfirmed,
+              required marketingConsent,
+            }) {},
+            onInfo: () {},
+            onClose: () {},
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets(
+        'ONE legal instance — tappable underlined sentence spans, '
+        'no separate links row, powered-by stays', (tester) async {
+      await pump(tester);
+
+      // The old "OFFICIAL RULES • PRIVACY POLICY" row is gone from THIS
+      // screen only (dashboard/how-it-works keep theirs).
+      expect(find.byType(WINRV2LegalLinks), findsNothing);
+      expect(find.text('OFFICIAL RULES'), findsNothing);
+      expect(find.text('PRIVACY POLICY'), findsNothing);
+
+      // The sentence itself now carries the links as underlined tappable
+      // spans.
+      final rich = tester.widget<RichText>(find.byWidgetPredicate((w) =>
+          w is RichText && w.text.toPlainText().contains('Official Rules')));
+      final spans = <TextSpan>[];
+      rich.text.visitChildren((span) {
+        if (span is TextSpan) spans.add(span);
+        return true;
+      });
+      final rules = spans.firstWhere((s) => s.text == 'Official Rules');
+      final privacy = spans.firstWhere((s) => s.text == 'Privacy Policy');
+      for (final span in [rules, privacy]) {
+        expect(span.recognizer, isA<TapGestureRecognizer>());
+        expect(span.style?.decoration, TextDecoration.underline);
+      }
+
+      // Branding line survives the row's removal.
+      expect(find.text('Powered by © WINR Media'), findsOneWidget);
+    });
   });
 
   group('SubmitEmailRequest body', () {
@@ -281,6 +338,5 @@ void main() {
         isNull,
       );
     });
-
   });
 }

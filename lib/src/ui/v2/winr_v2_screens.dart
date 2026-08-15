@@ -5,6 +5,7 @@
 //
 // Mirrors the iOS SDK's WINRV2Screens.swift.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -435,6 +436,14 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   /// winner contact.
   bool _marketingConsent = false;
 
+  /// Tap recognizers for the Official Rules / Privacy Policy spans inside the
+  /// legal sentence — the sentence IS the legal entry point here (the separate
+  /// links row was removed from this screen; other screens keep theirs).
+  /// Rules opens [WINRV2CaptureView.rulesUrl]; the policy span opens the real
+  /// policy at [winrV2PrivacyPolicyUrl].
+  late final TapGestureRecognizer _rulesTap;
+  late final TapGestureRecognizer _privacyTap;
+
   /// Shape check only — the server revalidates. Its job is to pick pre-fill
   /// vs editable, so a partner bug degrades to the normal typed flow instead
   /// of locking a garbage value into a read-only field.
@@ -466,6 +475,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   @override
   void initState() {
     super.initState();
+    _rulesTap = TapGestureRecognizer()..onTap = _openRules;
+    _privacyTap = TapGestureRecognizer()..onTap = winrV2OpenPrivacyPolicy;
     _email.addListener(() => setState(() {}));
     _emailFocus.addListener(() {
       if (!_emailFocus.hasFocus &&
@@ -478,9 +489,21 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
 
   @override
   void dispose() {
+    _rulesTap.dispose();
+    _privacyTap.dispose();
     _email.dispose();
     _emailFocus.dispose();
     super.dispose();
+  }
+
+  /// Opens the publisher's rules URL externally via url_launcher, exactly as
+  /// the removed WINRV2LegalLinks row's OFFICIAL RULES link did.
+  void _openRules() {
+    final url = widget.rulesUrl;
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -492,112 +515,167 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         // on the SAME flat dark surface as the streak dashboard drawer
         // (WINRV2Colors.gunmetal), so Day 1 and Day 2+ read as one product.
         const ColoredBox(color: WINRV2Colors.gunmetal),
-        SingleChildScrollView(
-          // Keyboard-aware: inside the experience's resizing Scaffold this
-          // resolves to 0; it guards hosts/tests without that chrome so the
-          // email field and CTA always scroll clear of the keyboard.
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-          child: Column(
-            children: [
-              const SizedBox(height: 18),
-              WINRV2Header(
-                logoUrl: widget.logoUrl,
-                onInfo: widget.onInfo,
-                onClose: widget.onClose,
-              ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
+        // LayoutBuilder + minHeight + IntrinsicHeight let the Spacer below the
+        // CTA push the legal block to the drawer's bottom edge on tall
+        // screens, while short screens / a raised keyboard degrade to plain
+        // scrolling (the Spacer collapses to zero; the SizedBox above the
+        // legal block is the guaranteed minimum gap under the button).
+        LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            // Keyboard-aware: inside the experience's resizing Scaffold this
+            // resolves to 0; it guards hosts/tests without that chrome so the
+            // email field and CTA always scroll clear of the keyboard.
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
                 child: Column(
                   children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'VISIT. EARN. WIN.',
-                        maxLines: 1,
-                        style: WINRV2Font.inter(
-                          40,
-                          weight: FontWeight.w900,
-                          letterSpacing: -1.2,
-                          height: 1.05,
-                        ),
-                      ),
+                    const SizedBox(height: 18),
+                    WINRV2Header(
+                      logoUrl: widget.logoUrl,
+                      onInfo: widget.onInfo,
+                      onClose: widget.onClose,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'VISIT DAILY.  EARN ENTRIES.  WIN BIG!',
-                      style: WINRV2Font.inter(15, weight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              _prizeStrip(),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Column(
-                  children: [
-                    // Focusing the email field scrolls it (and the CTA
-                    // below) clear of the software keyboard.
-                    WINRV2EnsureVisible(
-                      focusNode: _emailFocus,
-                      child: _emailField(),
-                    ),
-                    if (_showsEmailError || widget.submitError != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Text(
-                            // Validation wins: a malformed address must be
-                            // fixed before a transport retry means anything.
-                            _showsEmailError
-                                ? WINRV2Strings.invalidEmail
-                                : widget.submitError!,
-                            style: WINRV2Font.inter(
-                              13,
-                              color: WINRV2Colors.errorRed,
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                      child: Column(
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'VISIT. EARN. WIN.',
+                              maxLines: 1,
+                              style: WINRV2Font.inter(
+                                40,
+                                weight: FontWeight.w900,
+                                letterSpacing: -1.2,
+                                height: 1.05,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    _ageCheckbox(),
-                    const SizedBox(height: 10),
-                    _marketingConsentCheckbox(),
-                    const SizedBox(height: 14),
-                    WINRV2PillButton(
-                      accent: widget.accent,
-                      title: 'CLAIM MY $_day1Entries ENTRIES',
-                      isLoading: widget.isSubmitting,
-                      enabled: _canSubmit,
-                      onTap: () => widget.onSubmit(
-                        _lockedEmail ?? _email.text.trim(),
-                        ageConfirmed: _isAdult,
-                        marketingConsent: _marketingConsent,
+                          const SizedBox(height: 4),
+                          Text(
+                            'VISIT DAILY.  EARN ENTRIES.  WIN BIG!',
+                            style:
+                                WINRV2Font.inter(15, weight: FontWeight.w700),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 18),
+                    _prizeStrip(),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                      child: Column(
+                        children: [
+                          // Focusing the email field scrolls it (and the CTA
+                          // below) clear of the software keyboard.
+                          WINRV2EnsureVisible(
+                            focusNode: _emailFocus,
+                            child: _emailField(),
+                          ),
+                          if (_showsEmailError ||
+                              widget.submitError != null) ...[
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: Text(
+                                  // Validation wins: a malformed address must be
+                                  // fixed before a transport retry means anything.
+                                  _showsEmailError
+                                      ? WINRV2Strings.invalidEmail
+                                      : widget.submitError!,
+                                  style: WINRV2Font.inter(
+                                    13,
+                                    color: WINRV2Colors.errorRed,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          _ageCheckbox(),
+                          const SizedBox(height: 10),
+                          _marketingConsentCheckbox(),
+                          const SizedBox(height: 14),
+                          WINRV2PillButton(
+                            accent: widget.accent,
+                            title: 'CLAIM MY $_day1Entries ENTRIES',
+                            isLoading: widget.isSubmitting,
+                            enabled: _canSubmit,
+                            onTap: () => widget.onSubmit(
+                              _lockedEmail ?? _email.text.trim(),
+                              ageConfirmed: _isAdult,
+                              marketingConsent: _marketingConsent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Anchors the legal block to the bottom of the drawer on tall
+                    // screens; collapses to zero when space is tight so the
+                    // SizedBox above the legal block stays the minimum CTA gap.
+                    const Spacer(),
+                    const SizedBox(height: 18),
+                    // The single legal instance on this screen: the sentence itself
+                    // carries the tappable, underlined Official Rules / Privacy
+                    // Policy spans (the separate links row lives on other screens
+                    // only).
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      child: Text.rich(
+                        TextSpan(
+                          style: WINRV2Font.inter(
+                            12,
+                            color: WINRV2Colors.textTertiary,
+                          ),
+                          children: [
+                            const TextSpan(
+                              text:
+                                  'Your email lets us contact you if you win. '
+                                  'By entering you agree to the ',
+                            ),
+                            TextSpan(
+                              text: 'Official Rules',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                                decorationColor: WINRV2Colors.textTertiary,
+                              ),
+                              recognizer: _rulesTap,
+                            ),
+                            const TextSpan(text: ' & '),
+                            TextSpan(
+                              text: 'Privacy Policy',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                                decorationColor: WINRV2Colors.textTertiary,
+                              ),
+                              recognizer: _privacyTap,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Powered by © WINR Media',
+                      style: WINRV2Font.inter(12,
+                          color: WINRV2Colors.textTertiary),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Text(
-                  'Your email lets us contact you if you win. By entering you '
-                  'agree to the Official Rules & Privacy Policy',
-                  textAlign: TextAlign.center,
-                  style: WINRV2Font.inter(12, color: WINRV2Colors.textTertiary),
-                ),
-              ),
-              const SizedBox(height: 3),
-              WINRV2LegalLinks(rulesUrl: widget.rulesUrl, showPoweredBy: true),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ],
@@ -1200,8 +1278,9 @@ class WINRV2PrivacyChoicesView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
-  /// Destination of the privacy-policy link (same URL as the legal links).
-  /// Null → the link is inert.
+  /// Retained for API compatibility; the privacy-policy link now always opens
+  /// the real policy at [winrV2PrivacyPolicyUrl] (it previously opened this
+  /// rules URL because no privacy URL existed in config).
   final String? rulesUrl;
 
   /// Back arrow — returns to the how-it-works screen.
@@ -1237,13 +1316,7 @@ class WINRV2PrivacyChoicesView extends StatefulWidget {
 class _WINRV2PrivacyChoicesViewState extends State<WINRV2PrivacyChoicesView> {
   WINRV2OptOutPhase _optOutPhase = WINRV2OptOutPhase.idle;
 
-  void _openPolicy() {
-    final url = widget.rulesUrl;
-    if (url == null || url.isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
+  void _openPolicy() => winrV2OpenPrivacyPolicy();
 
   void _showOptOutConfirmation() {
     if (_optOutPhase != WINRV2OptOutPhase.idle) return;
