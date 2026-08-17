@@ -2021,6 +2021,27 @@ class WINRV2ClaimShareView extends StatefulWidget {
         : 'I just won $prizeHeadline in $app!';
   }
 
+  /// Appends `utm_source={network}&utm_medium=winr_share` to the publisher's
+  /// [shareUrl] via [Uri] (correct whether or not the URL already has a query
+  /// string). A URL already carrying a `utm_source` param is returned
+  /// untouched — the publisher's own tagging wins. Unparseable URLs pass
+  /// through unchanged. Exposed for tests.
+  static String? taggedShareUrl(String? shareUrl, String network) {
+    if (shareUrl == null || shareUrl.isEmpty) return shareUrl;
+    final Uri uri;
+    try {
+      uri = Uri.parse(shareUrl);
+    } on FormatException {
+      return shareUrl;
+    }
+    if (uri.queryParameters.containsKey('utm_source')) return shareUrl;
+    return uri.replace(queryParameters: {
+      ...uri.queryParametersAll,
+      'utm_source': network,
+      'utm_medium': 'winr_share',
+    }).toString();
+  }
+
   @override
   State<WINRV2ClaimShareView> createState() => _WINRV2ClaimShareViewState();
 }
@@ -2070,37 +2091,40 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
   String get _shareLine =>
       WINRV2ClaimShareView.shareLine(widget.prizeHeadline, widget.appName);
 
-  /// Clipboard payload: the line plus the share URL when configured.
-  String get _clipboardText {
-    final url = widget.shareUrl;
-    return (url == null || url.isEmpty) ? _shareLine : '$_shareLine $url';
-  }
+  /// Share payload: the line plus [url] (the UTM-tagged share URL) when
+  /// configured.
+  String _shareText(String? url) =>
+      (url == null || url.isEmpty) ? _shareLine : '$_shareLine $url';
 
   void _shareTo(_WINRSocialGlyphKind kind) {
+    // UTM-tag the publisher link with the tapped network (the enum names are
+    // exactly the utm_source values) so publishers can attribute installs per
+    // network — clipboard fallbacks included.
+    final taggedUrl =
+        WINRV2ClaimShareView.taggedShareUrl(widget.shareUrl, kind.name);
     switch (kind) {
       case _WINRSocialGlyphKind.x:
         // Tweet intent: prefilled text (+ shareUrl appended).
         final uri = Uri.parse('https://twitter.com/intent/tweet')
-            .replace(queryParameters: {'text': _clipboardText});
+            .replace(queryParameters: {'text': _shareText(taggedUrl)});
         launchUrl(uri, mode: LaunchMode.externalApplication);
       case _WINRSocialGlyphKind.facebook:
-        final url = widget.shareUrl;
-        if (url != null && url.isNotEmpty) {
+        if (taggedUrl != null && taggedUrl.isNotEmpty) {
           final uri = Uri.parse('https://www.facebook.com/sharer/sharer.php')
-              .replace(queryParameters: {'u': url});
+              .replace(queryParameters: {'u': taggedUrl});
           launchUrl(uri, mode: LaunchMode.externalApplication);
         } else {
-          _copyToClipboard();
+          _copyToClipboard(_shareText(taggedUrl));
         }
       case _WINRSocialGlyphKind.instagram:
       case _WINRSocialGlyphKind.snapchat:
       case _WINRSocialGlyphKind.tiktok:
-        _copyToClipboard();
+        _copyToClipboard(_shareText(taggedUrl));
     }
   }
 
-  void _copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: _clipboardText));
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
     setState(() => _copied = true);
     _copiedTimer?.cancel();
     _copiedTimer = Timer(const Duration(seconds: 2), () {

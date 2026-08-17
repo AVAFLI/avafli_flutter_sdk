@@ -361,6 +361,47 @@ void main() {
     );
   });
 
+  group('share-link UTM tagging', () {
+    test('appends utm params to a plain URL', () {
+      expect(
+        WINRV2ClaimShareView.taggedShareUrl('https://example.com/app', 'x'),
+        'https://example.com/app?utm_source=x&utm_medium=winr_share',
+      );
+    });
+
+    test('appends utm params to a URL with an existing query string', () {
+      expect(
+        WINRV2ClaimShareView.taggedShareUrl(
+            'https://example.com/app?ref=abc', 'facebook'),
+        'https://example.com/app?ref=abc&utm_source=facebook'
+        '&utm_medium=winr_share',
+      );
+    });
+
+    test('leaves a URL with an existing utm_source untouched', () {
+      const url = 'https://example.com/app?utm_source=publisher'
+          '&utm_medium=email';
+      expect(WINRV2ClaimShareView.taggedShareUrl(url, 'x'), url);
+    });
+
+    test('passes through null and empty', () {
+      expect(WINRV2ClaimShareView.taggedShareUrl(null, 'x'), isNull);
+      expect(WINRV2ClaimShareView.taggedShareUrl('', 'x'), '');
+    });
+
+    test('each network carries its own utm_source value', () {
+      for (final network in ['x', 'facebook', 'instagram', 'snapchat', 'tiktok']) {
+        final tagged = WINRV2ClaimShareView.taggedShareUrl(
+            'https://example.com/app', network);
+        expect(
+          Uri.parse(tagged!).queryParameters['utm_source'],
+          network,
+        );
+        expect(Uri.parse(tagged).queryParameters['utm_medium'], 'winr_share');
+      }
+    });
+  });
+
   testWidgets(
       'share step renders post-submit, copies on non-prefill networks, and '
       'CONTINUE advances', (tester) async {
@@ -402,12 +443,14 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '  So excited!  ');
     await tester.pump();
 
-    // Instagram has no text-prefill API → clipboard + confirmation.
+    // Instagram has no text-prefill API → clipboard + confirmation. The
+    // shareUrl is UTM-tagged with the tapped network even on this path.
     await tester.tap(find.bySemanticsLabel('Share on Instagram'));
     await tester.pump(const Duration(milliseconds: 200));
     expect(copied, [
       r'I just won $1,000.00 CASH PRIZE in Skape! '
-          'https://winr.example.com/s/abc',
+          'https://winr.example.com/s/abc'
+          '?utm_source=instagram&utm_medium=winr_share',
     ]);
     // The confirmation is faded IN (it lives in the tree at opacity 0
     // otherwise), then clears itself after the hold.

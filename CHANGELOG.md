@@ -1,3 +1,13 @@
+## Unreleased
+
+- **Share-link UTM tagging** — when the publisher's `shareUrl` is included
+  in a share action, the SDK appends `utm_source={network}&utm_medium=winr_share`
+  ({network} = x | facebook | instagram | snapchat | tiktok, per the tapped
+  button; clipboard-fallback paths keep their network's value). Built with
+  `Uri.replace` so URLs with existing query strings extend correctly, and a
+  shareUrl that already carries a `utm_source` param is left untouched
+  (publisher tagging wins). Share-text URLs only — nothing else changes.
+
 ## 2.9.3 — 2026-08-17
 
 - **Claim review slimmed to Joe's updated frame**: the "By submitting you
