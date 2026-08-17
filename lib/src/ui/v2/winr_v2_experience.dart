@@ -1746,7 +1746,9 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           key: const ValueKey('winner-form'),
           accent: _accent,
           logoUrl: _logoUrl,
-          rulesUrl: _rulesUrl,
+          // Names the publisher in the likeness consent (same source as the
+          // share line).
+          appName: widget.sdkConfig?.appName,
           maskedEmail: claim.maskedEmail,
           initialForm: _claimFormPrefill,
           // Present → the street field offers Google Places address

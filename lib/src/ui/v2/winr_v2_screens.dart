@@ -545,8 +545,20 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                         children: [
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(
-                              'VISIT. EARN. WIN.',
+                            // "EARN." carries the publisher's PRIMARY brand
+                            // color (the same branding primary the CTAs
+                            // use); VISIT. / WIN. stay white.
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(text: 'VISIT. '),
+                                  TextSpan(
+                                    text: 'EARN.',
+                                    style: TextStyle(color: widget.accent),
+                                  ),
+                                  const TextSpan(text: ' WIN.'),
+                                ],
+                              ),
                               maxLines: 1,
                               style: WINRV2Font.inter(
                                 40,
@@ -828,11 +840,18 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
 
   /// One checkbox row — box size, glyph treatment, spacing, color, text style
   /// and tap target are defined ONCE here so both rows are pixel-identical.
+  ///
+  /// 2.9.3: both boxes are tinted the publisher's PRIMARY brand color —
+  /// checked is a primary fill with a contrasting check (white on dark
+  /// brands, gunmetal on light ones), unchecked is a primary-tinted border.
   Widget _checkbox({
     required bool checked,
     required String label,
     required VoidCallback onTap,
   }) {
+    final accent = widget.accent;
+    final checkColor =
+        accent.computeLuminance() > 0.5 ? WINRV2Colors.gunmetal : Colors.white;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -840,10 +859,20 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            checked ? Icons.check_box : Icons.check_box_outline_blank,
-            size: 22,
-            color: Colors.white,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: checked ? accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: checked ? accent : accent.withValues(alpha: 0.6),
+                width: 1.5,
+              ),
+            ),
+            child:
+                checked ? Icon(Icons.check, size: 16, color: checkColor) : null,
           ),
           const SizedBox(width: 10),
           Flexible(
@@ -1653,7 +1682,10 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: WINRV2Colors.deepCharcoal,
+      // 2.9.3 (Ryan): the code-entry screen sits on the SAME flat gunmetal
+      // drawer surface as capture and the dashboard — no glow, no
+      // off-drawer charcoal — so adoption/verify reads as the same product.
+      color: WINRV2Colors.gunmetal,
       child: SafeArea(
         child: Column(
           children: [

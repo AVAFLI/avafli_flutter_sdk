@@ -257,36 +257,11 @@ class WINRV2VerifyEmailChip extends StatelessWidget {
   }
 }
 
-/// The radial primary-color glow that bleeds from the top of the drawer into
-/// gunmetal.
-class WINRV2TopGlow extends StatelessWidget {
-  final Color accent;
-
-  const WINRV2TopGlow({super.key, required this.accent});
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.9,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.15,
-            stops: const [0, 0.35, 0.8, 1],
-            colors: [
-              accent,
-              accent.withValues(alpha: 0.55),
-              WINRV2Colors.gunmetal.withValues(alpha: 0.9),
-              WINRV2Colors.gunmetal,
-            ],
-          ),
-        ),
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
-}
+// NOTE (2.9.3): `WINRV2TopGlow` — the radial primary-color glow that bled
+// from the top of the drawer into gunmetal — was DELETED. 2.9.0 already
+// dropped it from the capture screen; Ryan's direction is that NO screen
+// carries it: every screen sits on the flat gunmetal drawer surface. (The
+// gold-sparkle prize art on the winner-flow screens is unrelated and stays.)
 
 // ---------------------------------------------------------------------------
 // Prize presentation

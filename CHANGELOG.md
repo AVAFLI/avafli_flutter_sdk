@@ -1,3 +1,43 @@
+## 2.9.3 — 2026-08-17
+
+- **Claim review slimmed to Joe's updated frame**: the "By submitting you
+  agree to…" sentence and its Official Rules / Privacy Policy links were
+  removed from the claim review screen entirely — the screen now keeps only
+  the optional likeness checkbox, SUBMIT, and the secure-note. (The capture
+  screen's legal sentence and the dashboard/how-it-works legal rows are
+  unchanged.)
+- **Likeness consent names the publisher**: when the server-fed
+  `WinrSdkConfig.appName` is present (the same source the share line uses)
+  the checkbox reads "I authorize {name} and its promotional partners to use
+  my name, city, profile photo, and likeness for winner announcements and
+  promotional purposes. (Optional)"; without it the generic wording is
+  unchanged.
+- **Winner splash celebration**: the one-shot confetti-burst (the same
+  machinery as the Day-2+ streak tile's reveal beat) now explodes over the
+  trophy art the moment the splash appears — non-blocking, and removes
+  itself when done — with a gold drifting confetti field over the art
+  beneath it.
+- **Claim confirmation matches Joe's frame**: the confirmation screen now
+  celebrates on appearance (gold confetti drift + the same one-shot burst as
+  the splash, both non-blocking); the "3-5 Business Days" card is a solid
+  gunmetal card with a subtle border and an accent-stroked envelope circle;
+  and the winner card's OFFICIAL / WINNER labels render in the publisher's
+  primary accent instead of fixed gold. No accent color is ever hardcoded —
+  everything derives from the server-fed branding primary.
+- **Top glow fully retired**: the accent-blue radial top glow (dropped from
+  the capture screen in 2.9.0) is now gone from every screen — the unused
+  `WINRV2TopGlow` widget was deleted, and the 6-digit code-entry screen
+  (cross-device adoption + email verification) moved off its near-black
+  charcoal onto the same flat gunmetal drawer surface as capture and the
+  dashboard. The gold-sparkle prize art on the winner-flow screens is
+  untouched.
+- **Capture screen brand accents**: in "VISIT. EARN. WIN." the word "EARN."
+  now renders in the publisher's primary brand color (the same branding
+  primary the CTAs use); VISIT. / WIN. stay white. Both capture checkboxes
+  (18+ age gate, marketing consent) are tinted the primary too — checked is
+  a primary fill with a contrasting check, unchecked a primary-tinted
+  border — replacing the old white system-glyph boxes.
+
 ## 2.9.2 — 2026-08-14
 
 - **Single legal instance on email capture**: the capture screen's legal

@@ -113,9 +113,9 @@ void main() {
       expect(find.text(_ageLabel), findsOneWidget);
       expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
 
-      // No ticked glyphs anywhere; two empty boxes.
-      expect(find.byIcon(Icons.check_box), findsNothing);
-      expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
+      // No ticked glyphs anywhere (2.9.3: the boxes are drawn accent-tinted
+      // containers — a check icon appears only once a box is ticked).
+      expect(find.byIcon(Icons.check), findsNothing);
     });
 
     testWidgets('the age gate — not the consent box — gates the CTA',
@@ -144,13 +144,13 @@ void main() {
       // Checking it: CTA unchanged.
       await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
-      expect(find.byIcon(Icons.check_box), findsNWidgets(2));
+      expect(find.byIcon(Icons.check), findsNWidgets(2));
       expect(ctaEnabled(tester), isTrue);
 
       // Unchecking it again: CTA still unchanged.
       await tester.tap(find.text(winrV2DefaultMarketingConsentText));
       await tester.pump();
-      expect(find.byIcon(Icons.check_box), findsOneWidget); // the age box
+      expect(find.byIcon(Icons.check), findsOneWidget); // the age box
       expect(ctaEnabled(tester), isTrue);
     });
 

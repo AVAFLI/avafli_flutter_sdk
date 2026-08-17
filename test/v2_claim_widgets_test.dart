@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_claim.dart';
+import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart';
 import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
 
 Widget _host(Widget child) {
@@ -38,6 +39,7 @@ void main() {
 
   Widget stepsFlow({
     String? maskedEmail = 'c******a@winr.example.com',
+    String? appName,
     WINRPrizeClaimForm? initialForm,
     String? submitError,
     ValueChanged<WINRPrizeClaimForm>? onSubmit,
@@ -45,6 +47,7 @@ void main() {
     return _host(WINRV2ClaimStepsFlow(
       accent: accent,
       logoUrl: null,
+      appName: appName,
       maskedEmail: maskedEmail,
       initialForm: initialForm ?? WINRPrizeClaimForm(),
       isSubmitting: false,
@@ -70,6 +73,18 @@ void main() {
       onContinue: () => continued = true,
       onClose: () {},
     )));
+    // The one-shot confetti burst mounts WITH the splash (2.9.3) — same
+    // machinery as the streak tile's reveal beat — wrapped in IgnorePointer
+    // so it can never block CONTINUE. (It removes itself when the GIF ends,
+    // so assert on the first frame, before the clock advances.)
+    expect(find.byType(WINRV2GifView), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byType(WINRV2GifView),
+        matching: find.byType(IgnorePointer),
+      ),
+      findsWidgets,
+    );
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('CONGRATULATIONS!'), findsOneWidget);
@@ -146,13 +161,19 @@ void main() {
       find.text('Your information is secure and encrypted.'),
       findsOneWidget,
     );
-    // The removed checkboxes are gone; the rules/privacy links remain as
-    // tappable text.
+    // The removed checkboxes stay gone, and 2.9.3 removed the "By
+    // submitting you agree to…" sentence AND its Official Rules / Privacy
+    // Policy links from this screen entirely — only the optional likeness
+    // checkbox, SUBMIT, and the secure-note remain.
     expect(find.byKey(const ValueKey('consent-accuracy')), findsNothing);
     expect(find.byKey(const ValueKey('consent-rules')), findsNothing);
     expect(find.byKey(const ValueKey('consent-likeness')), findsOneWidget);
+    expect(find.textContaining('By submitting'), findsNothing);
+    expect(find.textContaining('Official Rules'), findsNothing);
+    expect(find.textContaining('Privacy Policy'), findsNothing);
+    // No appName configured → the generic likeness wording.
     expect(
-      find.textContaining('By submitting you agree to the'),
+      find.textContaining("I authorize this app's publisher"),
       findsOneWidget,
     );
 
@@ -237,6 +258,50 @@ void main() {
     );
   });
 
+  test('likeness consent copy names the publisher only when configured', () {
+    expect(
+      WINRV2ClaimStepsFlow.likenessConsentLabel('Skape'),
+      'I authorize Skape and its promotional partners to use my name, city, '
+      'profile photo, and likeness for winner announcements and promotional '
+      'purposes. (Optional)',
+    );
+    // Absent/blank appName → the generic wording, unchanged.
+    for (final absent in [null, '', '   ']) {
+      expect(
+        WINRV2ClaimStepsFlow.likenessConsentLabel(absent),
+        "(Optional) I authorize this app's publisher and its promotional "
+        'partners to use my name, city, profile photo, and likeness for '
+        'winner announcements and promotional purposes.',
+      );
+    }
+  });
+
+  testWidgets('review names the publisher in the likeness consent',
+      (tester) async {
+    await tester.pumpWidget(stepsFlow(
+      appName: 'Skape',
+      initialForm: WINRPrizeClaimForm(
+        firstName: 'Catherine',
+        lastName: 'Cinosta',
+        street: '5 Haide Pl.',
+        city: 'Brooklyn',
+        state: 'New York',
+        zip: '11737',
+      ),
+    ));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tapContinue(tester); // → step 2
+    await tapContinue(tester); // → review
+
+    expect(find.text('ALMOST DONE!'), findsOneWidget);
+    expect(
+      find.textContaining('I authorize Skape and its promotional partners'),
+      findsOneWidget,
+    );
+    expect(find.textContaining("this app's publisher"), findsNothing);
+  });
+
   testWidgets('confirmation renders the OFFICIAL WINNER card', (tester) async {
     var done = false;
     await tester.pumpWidget(_host(WINRV2ClaimConfirmationView(
@@ -254,9 +319,18 @@ void main() {
       submittedAt: '2026-08-04T12:00:00Z',
       onDone: () => done = true,
     )));
+    // Celebration mounts WITH the confirmation (2.9.3): the drifting gold
+    // confetti field plus the one-shot burst GIF (asserted on the first
+    // frame, before the burst can finish and remove itself) — both behind
+    // IgnorePointer so RETURN TO APP is never blocked.
+    expect(find.byType(WINRV2Confetti), findsOneWidget);
+    expect(find.byType(WINRV2GifView), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('YOUR PRIZE CLAIM HAS BEEN SUBMITTED'), findsOneWidget);
+    // No white "WINR MEDIA PRIZE CLAIM" strip — that's a canvas label in
+    // Joe's frame, not UI.
+    expect(find.text('WINR MEDIA PRIZE CLAIM'), findsNothing);
     expect(find.text('3-5 Business Days'), findsOneWidget);
     expect(find.text('OFFICIAL'), findsOneWidget);
     expect(find.text('WINNER'), findsOneWidget);

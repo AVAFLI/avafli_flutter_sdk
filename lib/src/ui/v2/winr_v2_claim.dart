@@ -28,13 +28,13 @@
 
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../network/places_autocomplete.dart';
 import 'winr_v2_components.dart';
+import 'winr_v2_effects.dart';
 import 'winr_v2_strings.dart';
 import 'winr_v2_svg_icon.dart';
 import 'winr_v2_theme.dart';
@@ -366,11 +366,20 @@ class _WINRClaimHeader extends StatelessWidget {
 }
 
 /// Dark info card with a leading icon (shield/mail) — splash + confirmation.
+/// Defaults to the translucent white-8% fill; the confirmation screen passes
+/// a solid gunmetal [fill] + subtle [borderColor] per Joe's 2.9.3 frame.
 class _WINRClaimInfoCard extends StatelessWidget {
   final Widget icon;
   final Widget content;
+  final Color fill;
+  final Color? borderColor;
 
-  const _WINRClaimInfoCard({required this.icon, required this.content});
+  const _WINRClaimInfoCard({
+    required this.icon,
+    required this.content,
+    this.fill = const Color(0x14FFFFFF), // white 8%
+    this.borderColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -380,8 +389,9 @@ class _WINRClaimInfoCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0x14FFFFFF), // white 8%
+          color: fill,
           borderRadius: BorderRadius.circular(12),
+          border: borderColor == null ? null : Border.all(color: borderColor!),
         ),
         child: Row(
           children: [
@@ -399,7 +409,7 @@ class _WINRClaimInfoCard extends StatelessWidget {
 // Winner splash ("CONGRATULATIONS!")
 // ---------------------------------------------------------------------------
 
-class WINRV2WinnerSplashView extends StatelessWidget {
+class WINRV2WinnerSplashView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final String prizeHeadline;
@@ -416,97 +426,141 @@ class WINRV2WinnerSplashView extends StatelessWidget {
   });
 
   @override
+  State<WINRV2WinnerSplashView> createState() => _WINRV2WinnerSplashViewState();
+}
+
+class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
+  /// One-shot celebration (2.9.3, Joe's frame): the confetti-burst GIF
+  /// explodes once over the trophy art the moment the splash appears — the
+  /// exact machinery the Day-2+ streak tile uses at its reveal beat — then
+  /// removes itself via [WINRV2GifView.onFinished]. A gold drifting
+  /// confetti field keeps sparkling over the art beneath it (see
+  /// [_trophyArt]). Purely decorative: wrapped in [IgnorePointer] so it
+  /// never blocks CONTINUE or the close X.
+  bool _bursting = true;
+
+  Color get accent => widget.accent;
+  String? get logoUrl => widget.logoUrl;
+  String get prizeHeadline => widget.prizeHeadline;
+  VoidCallback get onContinue => widget.onContinue;
+  VoidCallback get onClose => widget.onClose;
+
+  @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: WINRV2Colors.deepCharcoal,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 18),
-            _WINRClaimHeader(logoUrl: logoUrl, onClose: onClose),
-            const SizedBox(height: 4),
-            _trophyArt(),
-            const SizedBox(height: 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'CONGRATULATIONS!',
-                  maxLines: 1,
-                  style: WINRV2Font.inter(
-                    34,
-                    weight: FontWeight.w900,
-                    letterSpacing: -1.0,
-                    height: 1.1,
-                  ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: _content()),
+          // Confetti burst layer — over the trophy art, on appearance only.
+          if (_bursting)
+            Positioned(
+              top: 40,
+              left: 0,
+              right: 0,
+              height: 340,
+              child: IgnorePointer(
+                child: WINRV2GifView(
+                  WINRV2Assets.confettiBurst,
+                  onFinished: () {
+                    if (mounted) setState(() => _bursting = false);
+                  },
                 ),
               ),
             ),
-            Text(
-              'YOU’RE OUR LATEST WINNER!',
-              style: WINRV2Font.inter(
-                17,
-                weight: FontWeight.w900,
-                color: accent,
-                letterSpacing: -0.4,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text('You’ve won:', style: WINRV2Font.inter(14)),
-            const SizedBox(height: 8),
-            // Full-width white strip with the prize-derived headline
-            // (same derivation as the Day-1 capture strip).
-            Container(
-              width: double.infinity,
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  prizeHeadline,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  style: WINRV2Font.inter(
-                    28,
-                    weight: FontWeight.w900,
-                    color: WINRV2Colors.gunmetal,
-                    letterSpacing: -0.8,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
+        ],
+      ),
+    );
+  }
+
+  Widget _content() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 18),
+          _WINRClaimHeader(logoUrl: logoUrl, onClose: onClose),
+          const SizedBox(height: 4),
+          _trophyArt(),
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
               child: Text(
-                'To process your prize, we just need a few details.',
+                'CONGRATULATIONS!',
+                maxLines: 1,
+                style: WINRV2Font.inter(
+                  34,
+                  weight: FontWeight.w900,
+                  letterSpacing: -1.0,
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ),
+          Text(
+            'YOU’RE OUR LATEST WINNER!',
+            style: WINRV2Font.inter(
+              17,
+              weight: FontWeight.w900,
+              color: accent,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text('You’ve won:', style: WINRV2Font.inter(14)),
+          const SizedBox(height: 8),
+          // Full-width white strip with the prize-derived headline
+          // (same derivation as the Day-1 capture strip).
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                prizeHeadline,
+                maxLines: 2,
                 textAlign: TextAlign.center,
-                style: WINRV2Font.inter(15),
+                style: WINRV2Font.inter(
+                  28,
+                  weight: FontWeight.w900,
+                  color: WINRV2Colors.gunmetal,
+                  letterSpacing: -0.8,
+                  height: 1.1,
+                ),
               ),
             ),
-            const SizedBox(height: 14),
-            _WINRClaimInfoCard(
-              icon: Icon(Icons.shield_outlined, size: 26, color: accent),
-              content: Text(
-                'Your information is securely collected and only used to '
-                'verify your prize and announce you as our winner.',
-                style: WINRV2Font.inter(13, height: 1.25),
-              ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Text(
+              'To process your prize, we just need a few details.',
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(15),
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: WINRV2PillButton(
-                accent: accent,
-                title: 'CONTINUE',
-                onTap: onContinue,
-              ),
+          ),
+          const SizedBox(height: 14),
+          _WINRClaimInfoCard(
+            icon: Icon(Icons.shield_outlined, size: 26, color: accent),
+            content: Text(
+              'Your information is securely collected and only used to '
+              'verify your prize and announce you as our winner.',
+              style: WINRV2Font.inter(13, height: 1.25),
             ),
-            const SizedBox(height: 30),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: WINRV2PillButton(
+              accent: accent,
+              title: 'CONTINUE',
+              onTap: onContinue,
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }
@@ -537,6 +591,17 @@ class WINRV2WinnerSplashView extends StatelessWidget {
             package: WINRV2Assets.package,
             height: 230,
             fit: BoxFit.contain,
+          ),
+          // Gold confetti drift over the art (same layer the winner modal
+          // and the claim confirmation use).
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: WINRV2Confetti(
+                style: WINRV2ConfettiStyle.gold,
+                count: 26,
+                speed: 0.7,
+              ),
+            ),
           ),
         ],
       ),
@@ -580,10 +645,11 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
-  /// Destination of the Official Rules consent link (the same URL the
-  /// dashboard legal links open). Null → that link is inert. The Privacy
-  /// Policy link always opens [winrV2PrivacyPolicyUrl].
-  final String? rulesUrl;
+  /// Publisher display name from the server-fed `WinrSdkConfig.appName`
+  /// (the same source the share line uses). Present → the likeness consent
+  /// names the publisher; null/blank → generic wording. See
+  /// [likenessConsentLabel].
+  final String? appName;
 
   /// Backend-masked winning email ("d********r@winr.example.com"); null for
   /// older backends → generic locked copy.
@@ -614,7 +680,7 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
     super.key,
     required this.accent,
     required this.logoUrl,
-    this.rulesUrl,
+    this.appName,
     this.maskedEmail,
     required this.initialForm,
     this.placesApiKey,
@@ -624,6 +690,22 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
     required this.onSubmit,
     required this.onClose,
   });
+
+  /// The likeness/promo consent copy (2.9.3, Joe's updated frame): names
+  /// the actual app/publisher when the server-fed [appName] is present —
+  /// Flutter's only publisher-name source, the same one the share line
+  /// uses — and falls back to the generic wording otherwise.
+  static String likenessConsentLabel(String? appName) {
+    final name = appName?.trim();
+    if (name == null || name.isEmpty) {
+      return "(Optional) I authorize this app's publisher and its "
+          'promotional partners to use my name, city, profile photo, and '
+          'likeness for winner announcements and promotional purposes.';
+    }
+    return 'I authorize $name and its promotional partners to use my '
+        'name, city, profile photo, and likeness for winner announcements '
+        'and promotional purposes. (Optional)';
+  }
 
   @override
   State<WINRV2ClaimStepsFlow> createState() => _WINRV2ClaimStepsFlowState();
@@ -649,9 +731,6 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   /// Direction of the last navigation — drives the slide edges.
   bool _advancing = true;
 
-  late final TapGestureRecognizer _rulesTap;
-  late final TapGestureRecognizer _privacyTap;
-
   /// Street-field address autocomplete. Null when no `placesApiKey` was
   /// configured (and no test client injected) — the field is then a plain
   /// text input.
@@ -675,9 +754,6 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     _zip = TextEditingController(text: form.zip);
     _state = form.state;
     _promoConsent = form.promoConsentGranted;
-    _rulesTap = TapGestureRecognizer()..onTap = _openRules;
-    // The real policy, not rulesUrl — see [winrV2PrivacyPolicyUrl].
-    _privacyTap = TapGestureRecognizer()..onTap = winrV2OpenPrivacyPolicy;
     for (final c in [
       _firstName,
       _lastName,
@@ -716,19 +792,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     }
     _places?.dispose();
     if (_ownsPlacesClient) _placesClient?.dispose();
-    _rulesTap.dispose();
-    _privacyTap.dispose();
     super.dispose();
-  }
-
-  /// Official Rules destination — the same URL the dashboard's legal links
-  /// open.
-  void _openRules() {
-    final url = widget.rulesUrl;
-    if (url == null || url.isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   WINRPrizeClaimForm get _form => WINRPrizeClaimForm(
@@ -1313,63 +1377,26 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     );
   }
 
-  /// 2.9 review consents: ONLY the likeness/promo checkbox remains, and it
-  /// is OPTIONAL (never gates SUBMIT). The "information is accurate" and
-  /// "agree to Official Rules" checkboxes are gone — the rules/privacy links
-  /// stay as plain tappable text beneath.
+  /// 2.9.3 review consents (Joe's updated frame): ONLY the OPTIONAL
+  /// likeness/promo checkbox — it never gates SUBMIT. The "By submitting
+  /// you agree to…" sentence and its Official Rules / Privacy Policy links
+  /// were removed from this screen entirely; the screen keeps just this
+  /// checkbox, SUBMIT, and the secure-note.
   Widget _consentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _WINRClaimConsentRow(
-          key: const ValueKey('consent-likeness'),
-          accent: widget.accent,
-          isOn: _promoConsent,
-          onToggle: () => setState(() => _promoConsent = !_promoConsent),
-          label: const TextSpan(
-            text: "(Optional) I authorize this app's publisher and its "
-                'promotional partners to use my name, city, profile photo, '
-                'and likeness for winner announcements and promotional '
-                'purposes.',
-          ),
-        ),
-        const SizedBox(height: 28),
-        Text.rich(
-          TextSpan(
-            style: WINRV2Font.inter(14, height: 1.35),
-            children: [
-              const TextSpan(text: 'By submitting you agree to the '),
-              TextSpan(
-                text: 'Official Rules',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.white,
-                ),
-                recognizer: _rulesTap,
-              ),
-              const TextSpan(text: ' and '),
-              TextSpan(
-                text: 'Privacy Policy',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.white,
-                ),
-                recognizer: _privacyTap,
-              ),
-              const TextSpan(text: '.'),
-            ],
-          ),
-        ),
-      ],
+    return _WINRClaimConsentRow(
+      key: const ValueKey('consent-likeness'),
+      accent: widget.accent,
+      isOn: _promoConsent,
+      onToggle: () => setState(() => _promoConsent = !_promoConsent),
+      label: TextSpan(
+        text: WINRV2ClaimStepsFlow.likenessConsentLabel(widget.appName),
+      ),
     );
   }
 }
 
 /// A single consent checkbox row (accent square check + wrapping label).
-/// Tapping anywhere on the row toggles; the underlined Official Rules /
-/// Privacy Policy spans open their URL instead via their tap recognizers.
+/// Tapping anywhere on the row toggles.
 class _WINRClaimConsentRow extends StatelessWidget {
   final Color accent;
   final bool isOn;
@@ -2238,7 +2265,7 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
 // Confirmation ("YOUR PRIZE CLAIM HAS BEEN SUBMITTED")
 // ---------------------------------------------------------------------------
 
-class WINRV2ClaimConfirmationView extends StatelessWidget {
+class WINRV2ClaimConfirmationView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final WINRPrizeClaimForm? form;
@@ -2256,6 +2283,28 @@ class WINRV2ClaimConfirmationView extends StatelessWidget {
     required this.onDone,
   });
 
+  @override
+  State<WINRV2ClaimConfirmationView> createState() =>
+      _WINRV2ClaimConfirmationViewState();
+}
+
+class _WINRV2ClaimConfirmationViewState
+    extends State<WINRV2ClaimConfirmationView> {
+  /// One-shot celebration (2.9.3, Joe's frame): the confetti-burst GIF
+  /// explodes once over the top of the screen the moment the confirmation
+  /// appears — the same machinery as the winner splash — then removes
+  /// itself via [WINRV2GifView.onFinished]. A gold drifting confetti field
+  /// keeps sparkling beneath it. Both are purely decorative and wrapped in
+  /// [IgnorePointer], so they can never block RETURN TO APP or the close X.
+  bool _bursting = true;
+
+  Color get accent => widget.accent;
+  String? get logoUrl => widget.logoUrl;
+  WINRPrizeClaimForm? get form => widget.form;
+  String get claimNumber => widget.claimNumber;
+  String get submittedAt => widget.submittedAt;
+  VoidCallback get onDone => widget.onDone;
+
   // Gold palette (mirrors iOS `Gold`).
   static const Color _goldText = Color(0xFFB88C29);
   static const Color _goldBorder = Color(0xFFD4AD47);
@@ -2266,78 +2315,132 @@ class WINRV2ClaimConfirmationView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: WINRV2Colors.deepCharcoal,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 18),
-            _WINRClaimHeader(logoUrl: logoUrl, onClose: onDone),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Text(
-                'YOUR PRIZE CLAIM HAS BEEN SUBMITTED',
-                textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
-                  26,
-                  weight: FontWeight.w900,
-                  letterSpacing: -0.7,
-                  height: 1.15,
+      child: Stack(
+        children: [
+          // Gold confetti drift across the upper half (Joe's sparkle field),
+          // beneath the content so text stays crisp.
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 360,
+            child: IgnorePointer(
+              child: WINRV2Confetti(
+                style: WINRV2ConfettiStyle.gold,
+                count: 26,
+                speed: 0.7,
+              ),
+            ),
+          ),
+          Positioned.fill(child: _content()),
+          // One-shot burst over the headline area, on appearance only.
+          if (_bursting)
+            Positioned(
+              top: 30,
+              left: 0,
+              right: 0,
+              height: 320,
+              child: IgnorePointer(
+                child: WINRV2GifView(
+                  WINRV2Assets.confettiBurst,
+                  onFinished: () {
+                    if (mounted) setState(() => _bursting = false);
+                  },
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Text(
-                'Our team is reviewing your information. You’ll receive a '
-                'confirmation email shortly.',
-                textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
-                  15,
-                  color: const Color(0xD9FFFFFF),
-                  height: 1.25,
+        ],
+      ),
+    );
+  }
+
+  Widget _content() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 18),
+          _WINRClaimHeader(logoUrl: logoUrl, onClose: onDone),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Text(
+              'YOUR PRIZE CLAIM HAS BEEN SUBMITTED',
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(
+                26,
+                weight: FontWeight.w900,
+                letterSpacing: -0.7,
+                height: 1.15,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 34),
+            child: Text(
+              'Our team is reviewing your information. You’ll receive a '
+              'confirmation email shortly.',
+              textAlign: TextAlign.center,
+              style: WINRV2Font.inter(
+                15,
+                color: const Color(0xD9FFFFFF),
+                height: 1.25,
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          _WINRClaimInfoCard(
+            // Joe's frame: solid dark gunmetal card with a subtle border;
+            // the envelope sits in a circle stroked in the publisher's
+            // PRIMARY accent (never a hardcoded blue).
+            fill: WINRV2Colors.gunmetal,
+            borderColor: const Color(0x1FFFFFFF),
+            icon: Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: accent, width: 2),
+              ),
+              child:
+                  const Icon(Icons.mail_outline, size: 22, color: Colors.white),
+            ),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Expect to receive your prize within',
+                  style: WINRV2Font.inter(14),
                 ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _WINRClaimInfoCard(
-              icon: Icon(Icons.mail_outline, size: 26, color: accent),
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Expect to receive your prize within',
-                    style: WINRV2Font.inter(14),
+                const SizedBox(height: 1),
+                Text(
+                  '3-5 Business Days',
+                  style: WINRV2Font.inter(
+                    18,
+                    weight: FontWeight.w900,
+                    color: accent,
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    '3-5 Business Days',
-                    style: WINRV2Font.inter(
-                      18,
-                      weight: FontWeight.w900,
-                      color: accent,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 40),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: _winnerCard(),
+          ),
+          const SizedBox(height: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 34),
+            child: _winnerCard(),
+          ),
+          const SizedBox(height: 30),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: WINRV2PillButton(
+              accent: accent,
+              title: 'RETURN TO APP',
+              onTap: onDone,
             ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: WINRV2PillButton(
-                accent: accent,
-                title: 'RETURN TO APP',
-                onTap: onDone,
-              ),
-            ),
-            const SizedBox(height: 34),
-          ],
-        ),
+          ),
+          const SizedBox(height: 34),
+        ],
       ),
     );
   }
@@ -2368,12 +2471,14 @@ class WINRV2ClaimConfirmationView extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Joe's 2.9.3 frame: OFFICIAL / WINNER carry the
+                    // publisher's PRIMARY accent (previously fixed gold).
                     Text(
                       'OFFICIAL',
                       style: WINRV2Font.inter(
                         16,
                         weight: FontWeight.w900,
-                        color: _goldText,
+                        color: accent,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -2382,7 +2487,7 @@ class WINRV2ClaimConfirmationView extends StatelessWidget {
                       style: WINRV2Font.inter(
                         16,
                         weight: FontWeight.w900,
-                        color: _goldText,
+                        color: accent,
                         letterSpacing: 0.5,
                       ),
                     ),
