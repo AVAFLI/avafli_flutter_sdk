@@ -22,7 +22,7 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 - **Visit mode** — A never-resetting streak variant for low-frequency apps
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
 - **Server-driven branding** — Logo, prize image, and primary color update without app releases
-- **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out via `optOut()`, and an in-app "Privacy choices → delete my data"
+- **GDPR/CCPA compliant** — Built-in consent flows, RTD opt-out via `optOut()`, and a self-serve "Delete my data & stop participating" section inside the in-app Privacy Policy
 - **Analytics forwarding** — Route SDK events to your existing analytics stack
 
 ## Quick Start
@@ -318,8 +318,9 @@ drawing was fair and that a prize went to a real eligible person, which a sweeps
 operator must be able to show; GDPR Art. 17(3) exempts data needed for legal claims.
 The person is erased, the proof is kept.
 
-Users can also self-serve without any code from you: the experience's
-**Privacy choices → delete my data** flow runs the same erasure as `optOut()`.
+Users can also self-serve without any code from you: every legal link opens the
+Privacy Policy in an in-app webview, and its **Delete my data & stop participating**
+section runs the same erasure as `optOut()`.
 
 ## API Reference
 
