@@ -1,5 +1,23 @@
-## Unreleased
+## 2.9.4 — 2026-08-18
 
+- **Legal documents open in-app**: Official Rules and the Privacy Policy now
+  open inside the experience in a gunmetal legal webview (slim title + X
+  header, thin load-progress strip, honest offline state with RETRY) instead
+  of bouncing out to the external browser — every legal entry point routes
+  there: the capture screen's inline Rules/Privacy spans, the
+  dashboard/code-entry "OFFICIAL RULES • PRIVACY POLICY" rows, and the
+  how-it-works fine print. The winner share screen's social launches still
+  open externally (that's the point of a share). Adds the SDK's ONE new
+  dependency: `webview_flutter` (the flutter.dev first-party plugin).
+- **"Delete my data" moved inside the privacy page**: the privacy policy
+  loads with `?app=1`, under which winrmedia.com/sdk/privacy renders a
+  Delete-my-data section; tapping it navigates `winr://delete`, which the
+  webview intercepts and hands to the SDK's existing destructive
+  confirmation + authenticated erasure (`WINR.optOut`) — same honest
+  success/failure states, then the whole experience dismisses. The native
+  "Privacy choices" screen is gone; the how-it-works "Privacy choices" fine
+  print now opens the privacy webview directly. Unknown `winr://` verbs from
+  a newer page build degrade to a dead tap, never a webview error page.
 - **Share-link UTM tagging** — when the publisher's `shareUrl` is included
   in a share action, the SDK appends `utm_source={network}&utm_medium=winr_share`
   ({network} = x | facebook | instagram | snapchat | tiktok, per the tapped

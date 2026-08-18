@@ -37,6 +37,7 @@ import '../../winr_error.dart';
 import 'winr_v2_claim.dart';
 import 'winr_v2_components.dart';
 import 'winr_v2_effects.dart';
+import 'winr_v2_legal.dart';
 import 'winr_v2_screens.dart';
 import 'winr_v2_strings.dart';
 import 'winr_v2_theme.dart';
@@ -56,10 +57,6 @@ enum _V2Phase {
   emailVerify,
   streak,
   howItWorks,
-
-  /// The dedicated "Privacy choices" screen (2.9) — policy link + the
-  /// delete-my-data action, reached from the how-it-works screen.
-  privacyChoices,
 
   /// This person is the drawn winner and hasn't submitted their claim yet —
   /// the drawer shows the winner splash → claim form → confirmation flow
@@ -1203,19 +1200,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     });
   }
 
-  /// "Privacy choices" (2.9): reached from the how-it-works screen; back
-  /// returns there ([_lastPrimaryPhase] stays intact for the eventual return
-  /// to the primary phase).
-  void _showPrivacyChoices() {
-    if (_phase != _V2Phase.howItWorks) return;
-    setState(() => _phase = _V2Phase.privacyChoices);
-  }
-
-  void _hidePrivacyChoices() {
-    if (_phase != _V2Phase.privacyChoices) return;
-    setState(() => _phase = _V2Phase.howItWorks);
-  }
-
   /// Close the whole experience (X buttons / GOT IT on the dashboard):
   /// slide the drawer down + fade the dim, then pop with the grant (if any).
   Future<void> _requestDismiss() async {
@@ -1244,56 +1228,65 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // with filled/rounded inputs (Skape does this) painted a second white pill
     // inside our code-entry box. The SDK styles all of its inputs explicitly,
     // so reset input theming to the framework default at the experience root.
-    return Theme(
-      data: Theme.of(context).copyWith(
-        inputDecorationTheme: const InputDecorationTheme(),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        resizeToAvoidBottomInset: true,
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                // Dimmed host app behind the drawer.
-                AnimatedOpacity(
-                  opacity: _drawerAppeared ? 1 : 0,
-                  duration: const Duration(milliseconds: 300),
-                  child: const SizedBox.expand(
-                    child: ColoredBox(color: Color(0x73000000)),
+    // WINRV2ExperienceScope: the in-app legal webview (winr_v2_legal.dart)
+    // is pushed as a route OUTSIDE this subtree, so its openers capture the
+    // erasure action and the whole-drawer dismissal from the tapped link's
+    // context here. WINR.optOut throws on failure, so the delete
+    // confirmation can show an honest error instead of pretending success.
+    return WINRV2ExperienceScope(
+      closeExperience: () => unawaited(_requestDismiss()),
+      optOutAction: WINR.optOut,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          inputDecorationTheme: const InputDecorationTheme(),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  // Dimmed host app behind the drawer.
+                  AnimatedOpacity(
+                    opacity: _drawerAppeared ? 1 : 0,
+                    duration: const Duration(milliseconds: 300),
+                    child: const SizedBox.expand(
+                      child: ColoredBox(color: Color(0x73000000)),
+                    ),
                   ),
-                ),
-                // The drawer: gunmetal sheet flush to bottom/sides, top corners
-                // rounded 30, ~90% screen height, spring slide-up.
-                AnimatedSlide(
-                  offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
-                  duration: const Duration(milliseconds: 450),
-                  curve: _drawerAppeared
-                      ? Curves.easeOutCubic
-                      : Curves.easeInCubic,
-                  child: SizedBox(
-                    height: constraints.maxHeight * 0.90,
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(30)),
-                      child: ColoredBox(
-                        color: WINRV2Colors.gunmetal,
-                        child: _drawerContent(),
+                  // The drawer: gunmetal sheet flush to bottom/sides, top corners
+                  // rounded 30, ~90% screen height, spring slide-up.
+                  AnimatedSlide(
+                    offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
+                    duration: const Duration(milliseconds: 450),
+                    curve: _drawerAppeared
+                        ? Curves.easeOutCubic
+                        : Curves.easeInCubic,
+                    child: SizedBox(
+                      height: constraints.maxHeight * 0.90,
+                      width: double.infinity,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(30)),
+                        child: ColoredBox(
+                          color: WINRV2Colors.gunmetal,
+                          child: _drawerContent(),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (_showWinnerModal && latestWinner != null)
-                  WINRV2WinnerModal(
-                    accent: _accent,
-                    winner: latestWinner,
-                    onDismiss: () => setState(() => _showWinnerModal = false),
-                  ),
-              ],
-            );
-          },
+                  if (_showWinnerModal && latestWinner != null)
+                    WINRV2WinnerModal(
+                      accent: _accent,
+                      winner: latestWinner,
+                      onDismiss: () => setState(() => _showWinnerModal = false),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1701,22 +1694,6 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           visitMode: _visitMode,
           onDone: _hideHowItWorks,
           onClose: _requestDismiss,
-          // 2.9: opens the dedicated Privacy choices screen — the delete
-          // action lives there now.
-          onPrivacyChoices: _showPrivacyChoices,
-        );
-
-      case _V2Phase.privacyChoices:
-        return WINRV2PrivacyChoicesView(
-          accent: _accent,
-          logoUrl: _logoUrl,
-          rulesUrl: _rulesUrl,
-          onBack: _hidePrivacyChoices,
-          onClose: _requestDismiss,
-          // The in-experience RTD opt-out (DELETE MY DATA). WINR.optOut()
-          // throws on failure, so the confirmation can show an honest error
-          // instead of pretending success.
-          optOutAction: WINR.optOut,
         );
     }
   }

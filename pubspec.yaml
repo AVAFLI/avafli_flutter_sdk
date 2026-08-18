@@ -3,7 +3,7 @@ description: >
   WINR Flutter SDK — A sweepstakes and engagement SDK for Flutter apps.
   Add daily streaks and sweepstakes campaigns to your app with a few
   lines of code.
-version: 2.9.3
+version: 2.9.4
 homepage: https://winrmedia.com/sdk
 repository: https://github.com/AVAFLI/winr_flutter_sdk
 
@@ -20,6 +20,7 @@ dependencies:
   device_info_plus: ">=10.0.0 <14.0.0"
   crypto: ^3.0.7
   url_launcher: ">=6.2.0 <7.0.0"
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:

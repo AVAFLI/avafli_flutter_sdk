@@ -106,17 +106,17 @@ abstract final class WINRV2Strings {
   /// Facebook falls back here when no shareUrl is configured).
   static const String shareCopied = 'Copied — paste it in your post';
 
-  // ── Privacy choices / RTD opt-out ──
+  // ── Legal webview / RTD opt-out ──
 
-  /// Entry-point link at the bottom of the how-it-works screen — 2.9: opens
-  /// the dedicated Privacy choices screen (policy link + delete action).
+  /// Entry-point link at the bottom of the how-it-works screen — 2.9.4:
+  /// opens the in-app privacy webview directly (the delete action lives
+  /// inside the page, behind the winr://delete bridge).
   static const String privacyChoices = 'Privacy choices';
 
-  /// Title strip on the dedicated Privacy choices screen.
-  static const String privacyChoicesTitle = 'PRIVACY CHOICES';
-
-  /// The policy link row on the Privacy choices screen.
-  static const String privacyPolicyLink = 'Privacy Policy';
+  /// The in-app legal webview couldn't load its page (offline, DNS, server
+  /// error) — shown with a RETRY affordance; we never leave a blank sheet.
+  static const String legalLoadFailed =
+      "We couldn't load this page. Check your connection and try again.";
 
   /// The destructive confirmation's title.
   static const String optOutTitle = 'Delete my data & stop participating';
