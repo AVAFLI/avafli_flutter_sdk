@@ -169,6 +169,13 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           _buildHeader(),
           const SizedBox(height: 32),
           _buildActionButtons(),
+          const SizedBox(height: 32),
+          const Center(
+            child: Text(
+              '© 2026 WINR MEDIA • All rights reserved.',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
@@ -178,6 +185,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Image.asset('assets/winrmedia-logo-dark.png', height: 36),
+        const SizedBox(height: 24),
         Row(
           children: [
             Container(

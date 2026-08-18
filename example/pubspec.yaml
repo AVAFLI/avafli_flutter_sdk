@@ -30,10 +30,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Example assets (if needed)
-  # assets:
-  #   - images/
-  #   - fonts/
+  assets:
+    - assets/winrmedia-logo-dark.png
 
   # Example fonts (if needed)
   # fonts:
