@@ -249,6 +249,10 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   bool _suppressWinnerClaim = false;
 
   bool _showWinnerModal = false;
+
+  /// The delete-my-data confirmation (2.9.5): presented over the drawer
+  /// AFTER the privacy webview pops on winr://delete (iOS/web parity).
+  bool _showsOptOutFlow = false;
   bool _drawerAppeared = false;
   bool _isDismissing = false;
 
@@ -1200,6 +1204,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     });
   }
 
+  /// winr://delete landed and the webview has popped — raise the
+  /// destructive confirmation over whatever SDK screen is behind it.
+  void _presentOptOutFlow() {
+    if (!mounted || _showsOptOutFlow) return;
+    setState(() => _showsOptOutFlow = true);
+  }
+
   /// Close the whole experience (X buttons / GOT IT on the dashboard):
   /// slide the drawer down + fade the dim, then pop with the grant (if any).
   Future<void> _requestDismiss() async {
@@ -1230,12 +1241,12 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // so reset input theming to the framework default at the experience root.
     // WINRV2ExperienceScope: the in-app legal webview (winr_v2_legal.dart)
     // is pushed as a route OUTSIDE this subtree, so its openers capture the
-    // erasure action and the whole-drawer dismissal from the tapped link's
-    // context here. WINR.optOut throws on failure, so the delete
-    // confirmation can show an honest error instead of pretending success.
+    // delete-confirmation presenter from the tapped link's context here.
+    // 2.9.5 (iOS/web parity): on winr://delete the webview pops FIRST, then
+    // this presents WINRV2OptOutFlow over the drawer — cancel returns the
+    // user to the SDK screen they came from, not the privacy page.
     return WINRV2ExperienceScope(
-      closeExperience: () => unawaited(_requestDismiss()),
-      optOutAction: WINR.optOut,
+      presentDeleteConfirmation: _presentOptOutFlow,
       child: Theme(
         data: Theme.of(context).copyWith(
           inputDecorationTheme: const InputDecorationTheme(),
@@ -1282,6 +1293,24 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
                       accent: _accent,
                       winner: latestWinner,
                       onDismiss: () => setState(() => _showWinnerModal = false),
+                    ),
+                  // The delete-my-data confirmation (2.9.5): presents over
+                  // the whole drawer once the privacy webview has closed.
+                  // WINR.optOut throws on failure, so the confirmation can
+                  // show an honest error instead of pretending success; on
+                  // success it holds the deleted copy, then the entire
+                  // experience dismisses.
+                  if (_showsOptOutFlow)
+                    Positioned.fill(
+                      child: WINRV2OptOutFlow(
+                        optOutAction: WINR.optOut,
+                        onCancel: () =>
+                            setState(() => _showsOptOutFlow = false),
+                        onDeleted: () {
+                          setState(() => _showsOptOutFlow = false);
+                          unawaited(_requestDismiss());
+                        },
+                      ),
                     ),
                 ],
               );

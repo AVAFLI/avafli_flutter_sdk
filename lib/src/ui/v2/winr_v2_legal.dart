@@ -4,11 +4,12 @@
 // browser. The privacy page is loaded with `?app=1`, under which
 // winrmedia.com/sdk/privacy renders a "Delete my data" section; tapping it
 // navigates to `winr://delete`, which the webview intercepts
-// (NavigationDecision.prevent) and hands back to the SDK's existing
-// destructive opt-out confirmation + authenticated erasure flow
-// ([WINRV2OptOutFlow] → `WINR.optOut`). The native "Privacy choices" screen
-// that used to list the delete action is gone — the webview is now the one
-// legal surface.
+// (NavigationDecision.prevent), then — matching iOS/web (2.9.5) — the
+// webview CLOSES FIRST and the SDK's existing destructive opt-out
+// confirmation ([WINRV2OptOutFlow] → `WINR.optOut`) presents over the
+// experience, so cancel returns the user to the SDK screen they came from.
+// The native "Privacy choices" screen that used to list the delete action
+// is gone — the webview is now the one legal surface.
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -65,24 +66,21 @@ WINRV2LegalNav winrV2LegalNavDecision(String url) {
 }
 
 /// Experience-level wiring the legal webview needs but the deep link/span
-/// widgets don't carry: how to perform the authenticated erasure
-/// (`WINR.optOut`) and how to dismiss the whole drawer after a completed
-/// deletion. The experience root provides it; the openers capture it from
-/// the tapped link's context at push time (the pushed route itself lives
-/// outside the experience subtree). Absent (bare widget tests/previews) the
-/// webview still works — a confirmed delete just fails honestly.
+/// widgets don't carry: how to raise the destructive delete-my-data
+/// confirmation over the experience once the webview has closed (iOS/web
+/// parity — 2.9.5). The experience root provides it; the openers capture it
+/// from the tapped link's context at push time (the pushed route itself
+/// lives outside the experience subtree). Absent (bare widget
+/// tests/previews) the webview still works — the delete bridge just closes
+/// the webview.
 class WINRV2ExperienceScope extends InheritedWidget {
-  /// Animated dismissal of the whole experience drawer.
-  final VoidCallback closeExperience;
-
-  /// The RTD opt-out (the experience wires `WINR.optOut`). MUST throw on
-  /// failure so the confirmation shows an honest error.
-  final Future<void> Function()? optOutAction;
+  /// Presents [WINRV2OptOutFlow] over the drawer. The experience wires the
+  /// erasure (`WINR.optOut`) and the post-success drawer dismissal itself.
+  final VoidCallback presentDeleteConfirmation;
 
   const WINRV2ExperienceScope({
     super.key,
-    required this.closeExperience,
-    this.optOutAction,
+    required this.presentDeleteConfirmation,
     required super.child,
   });
 
@@ -93,8 +91,7 @@ class WINRV2ExperienceScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(WINRV2ExperienceScope oldWidget) =>
-      closeExperience != oldWidget.closeExperience ||
-      optOutAction != oldWidget.optOutAction;
+      presentDeleteConfirmation != oldWidget.presentDeleteConfirmation;
 }
 
 /// Opens the publisher's Official Rules in the in-app legal webview. No-op
@@ -131,8 +128,7 @@ void _pushLegalWebView(
     builder: (_) => WINRV2LegalWebView(
       title: title,
       uri: uri,
-      optOutAction: scope?.optOutAction,
-      onExperienceClose: scope?.closeExperience,
+      onDeleteRequested: scope?.presentDeleteConfirmation,
     ),
   ));
 }
@@ -140,25 +136,23 @@ void _pushLegalWebView(
 /// The in-app legal document screen: slim header (title + X) over a webview
 /// on the experience's gunmetal chrome, with a thin load-progress bar and an
 /// honest offline state with RETRY. `winr://delete` (from the privacy page's
-/// Delete-my-data section) raises [WINRV2OptOutFlow] over the page.
+/// Delete-my-data section) pops this screen and fires [onDeleteRequested] —
+/// the confirmation presents over the SDK experience, not over the page
+/// (iOS/web parity).
 class WINRV2LegalWebView extends StatefulWidget {
   final String title;
   final Uri uri;
 
-  /// Performs the RTD opt-out when the bridge fires (the openers wire the
-  /// experience's `WINR.optOut` via [WINRV2ExperienceScope]). Null → a
-  /// confirmed delete fails honestly instead of pretending.
-  final Future<void> Function()? optOutAction;
-
-  /// Dismisses the whole experience after a completed deletion.
-  final VoidCallback? onExperienceClose;
+  /// Fired AFTER this screen pops when the `winr://delete` bridge fires (the
+  /// openers wire the experience's presenter via [WINRV2ExperienceScope]).
+  /// Null (bare tests/previews) → the bridge just closes the webview.
+  final VoidCallback? onDeleteRequested;
 
   const WINRV2LegalWebView({
     super.key,
     required this.title,
     required this.uri,
-    this.optOutAction,
-    this.onExperienceClose,
+    this.onDeleteRequested,
   });
 
   @override
@@ -169,7 +163,6 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
   late final WebViewController _controller;
   int _progress = 0;
   bool _failed = false;
-  bool _showsOptOut = false;
 
   @override
   void initState() {
@@ -186,7 +179,7 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
             case WINRV2LegalNav.allow:
               return NavigationDecision.navigate;
             case WINRV2LegalNav.delete:
-              _showOptOut();
+              _handleDeleteBridge();
               return NavigationDecision.prevent;
             case WINRV2LegalNav.block:
               return NavigationDecision.prevent;
@@ -202,9 +195,14 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
       ..loadRequest(widget.uri);
   }
 
-  void _showOptOut() {
-    if (_showsOptOut || !mounted) return;
-    setState(() => _showsOptOut = true);
+  /// iOS/web parity: the webview closes FIRST, then the destructive
+  /// confirmation presents over the SDK experience — cancel returns the
+  /// user to the screen they came from, not to the privacy page.
+  void _handleDeleteBridge() {
+    if (!mounted) return;
+    final onDelete = widget.onDeleteRequested;
+    Navigator.of(context).pop();
+    onDelete?.call();
   }
 
   void _retry() {
@@ -213,13 +211,6 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
       _progress = 0;
     });
     _controller.loadRequest(widget.uri);
-  }
-
-  /// Deletion completed: leave this screen, then dismiss the whole drawer.
-  void _handleDeleted() {
-    final close = widget.onExperienceClose;
-    Navigator.of(context).pop();
-    close?.call();
   }
 
   @override
@@ -256,12 +247,6 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
               ],
             ),
           ),
-          if (_showsOptOut)
-            WINRV2OptOutFlow(
-              optOutAction: widget.optOutAction,
-              onCancel: () => setState(() => _showsOptOut = false),
-              onDeleted: _handleDeleted,
-            ),
         ],
       ),
     );
@@ -344,7 +329,7 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
 
 /// The delete-my-data confirmation's phase while the flow is up:
 ///
-///     confirming → inFlight → done → (dismiss webview + whole experience)
+///     confirming → inFlight → done → (dismiss the whole experience)
 ///                          ↘ failed (inline error, retryable) ↗
 ///
 /// Failure NEVER pretends success — the confirmation stays up with the error
@@ -352,9 +337,10 @@ class _WINRV2LegalWebViewState extends State<WINRV2LegalWebView> {
 enum WINRV2OptOutPhase { confirming, inFlight, failed, done }
 
 /// The destructive delete-my-data confirmation (scrim + card, identical to
-/// the retired Privacy-choices screen's dialog), raised by the privacy
-/// webview's `winr://delete` bridge. Owns the confirm → erase → done/failed
-/// machine; the webview stays visible behind the scrim.
+/// the retired Privacy-choices screen's dialog), presented by the EXPERIENCE
+/// over the drawer after the privacy webview's `winr://delete` bridge closes
+/// the webview (iOS/web parity). Owns the confirm → erase → done/failed
+/// machine.
 class WINRV2OptOutFlow extends StatefulWidget {
   /// The authenticated erasure (`WINR.optOut`). MUST throw on failure so the
   /// confirmation can show an honest error instead of pretending the
@@ -365,7 +351,8 @@ class WINRV2OptOutFlow extends StatefulWidget {
   /// Dismissed without deleting (cancel / scrim tap).
   final VoidCallback onCancel;
 
-  /// Deletion succeeded and the success copy has held [successHold].
+  /// Deletion succeeded and the success copy has held [successHold] — the
+  /// experience dismisses the whole drawer.
   final VoidCallback onDeleted;
 
   /// How long "Your data has been deleted." holds before [onDeleted] fires.
@@ -397,8 +384,8 @@ class _WINRV2OptOutFlowState extends State<WINRV2OptOutFlow> {
       await action();
       if (!mounted) return;
       setState(() => _phase = WINRV2OptOutPhase.done);
-      // Hold the success copy a beat, then hand back (webview + experience
-      // both dismiss).
+      // Hold the success copy a beat, then hand back (the experience
+      // dismisses the whole drawer).
       await Future<void>.delayed(WINRV2OptOutFlow.successHold);
       if (!mounted) return;
       widget.onDeleted();

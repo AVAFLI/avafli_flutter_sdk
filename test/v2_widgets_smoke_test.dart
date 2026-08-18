@@ -359,12 +359,13 @@ void main() {
         findsOneWidget);
   });
 
-  // ── Legal webview opt-out flow (2.9.4: delete-my-data lives INSIDE the ──
-  // ── privacy webview, behind the winr://delete bridge)                  ──
+  // ── Delete-my-data opt-out flow (lives INSIDE the privacy webview     ──
+  // ── behind the winr://delete bridge; 2.9.5: the webview closes first   ──
+  // ── and the confirmation presents over the experience, iOS/web parity) ──
 
   testWidgets(
-      'how-it-works keeps the muted Privacy choices entry but hosts no '
-      'native delete surface — the destructive dialog is gone from here',
+      'how-it-works hosts no privacy surface at all (2.9.5) — no Privacy '
+      'choices entry, no delete listing, no destructive dialog',
       (tester) async {
     await tester.pumpWidget(_host(WINRV2HowItWorksView(
       accent: accent,
@@ -375,11 +376,11 @@ void main() {
     )));
     await tester.pump();
 
-    // The quiet entry point stays (it opens the in-app privacy webview
-    // directly — not exercised here: the webview needs a platform).
-    expect(find.text(WINRV2Strings.privacyChoices), findsOneWidget);
-    // No native delete listing or destructive confirmation anywhere on the
-    // screen — that surface moved inside the privacy page.
+    // The muted "Privacy choices" fine print is gone — the legal-links rows
+    // and the capture screen's inline links keep the delete path findable.
+    expect(find.text('Privacy choices'), findsNothing);
+    // And the native delete surfaces stay gone — that flow lives inside the
+    // privacy page, behind winr://delete.
     expect(find.text(WINRV2Strings.optOutConfirm), findsNothing);
     expect(find.text(WINRV2Strings.optOutTitle), findsNothing);
   });
@@ -418,7 +419,7 @@ void main() {
 
   testWidgets(
       'confirming performs the opt-out, shows the deleted state, then hands '
-      'back so the webview and the whole experience dismiss', (tester) async {
+      'back so the experience dismisses the whole drawer', (tester) async {
     var optOutCalls = 0;
     var deleted = 0;
     await tester.pumpWidget(optOutFlow(

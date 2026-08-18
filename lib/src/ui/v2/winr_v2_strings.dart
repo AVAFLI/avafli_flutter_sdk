@@ -108,11 +108,6 @@ abstract final class WINRV2Strings {
 
   // ── Legal webview / RTD opt-out ──
 
-  /// Entry-point link at the bottom of the how-it-works screen — 2.9.4:
-  /// opens the in-app privacy webview directly (the delete action lives
-  /// inside the page, behind the winr://delete bridge).
-  static const String privacyChoices = 'Privacy choices';
-
   /// The in-app legal webview couldn't load its page (offline, DNS, server
   /// error) — shown with a RETRY affordance; we never leave a blank sheet.
   static const String legalLoadFailed =

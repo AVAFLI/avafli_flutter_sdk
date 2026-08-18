@@ -1,3 +1,15 @@
+## 2.9.5 — 2026-08-18
+
+- **Delete confirmation now presents over the experience after the webview
+  closes, matching iOS**: on `winr://delete` the privacy webview pops FIRST,
+  then the destructive delete-my-data confirmation presents over the SDK
+  drawer — cancel returns to the SDK screen the user came from, not the
+  privacy page. Success behavior is unchanged (the deleted copy holds a
+  beat, then the whole experience dismisses).
+- **Removed the redundant "Privacy choices" link** from the how-it-works
+  fine print — the legal-links rows and the capture screen's inline Privacy
+  Policy links keep the delete path findable.
+
 ## 2.9.4 — 2026-08-18
 
 - **Legal documents open in-app**: Official Rules and the Privacy Policy now

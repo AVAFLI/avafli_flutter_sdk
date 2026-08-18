@@ -1225,28 +1225,11 @@ class WINRV2HowItWorksView extends StatelessWidget {
                       onTap: onDone,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  // Muted privacy entry point — deliberately quiet: present
-                  // for those who look for it, invisible to the pitch. 2.9.4:
-                  // opens the in-app privacy webview directly (the delete
-                  // action lives inside the page, behind winr://delete).
-                  GestureDetector(
-                    onTap: () => winrV2OpenPrivacyPolicy(context),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      child: Text(
-                        WINRV2Strings.privacyChoices,
-                        style: WINRV2Font.inter(
-                          12,
-                          color: WINRV2Colors.textTertiary,
-                        ).copyWith(decoration: TextDecoration.underline),
-                      ),
-                    ),
-                  ),
+                  // 2.9.5: the muted "Privacy choices" entry is gone —
+                  // the legal-links rows and the capture screen's inline
+                  // Privacy Policy links keep the delete path findable
+                  // (the delete section lives inside the privacy page,
+                  // behind winr://delete).
                   const SizedBox(height: 24),
                 ],
               ),
