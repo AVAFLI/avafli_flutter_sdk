@@ -45,8 +45,7 @@ class WINRUser {
   /// is fully functional for guests; when your user signs in, call configure
   /// again with the real user and attribution upgrades in place — the streak
   /// is device-anchored and unaffected.
-  static const WINRUser guest =
-      WINRUser(id: '', firstName: '', lastName: '');
+  static const WINRUser guest = WINRUser(id: '', firstName: '', lastName: '');
 
   /// True when this value is the [guest] sentinel.
   bool get isGuest => id.isEmpty;

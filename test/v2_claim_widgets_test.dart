@@ -390,7 +390,13 @@ void main() {
     });
 
     test('each network carries its own utm_source value', () {
-      for (final network in ['x', 'facebook', 'instagram', 'snapchat', 'tiktok']) {
+      for (final network in [
+        'x',
+        'facebook',
+        'instagram',
+        'snapchat',
+        'tiktok'
+      ]) {
         final tagged = WINRV2ClaimShareView.taggedShareUrl(
             'https://example.com/app', network);
         expect(

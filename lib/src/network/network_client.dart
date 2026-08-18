@@ -267,14 +267,18 @@ class NetworkClientImpl implements NetworkClient {
       case 400:
         // A 400 is invalid-argument / failed-precondition — never an API-key
         // problem. Map the known cases, otherwise surface the backend's text.
-        if (lower?.contains('underage') == true || lower?.contains('13 or older') == true) {
+        if (lower?.contains('underage') == true ||
+            lower?.contains('13 or older') == true) {
           throw const WINRException(WINRError.underage);
         }
         if (lower?.contains('email') == true &&
-            (lower!.contains('confirm') || lower.contains('required') || lower.contains('consent'))) {
+            (lower!.contains('confirm') ||
+                lower.contains('required') ||
+                lower.contains('consent'))) {
           throw WINRException(WINRError.emailRequired, errorMessage);
         }
-        if (lower?.contains('valid email') == true || lower?.contains('invalid email') == true) {
+        if (lower?.contains('valid email') == true ||
+            lower?.contains('invalid email') == true) {
           throw const WINRException(WINRError.invalidEmail);
         }
         throw WINRException(WINRError.unknown, errorMessage);
@@ -289,10 +293,12 @@ class NetworkClientImpl implements NetworkClient {
         if (_isSuspendedError(errorMessage)) {
           throw const WINRException(WINRError.serviceUnavailable);
         }
-        if (lower?.contains('geograph') == true || lower?.contains('location') == true) {
+        if (lower?.contains('geograph') == true ||
+            lower?.contains('location') == true) {
           throw const WINRException(WINRError.geographyNotAllowed);
         }
-        if (lower?.contains('already claimed') == true || lower?.contains('already entered') == true) {
+        if (lower?.contains('already claimed') == true ||
+            lower?.contains('already entered') == true) {
           throw const WINRException(WINRError.ineligibleToday);
         }
         // Prize-claim rejection ("Not the winner") is a real permission-denied
@@ -317,7 +323,8 @@ class NetworkClientImpl implements NetworkClient {
       case 504:
         throw WINRException(WINRError.serverError, errorMessage);
       default:
-        Logger.instance.error('Unexpected HTTP status: $statusCode — $errorMessage');
+        Logger.instance
+            .error('Unexpected HTTP status: $statusCode — $errorMessage');
         throw WINRException(WINRError.unknown, errorMessage);
     }
   }
@@ -366,8 +373,7 @@ class CertificatePinner {
     // Documented fallback: pin on the full-certificate DER SHA-256. This is
     // LESS robust than SPKI pinning (it breaks whenever the cert itself rotates,
     // even if the key is unchanged) and is only used if SPKI extraction fails.
-    final derPin =
-        'sha256/${base64.encode(sha256.convert(cert.der).bytes)}';
+    final derPin = 'sha256/${base64.encode(sha256.convert(cert.der).bytes)}';
     return pinnedKeys.contains(derPin);
   }
 

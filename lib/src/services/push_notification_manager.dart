@@ -84,7 +84,8 @@ class WINRPushNotificationManager {
   Future<void> _registerTokenWithBackend(String token) async {
     final client = _networkClient;
     if (client == null) {
-      Logger.instance.debug('No network client available for token registration');
+      Logger.instance
+          .debug('No network client available for token registration');
       return;
     }
 

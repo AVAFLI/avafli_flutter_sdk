@@ -53,7 +53,10 @@ class _FakePlaces {
 
   _FakePlaces({
     this.predictions = const [
-      {'placeId': 'place-googleplex', 'text': '1600 Amphitheatre Pkwy, Mountain View, CA, USA'},
+      {
+        'placeId': 'place-googleplex',
+        'text': '1600 Amphitheatre Pkwy, Mountain View, CA, USA'
+      },
     ],
     List<Map<String, dynamic>>? detailsComponents,
   }) : detailsComponents = detailsComponents ?? googleplexComponents();
@@ -62,9 +65,8 @@ class _FakePlaces {
       .where((r) => r.url.path.endsWith('places:autocomplete'))
       .toList();
 
-  List<http.Request> get detailsRequests => requests
-      .where((r) => r.url.path.contains('/v1/places/'))
-      .toList();
+  List<http.Request> get detailsRequests =>
+      requests.where((r) => r.url.path.contains('/v1/places/')).toList();
 
   WINRPlacesClient client({String apiKey = 'AIza-test-key'}) {
     return WINRPlacesClient(
@@ -97,7 +99,8 @@ Widget stepsFlow({WINRPlacesClient? placesClient, String? placesApiKey}) {
     accent: WINRV2Accent(null).color,
     logoUrl: null,
     maskedEmail: 'c******a@winr.example.com',
-    initialForm: WINRPrizeClaimForm(firstName: 'Catherine', lastName: 'Cinosta'),
+    initialForm:
+        WINRPrizeClaimForm(firstName: 'Catherine', lastName: 'Cinosta'),
     placesApiKey: placesApiKey,
     placesClient: placesClient,
     isSubmitting: false,
@@ -165,8 +168,7 @@ void main() {
   });
 
   group('WINRPlacesClient', () {
-    test('caps suggestions at 5 and reads placePrediction.text.text',
-        () async {
+    test('caps suggestions at 5 and reads placePrediction.text.text', () async {
       final fake = _FakePlaces(predictions: [
         for (var i = 0; i < 7; i++)
           {'placeId': 'place-$i', 'text': '$i Main St, Springfield, IL, USA'},

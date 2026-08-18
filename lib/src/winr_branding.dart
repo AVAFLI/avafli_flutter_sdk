@@ -1,67 +1,67 @@
 import 'package:flutter/material.dart';
 
 /// Defines the visual branding and theme for the WINR SDK.
-/// 
+///
 /// This class allows customization of colors, typography, and imagery
 /// to match your app's brand identity and provide a cohesive user experience.
 class WINRBranding {
   /// Primary text color
   final Color primaryColor;
-  
+
   /// Secondary text color (typically slightly faded)
   final Color secondaryTextColor;
-  
+
   /// Muted text color for less important text
   final Color mutedTextColor;
-  
+
   /// Main background color
   final Color backgroundColor;
-  
+
   /// Card/container background color
   final Color cardBackgroundColor;
-  
+
   /// Border color for cards and containers
   final Color cardBorderColor;
-  
+
   /// Primary button background color
   final Color primaryButtonColor;
-  
+
   /// Primary button text color
   final Color primaryButtonTextColor;
-  
+
   /// Secondary button background color
   final Color secondaryButtonColor;
-  
+
   /// Secondary button text color
   final Color secondaryButtonTextColor;
-  
+
   /// Input field background color
   final Color inputFieldBackgroundColor;
-  
+
   /// Input field border color
   final Color inputFieldBorderColor;
-  
+
   /// Input field placeholder text color
   final Color inputFieldPlaceholderColor;
-  
+
   /// Accent color used for glows and highlights
   final Color accentGlowColor;
-  
+
   /// Corner radius for rounded elements
   final double cornerRadius;
-  
+
   /// Logo/brand image asset path or widget
   final Widget? logo;
-  
+
   /// Secondary logo (optional)
   final Widget? logoTwo;
-  
+
   /// Size for the primary logo display
   final Size primaryLogoSize;
-  
+
   /// Size for secondary logo display
   final Size? secondaryLogoSize;
-  
+
   /// Creates a new [WINRBranding] instance with the specified visual properties.
   const WINRBranding({
     required this.primaryColor,
@@ -84,9 +84,9 @@ class WINRBranding {
     this.primaryLogoSize = const Size(130, 72),
     this.secondaryLogoSize,
   });
-  
+
   /// Creates the default WINR branding theme.
-  /// 
+  ///
   /// This provides a dark theme with blue accents that matches
   /// the standard WINR aesthetic.
   factory WINRBranding.defaultBranding({Widget? logo, Widget? logoTwo}) {
@@ -112,7 +112,7 @@ class WINRBranding {
       secondaryLogoSize: const Size(40, 18),
     );
   }
-  
+
   /// Creates a carnival-style theme with blue and orange accents.
   factory WINRBranding.carnivalBlueOrange({Widget? logo, Widget? logoTwo}) {
     return WINRBranding(
@@ -137,7 +137,7 @@ class WINRBranding {
       secondaryLogoSize: const Size(40, 18),
     );
   }
-  
+
   /// Creates a premium gold-themed branding.
   factory WINRBranding.luxuryGold({Widget? logo, Widget? logoTwo}) {
     return WINRBranding(
@@ -153,7 +153,8 @@ class WINRBranding {
       secondaryButtonTextColor: Colors.black,
       inputFieldBackgroundColor: Colors.black.withValues(alpha: 0.4),
       inputFieldBorderColor: const Color(0xFFF59E0B).withValues(alpha: 0.5),
-      inputFieldPlaceholderColor: const Color(0xFFF59E0B).withValues(alpha: 0.7),
+      inputFieldPlaceholderColor:
+          const Color(0xFFF59E0B).withValues(alpha: 0.7),
       accentGlowColor: const Color(0xFFFFD700),
       cornerRadius: 24,
       logo: logo ?? const Icon(Icons.card_giftcard, color: Color(0xFFF59E0B)),
@@ -162,7 +163,7 @@ class WINRBranding {
       secondaryLogoSize: const Size(40, 18),
     );
   }
-  
+
   /// Returns a new [WINRBranding] with server-driven overrides applied.
   ///
   /// Server values from `sdkConfig.branding` override code-level defaults.

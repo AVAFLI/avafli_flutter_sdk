@@ -28,5 +28,4 @@ void main() {
       expect(WINR.isAvailable, isFalse);
     });
   });
-
 }

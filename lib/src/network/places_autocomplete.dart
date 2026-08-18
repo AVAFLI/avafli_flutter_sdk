@@ -90,9 +90,8 @@ class WINRPlaceAddress {
       }
     }
 
-    final street = [streetNumber, route]
-        .where((part) => part.trim().isNotEmpty)
-        .join(' ');
+    final street =
+        [streetNumber, route].where((part) => part.trim().isNotEmpty).join(' ');
     final city = locality.trim().isNotEmpty
         ? locality
         : (sublocality.trim().isNotEmpty ? sublocality : postalTown);
@@ -168,7 +167,8 @@ class WINRPlacesClient {
             text is Map<String, dynamic> ? text['text'] as String? : null;
         if (placeId == null || placeId.isEmpty) continue;
         if (description == null || description.isEmpty) continue;
-        out.add(WINRPlaceSuggestion(placeId: placeId, description: description));
+        out.add(
+            WINRPlaceSuggestion(placeId: placeId, description: description));
       }
       return out;
     } catch (_) {

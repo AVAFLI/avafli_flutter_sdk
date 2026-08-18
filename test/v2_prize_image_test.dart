@@ -97,8 +97,8 @@ void main() {
     test('warms the same provider Image.network resolves to', () {
       // The prewarm only pays off if it lands on the SAME image-cache key the
       // widget later asks for.
-      expect(const NetworkImage(_prizeUrl),
-          equals(const NetworkImage(_prizeUrl)));
+      expect(
+          const NetworkImage(_prizeUrl), equals(const NetworkImage(_prizeUrl)));
     });
   });
 

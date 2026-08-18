@@ -174,8 +174,18 @@ class GiveawayWinner {
   });
 
   static const List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   /// "August 20, 2026" — falls back to the raw string if not yyyy-MM-dd.

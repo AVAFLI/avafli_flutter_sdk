@@ -33,7 +33,8 @@ abstract class ApiRequest<T> {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
         // Unwrap Firebase callable response envelope
-        if (data.containsKey('result') && data['result'] is Map<String, dynamic>) {
+        if (data.containsKey('result') &&
+            data['result'] is Map<String, dynamic>) {
           return data['result'] as Map<String, dynamic>;
         }
         return data;

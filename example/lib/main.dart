@@ -57,7 +57,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
       //    first app-open of each day the V2 drawer auto-opens — provided
       //    WINR.navigatorKey is attached above. There is no manual launch API.
       await WINR.configure(WINRConfiguration(
-        apiKey: 'winr_live_50b1b3b801a843d5e1f99593fcad4d14',   // demo key for this example app
+        apiKey:
+            'winr_live_50b1b3b801a843d5e1f99593fcad4d14', // demo key for this example app
         bundleId: kBundleId,
         environment: WINREnvironment.production,
         user: const WINRUser(
