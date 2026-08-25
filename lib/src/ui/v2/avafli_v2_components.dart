@@ -1,24 +1,24 @@
 // Reusable pieces of the V2 experience, matched to the Figma components:
 // TOP UI header, Cash/Prize tile, STREAK STEP rail, CONFIRMATION bar, CTA.
 //
-// Mirrors the iOS SDK's WINRV2Components.swift.
+// Mirrors the iOS SDK's AvafliV2Components.swift.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'winr_v2_effects.dart';
-import 'winr_v2_legal.dart';
-import 'winr_v2_strings.dart';
-import 'winr_v2_theme.dart';
+import 'avafli_v2_effects.dart';
+import 'avafli_v2_legal.dart';
+import 'avafli_v2_strings.dart';
+import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Drawer chrome
 // ---------------------------------------------------------------------------
 
 /// The little grab handle at the top of the drawer (Figma "TAB").
-class WINRV2TabGrabber extends StatelessWidget {
-  const WINRV2TabGrabber({super.key});
+class AvafliV2TabGrabber extends StatelessWidget {
+  const AvafliV2TabGrabber({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +36,14 @@ class WINRV2TabGrabber extends StatelessWidget {
 /// TOP UI: "?" circle • publisher logo • "X" circle.
 /// The logo is one of the three publisher-configurable elements.
 /// When [showsBack] is true the "?" is replaced by a back ARROW.
-class WINRV2Header extends StatelessWidget {
+class AvafliV2Header extends StatelessWidget {
   final String? logoUrl;
   final bool showsBack;
   final VoidCallback onBack;
   final VoidCallback onInfo;
   final VoidCallback onClose;
 
-  const WINRV2Header({
+  const AvafliV2Header({
     super.key,
     required this.logoUrl,
     this.showsBack = false,
@@ -64,7 +64,7 @@ class WINRV2Header extends StatelessWidget {
             onTap: showsBack ? onBack : onInfo,
             child: showsBack
                 ? const Icon(Icons.chevron_left, size: 20, color: Colors.white)
-                : Text('?', style: WINRV2Font.inter(16)),
+                : Text('?', style: AvafliV2Font.inter(16)),
           ),
           Expanded(
             child: Center(
@@ -103,7 +103,8 @@ class WINRV2Header extends StatelessWidget {
         },
       );
     }
-    return Text('WINR', style: WINRV2Font.inter(28, weight: FontWeight.w900));
+    return Text('AVAFLI',
+        style: AvafliV2Font.inter(28, weight: FontWeight.w900));
   }
 
   Widget _circleButton({required VoidCallback onTap, required Widget child}) {
@@ -114,7 +115,7 @@ class WINRV2Header extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: const BoxDecoration(
-          color: WINRV2Colors.deepCharcoal,
+          color: AvafliV2Colors.deepCharcoal,
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
@@ -135,21 +136,21 @@ class WINRV2Header extends StatelessWidget {
 /// keyboard animation to change the viewport, then centers the whole wrapped
 /// field in the nearest enclosing [Scrollable]. No-op when there is no
 /// enclosing scrollable or the focus was lost meanwhile.
-class WINRV2EnsureVisible extends StatefulWidget {
+class AvafliV2EnsureVisible extends StatefulWidget {
   final FocusNode focusNode;
   final Widget child;
 
-  const WINRV2EnsureVisible({
+  const AvafliV2EnsureVisible({
     super.key,
     required this.focusNode,
     required this.child,
   });
 
   @override
-  State<WINRV2EnsureVisible> createState() => _WINRV2EnsureVisibleState();
+  State<AvafliV2EnsureVisible> createState() => _AvafliV2EnsureVisibleState();
 }
 
-class _WINRV2EnsureVisibleState extends State<WINRV2EnsureVisible> {
+class _AvafliV2EnsureVisibleState extends State<AvafliV2EnsureVisible> {
   Timer? _settleTimer;
 
   @override
@@ -159,7 +160,7 @@ class _WINRV2EnsureVisibleState extends State<WINRV2EnsureVisible> {
   }
 
   @override
-  void didUpdateWidget(WINRV2EnsureVisible oldWidget) {
+  void didUpdateWidget(AvafliV2EnsureVisible oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_onFocusChanged);
@@ -204,11 +205,11 @@ class _WINRV2EnsureVisibleState extends State<WINRV2EnsureVisible> {
 /// dashboard shown while the person's newly-typed email is unverified. A mail
 /// glyph + "Verify your email" in the publisher accent, tappable, subtle — it
 /// reads as a gentle prompt, not an error, and never blocks play.
-class WINRV2VerifyEmailChip extends StatelessWidget {
+class AvafliV2VerifyEmailChip extends StatelessWidget {
   final Color accent;
   final VoidCallback onTap;
 
-  const WINRV2VerifyEmailChip({
+  const AvafliV2VerifyEmailChip({
     super.key,
     required this.accent,
     required this.onTap,
@@ -218,7 +219,7 @@ class WINRV2VerifyEmailChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: WINRV2Strings.emailVerifyChip,
+      label: AvafliV2Strings.emailVerifyChip,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
@@ -238,8 +239,8 @@ class WINRV2VerifyEmailChip extends StatelessWidget {
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  WINRV2Strings.emailVerifyChip,
-                  style: WINRV2Font.inter(
+                  AvafliV2Strings.emailVerifyChip,
+                  style: AvafliV2Font.inter(
                     13,
                     weight: FontWeight.w700,
                     color: accent,
@@ -257,7 +258,7 @@ class WINRV2VerifyEmailChip extends StatelessWidget {
   }
 }
 
-// NOTE (2.9.3): `WINRV2TopGlow` — the radial primary-color glow that bled
+// NOTE (2.9.3): `AvafliV2TopGlow` — the radial primary-color glow that bled
 // from the top of the drawer into gunmetal — was DELETED. 2.9.0 already
 // dropped it from the capture screen; Ryan's direction is that NO screen
 // carries it: every screen sits on the flat gunmetal drawer surface. (The
@@ -268,13 +269,13 @@ class WINRV2VerifyEmailChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// Whether the prize renders the cash lockup (mirrors iOS `isCashPrize`).
-bool winrV2IsCashPrize(String description) =>
+bool avafliV2IsCashPrize(String description) =>
     description.isEmpty || description.toLowerCase().contains('cash');
 
 /// Leading-character article rule (mirrors iOS): keyed off the LEADING token —
 /// "$500 Amazon..." reads "a five-hundred...", so any non-letter start takes
 /// "a"; only a leading vowel takes "an".
-String winrV2Article(String description) {
+String avafliV2Article(String description) {
   final trimmed = description.trim();
   if (trimmed.isEmpty) return 'a';
   final first = trimmed[0];
@@ -284,25 +285,25 @@ String winrV2Article(String description) {
 
 /// The value subtitle is redundant when the prize name already states the
 /// amount ("$500 Amazon Gift Card") — mirrors iOS.
-bool winrV2ShowsValueLine(String description, int value) =>
+bool avafliV2ShowsValueLine(String description, int value) =>
     value > 0 &&
-    !description.contains('\$${winrV2FormatInt(value)}') &&
+    !description.contains('\$${avafliV2FormatInt(value)}') &&
     !description.contains('\$$value');
 
 /// The white-strip headline (Day-1 capture + winner splash):
 /// cash → "$1,000.00 CASH PRIZE"; other → "Win a $500 Amazon Gift Card".
-/// Mirrors iOS `WINRV2PrizeText.stripHeadline`.
-String winrV2StripHeadline(String description, int value) =>
-    winrV2IsCashPrize(description)
-        ? '\$${winrV2FormatInt(value)}.00 CASH PRIZE'
-        : 'Win ${winrV2Article(description)} $description';
+/// Mirrors iOS `AvafliV2PrizeText.stripHeadline`.
+String avafliV2StripHeadline(String description, int value) =>
+    avafliV2IsCashPrize(description)
+        ? '\$${avafliV2FormatInt(value)}.00 CASH PRIZE'
+        : 'Win ${avafliV2Article(description)} $description';
 
 /// Day 2+ prize card (Joe's Aug-2026 dark full-bleed revision): the prize art
 /// fills the WHOLE card, a solid black stats strip (streak + total entries)
 /// sits inside the top edge, and the prize-derived headline rides the bottom
 /// over a black→transparent scrim. The image is publisher-configurable
 /// (prizeImageUrl); default is the bundled cash pile.
-class WINRV2PrizeCard extends StatelessWidget {
+class AvafliV2PrizeCard extends StatelessWidget {
   final Color accent;
   final int streakDay;
   final int totalEntries;
@@ -311,7 +312,7 @@ class WINRV2PrizeCard extends StatelessWidget {
   final String prizeDescription;
   final bool visitMode;
 
-  const WINRV2PrizeCard({
+  const AvafliV2PrizeCard({
     super.key,
     required this.accent,
     required this.streakDay,
@@ -324,7 +325,7 @@ class WINRV2PrizeCard extends StatelessWidget {
 
   /// Cash prizes render Joe's right-aligned "WIN $1,000 / CASH PRIZE" lockup;
   /// other prizes render "Win a {Prize}" + "$X.00 VALUE!".
-  bool get _isCashPrize => winrV2IsCashPrize(prizeDescription);
+  bool get _isCashPrize => avafliV2IsCashPrize(prizeDescription);
 
   @override
   Widget build(BuildContext context) {
@@ -350,14 +351,14 @@ class WINRV2PrizeCard extends StatelessWidget {
   Widget _hero() {
     final url = prizeImageUrl;
     if (url != null && url.isNotEmpty) {
-      // Normally already decoded by [WINRV2ImageWarmer] (warmed the moment the
+      // Normally already decoded by [AvafliV2ImageWarmer] (warmed the moment the
       // SDK learned the giveaway config), so it paints with the rest of the
       // card. A cold URL fades in over the card's dark background instead of
       // popping, and a broken one falls back to the bundled cash hero.
-      return WINRV2RemoteImage(
+      return AvafliV2RemoteImage(
         url: url,
         fit: BoxFit.cover,
-        placeholderColor: WINRV2Colors.deepCharcoal,
+        placeholderColor: AvafliV2Colors.deepCharcoal,
         fallbackBuilder: (_) => _bundledHero(),
       );
     }
@@ -365,8 +366,8 @@ class WINRV2PrizeCard extends StatelessWidget {
   }
 
   Widget _bundledHero() => Image.asset(
-        WINRV2Assets.cashHero,
-        package: WINRV2Assets.package,
+        AvafliV2Assets.cashHero,
+        package: AvafliV2Assets.package,
         fit: BoxFit.cover,
       );
 
@@ -389,7 +390,7 @@ class WINRV2PrizeCard extends StatelessWidget {
                   children: [
                     Text(
                       '$streakDay ${visitMode ? 'VISIT' : 'DAY'} STREAK',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         15,
                         weight: FontWeight.w900,
                         color: accent,
@@ -399,7 +400,7 @@ class WINRV2PrizeCard extends StatelessWidget {
                     ),
                     Text(
                       'Keep it going!',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         12,
                         weight: FontWeight.w500,
                         height: 1.1,
@@ -427,10 +428,10 @@ class WINRV2PrizeCard extends StatelessWidget {
                     // Counts up when the total changes (the Day 2+ reveal
                     // counts up from the pre-claim total) and pops Joe's
                     // one-shot confetti-burst GIF as it lands.
-                    WINRV2CountUpText(value: totalEntries, accent: accent),
+                    AvafliV2CountUpText(value: totalEntries, accent: accent),
                     Text(
                       'Total Entries',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         12,
                         weight: FontWeight.w500,
                         height: 1.1,
@@ -495,23 +496,23 @@ class WINRV2PrizeCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'WIN \$${winrV2FormatInt(prizeValue)}',
+                'WIN \$${avafliV2FormatInt(prizeValue)}',
                 maxLines: 1,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   44,
                   weight: FontWeight.w900,
                   letterSpacing: -2.2,
-                  height: winrV2HeadlineLineHeight,
+                  height: avafliV2HeadlineLineHeight,
                 ),
               ),
               Text(
                 'CASH PRIZE',
                 maxLines: 1,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   19,
                   weight: FontWeight.w900,
                   letterSpacing: -0.57,
-                  height: winrV2HeadlineLineHeight,
+                  height: avafliV2HeadlineLineHeight,
                 ),
               ),
             ],
@@ -529,21 +530,21 @@ class WINRV2PrizeCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Win ${winrV2Article(prizeDescription)} $prizeDescription',
+          'Win ${avafliV2Article(prizeDescription)} $prizeDescription',
           maxLines: 2,
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
-          style: WINRV2Font.inter(
+          style: AvafliV2Font.inter(
             28,
             weight: FontWeight.w900,
             letterSpacing: -1.0,
-            height: winrV2HeadlineLineHeight,
+            height: avafliV2HeadlineLineHeight,
           ),
         ),
-        if (winrV2ShowsValueLine(prizeDescription, prizeValue))
+        if (avafliV2ShowsValueLine(prizeDescription, prizeValue))
           Text(
-            '\$${winrV2FormatInt(prizeValue)}.00 VALUE!',
-            style: WINRV2Font.inter(
+            '\$${avafliV2FormatInt(prizeValue)}.00 VALUE!',
+            style: AvafliV2Font.inter(
               15,
               weight: FontWeight.w900,
               color: accent,
@@ -560,29 +561,29 @@ class WINRV2PrizeCard extends StatelessWidget {
 
 /// [ready] = today's tile before the user taps CLAIM (claim already granted
 /// server-side, reveal withheld): glows like [active] but shows no checkmark.
-enum WINRV2TileState { completed, active, ready, locked }
+enum AvafliV2TileState { completed, active, ready, locked }
 
 /// One entry in the horizontally-scrolling streak rail — either a day tile or
 /// a milestone "power-up" accelerator tile.
-class WINRV2RailEntry {
+class AvafliV2RailEntry {
   final String id;
   final int? day;
   final int? entries;
-  final WINRV2TileState? state;
+  final AvafliV2TileState? state;
   final String? powerUpLabel;
   final int? powerUpBonus;
   final String? powerUpFootnote;
 
-  const WINRV2RailEntry.day({
+  const AvafliV2RailEntry.day({
     required this.id,
     required int this.day,
     required int this.entries,
-    required WINRV2TileState this.state,
+    required AvafliV2TileState this.state,
   })  : powerUpLabel = null,
         powerUpBonus = null,
         powerUpFootnote = null;
 
-  const WINRV2RailEntry.powerUp({
+  const AvafliV2RailEntry.powerUp({
     required this.id,
     required String label,
     required int bonus,
@@ -599,14 +600,14 @@ class WINRV2RailEntry {
 
 /// Horizontally-scrolling rail of streak tiles with the "DAILY PROGRESS ▾"
 /// pointer riding above the CURRENT tile. Auto-centers the active tile after
-/// ~350ms (mirrors iOS `WINRV2StreakRail`).
-class WINRV2StreakRail extends StatefulWidget {
+/// ~350ms (mirrors iOS `AvafliV2StreakRail`).
+class AvafliV2StreakRail extends StatefulWidget {
   final Color accent;
-  final List<WINRV2RailEntry> entries;
+  final List<AvafliV2RailEntry> entries;
   final String? activeID;
   final bool visitMode;
 
-  const WINRV2StreakRail({
+  const AvafliV2StreakRail({
     super.key,
     required this.accent,
     required this.entries,
@@ -615,10 +616,10 @@ class WINRV2StreakRail extends StatefulWidget {
   });
 
   @override
-  State<WINRV2StreakRail> createState() => _WINRV2StreakRailState();
+  State<AvafliV2StreakRail> createState() => _AvafliV2StreakRailState();
 }
 
-class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
+class _AvafliV2StreakRailState extends State<AvafliV2StreakRail> {
   final ScrollController _controller = ScrollController();
 
   static const double _tileWidth = 106;
@@ -691,7 +692,7 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
           children: [
             Text(
               widget.visitMode ? 'PROGRESS' : 'DAILY PROGRESS',
-              style: WINRV2Font.oswald(12),
+              style: AvafliV2Font.oswald(12),
               softWrap: false,
               overflow: TextOverflow.visible,
             ),
@@ -703,16 +704,16 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
     );
   }
 
-  Widget _tile(WINRV2RailEntry entry) {
+  Widget _tile(AvafliV2RailEntry entry) {
     if (entry.isPowerUp) {
-      return WINRV2PowerUpTile(
+      return AvafliV2PowerUpTile(
         accent: widget.accent,
         label: entry.powerUpLabel!,
         bonus: entry.powerUpBonus!,
         footnote: entry.powerUpFootnote!,
       );
     }
-    return WINRV2StreakTile(
+    return AvafliV2StreakTile(
       accent: widget.accent,
       day: entry.day!,
       entries: entry.entries!,
@@ -723,14 +724,14 @@ class _WINRV2StreakRailState extends State<WINRV2StreakRail> {
 }
 
 /// A single 106x134 streak day tile (completed / active / locked states).
-class WINRV2StreakTile extends StatefulWidget {
+class AvafliV2StreakTile extends StatefulWidget {
   final Color accent;
   final int day;
   final int entries;
-  final WINRV2TileState state;
+  final AvafliV2TileState state;
   final bool visitMode;
 
-  const WINRV2StreakTile({
+  const AvafliV2StreakTile({
     super.key,
     required this.accent,
     required this.day,
@@ -740,10 +741,10 @@ class WINRV2StreakTile extends StatefulWidget {
   });
 
   @override
-  State<WINRV2StreakTile> createState() => _WINRV2StreakTileState();
+  State<AvafliV2StreakTile> createState() => _AvafliV2StreakTileState();
 }
 
-class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
+class _AvafliV2StreakTileState extends State<AvafliV2StreakTile> {
   /// One-shot: the confetti-burst GIF plays over the tile when it flips
   /// ready → active at the reveal beat, then removes itself. A tile that
   /// MOUNTS as active (already-claimed reopen) never bursts.
@@ -752,18 +753,18 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
   Color get accent => widget.accent;
   int get day => widget.day;
   int get entries => widget.entries;
-  WINRV2TileState get state => widget.state;
+  AvafliV2TileState get state => widget.state;
 
   String get _noun => widget.visitMode ? 'VISIT' : 'DAY';
 
   bool get _hasAccentBackground =>
-      state == WINRV2TileState.active || state == WINRV2TileState.ready;
+      state == AvafliV2TileState.active || state == AvafliV2TileState.ready;
 
   @override
-  void didUpdateWidget(WINRV2StreakTile oldWidget) {
+  void didUpdateWidget(AvafliV2StreakTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.state == WINRV2TileState.active &&
-        oldWidget.state != WINRV2TileState.active) {
+    if (widget.state == AvafliV2TileState.active &&
+        oldWidget.state != AvafliV2TileState.active) {
       _bursting = true;
     }
   }
@@ -771,7 +772,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
   @override
   Widget build(BuildContext context) {
     switch (state) {
-      case WINRV2TileState.active:
+      case AvafliV2TileState.active:
         // Joe's settled active tile: breathing glow, drifting confetti
         // field, and the small check drawing into the icon slot. At the
         // reveal beat the confetti-burst GIF explodes once on top at ~150%
@@ -784,16 +785,16 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
             const Positioned(
               width: 152,
               height: 176,
-              child: WINRV2Confetti(count: 12, speed: 0.7),
+              child: AvafliV2Confetti(count: 12, speed: 0.7),
             ),
-            WINRV2PulseGlow(accent: accent, child: _card()),
+            AvafliV2PulseGlow(accent: accent, child: _card()),
             if (_bursting)
               Positioned(
                 width: 200,
                 height: 200,
                 child: IgnorePointer(
-                  child: WINRV2GifView(
-                    WINRV2Assets.confettiBurst,
+                  child: AvafliV2GifView(
+                    AvafliV2Assets.confettiBurst,
                     onFinished: () {
                       if (mounted) setState(() => _bursting = false);
                     },
@@ -802,7 +803,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
               ),
           ],
         );
-      case WINRV2TileState.ready:
+      case AvafliV2TileState.ready:
         // Pre-reveal the tile is CALM — a static glow only. Every moving
         // element (pulse, confetti, check draw) is saved for the single
         // celebration moment so nothing animates early.
@@ -818,26 +819,26 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
           ),
           child: _card(),
         );
-      case WINRV2TileState.completed:
-      case WINRV2TileState.locked:
+      case AvafliV2TileState.completed:
+      case AvafliV2TileState.locked:
         return _card();
     }
   }
 
   Color get _numberColor {
     switch (state) {
-      case WINRV2TileState.completed:
+      case AvafliV2TileState.completed:
         return accent;
-      case WINRV2TileState.active:
-      case WINRV2TileState.ready:
+      case AvafliV2TileState.active:
+      case AvafliV2TileState.ready:
         return Colors.white;
-      case WINRV2TileState.locked:
-        return WINRV2Colors.foregroundSecondary;
+      case AvafliV2TileState.locked:
+        return AvafliV2Colors.foregroundSecondary;
     }
   }
 
-  Color get _labelColor => state == WINRV2TileState.locked
-      ? WINRV2Colors.foregroundSecondary
+  Color get _labelColor => state == AvafliV2TileState.locked
+      ? AvafliV2Colors.foregroundSecondary
       : Colors.white;
 
   Widget _card() {
@@ -846,7 +847,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
       height: 134,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 3),
       decoration: BoxDecoration(
-        color: _hasAccentBackground ? null : WINRV2Colors.gunmetal,
+        color: _hasAccentBackground ? null : AvafliV2Colors.gunmetal,
         gradient: _hasAccentBackground
             ? RadialGradient(
                 center: Alignment.topCenter,
@@ -855,7 +856,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
                 colors: [
                   accent,
                   accent.withValues(alpha: 0.45),
-                  WINRV2Colors.gunmetal,
+                  AvafliV2Colors.gunmetal,
                 ],
               )
             : null,
@@ -875,7 +876,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
               day >= 31 ? '$_noun 31 +' : '$_noun $day',
               softWrap: false,
               overflow: TextOverflow.visible,
-              style: WINRV2Font.inter(12, weight: FontWeight.w700, height: 1),
+              style: AvafliV2Font.inter(12, weight: FontWeight.w700, height: 1),
             ),
           ),
           Column(
@@ -884,9 +885,9 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  winrV2FormatInt(entries),
+                  avafliV2FormatInt(entries),
                   maxLines: 1,
-                  style: WINRV2Font.inter(
+                  style: AvafliV2Font.inter(
                     30,
                     weight: FontWeight.w900,
                     color: _numberColor,
@@ -901,7 +902,7 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
                   'ENTRIES',
                   softWrap: false,
                   overflow: TextOverflow.visible,
-                  style: WINRV2Font.inter(
+                  style: AvafliV2Font.inter(
                     15,
                     weight: FontWeight.w700,
                     color: _labelColor,
@@ -919,24 +920,24 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
 
   Widget _icon() {
     switch (state) {
-      case WINRV2TileState.completed:
+      case AvafliV2TileState.completed:
         return const SizedBox(
           width: 20,
           height: 20,
-          child: WINRV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
+          child: AvafliV2AnimatedCheckmark(lineWidth: 2.5, animated: false),
         );
-      case WINRV2TileState.active:
+      case AvafliV2TileState.active:
         return const SizedBox(
           width: 20,
           height: 20,
-          child: WINRV2AnimatedCheckmark(lineWidth: 2.5),
+          child: AvafliV2AnimatedCheckmark(lineWidth: 2.5),
         );
-      case WINRV2TileState.ready:
+      case AvafliV2TileState.ready:
         // Joe's frames: the current tile pre-check shows ONLY the glowing
         // number — no icon. The enclosing 24x24 slot keeps its size so the
         // check can draw into place without the card resizing.
         return const SizedBox(width: 20, height: 20);
-      case WINRV2TileState.locked:
+      case AvafliV2TileState.locked:
         return Icon(Icons.lock, size: 18, color: _labelColor);
     }
   }
@@ -944,13 +945,13 @@ class _WINRV2StreakTileState extends State<WINRV2StreakTile> {
 
 /// The "STREAK BONUS!" accelerator tile (Figma MILESTONE TILE right half) —
 /// "+25 EVERY DAY!".
-class WINRV2PowerUpTile extends StatelessWidget {
+class AvafliV2PowerUpTile extends StatelessWidget {
   final Color accent;
   final String label; // e.g. "1 WEEK"
   final int bonus; // e.g. 25
   final String footnote; // e.g. "STARTING TOMORROW"
 
-  const WINRV2PowerUpTile({
+  const AvafliV2PowerUpTile({
     super.key,
     required this.accent,
     required this.label,
@@ -978,14 +979,14 @@ class WINRV2PowerUpTile extends StatelessWidget {
             textAlign: TextAlign.center,
             softWrap: false,
             overflow: TextOverflow.visible,
-            style: WINRV2Font.inter(9, weight: FontWeight.w700, height: 1.1),
+            style: AvafliV2Font.inter(9, weight: FontWeight.w700, height: 1.1),
           ),
           const SizedBox(height: 7),
           Text(
             '+$bonus',
             softWrap: false,
             overflow: TextOverflow.visible,
-            style: WINRV2Font.inter(
+            style: AvafliV2Font.inter(
               26,
               weight: FontWeight.w900,
               letterSpacing: -0.8,
@@ -998,7 +999,8 @@ class WINRV2PowerUpTile extends StatelessWidget {
               'EVERY DAY!',
               softWrap: false,
               overflow: TextOverflow.visible,
-              style: WINRV2Font.inter(14, weight: FontWeight.w900, height: 1.1),
+              style:
+                  AvafliV2Font.inter(14, weight: FontWeight.w900, height: 1.1),
             ),
           ),
           const SizedBox(height: 7),
@@ -1006,7 +1008,7 @@ class WINRV2PowerUpTile extends StatelessWidget {
             footnote,
             softWrap: false,
             overflow: TextOverflow.visible,
-            style: WINRV2Font.oswald(8, bold: true),
+            style: AvafliV2Font.oswald(8, bold: true),
           ),
         ],
       ),
@@ -1018,7 +1020,7 @@ class WINRV2PowerUpTile extends StatelessWidget {
 // Confirmation ("come back tomorrow") bar
 // ---------------------------------------------------------------------------
 
-class WINRV2ComeBackBar extends StatefulWidget {
+class AvafliV2ComeBackBar extends StatefulWidget {
   final Color accent;
   final int nextEntries;
   final bool visitMode;
@@ -1036,7 +1038,7 @@ class WINRV2ComeBackBar extends StatefulWidget {
   /// is gone) — only the toast headline differs.
   final bool firstDay;
 
-  const WINRV2ComeBackBar({
+  const AvafliV2ComeBackBar({
     super.key,
     required this.accent,
     required this.nextEntries,
@@ -1047,12 +1049,12 @@ class WINRV2ComeBackBar extends StatefulWidget {
   });
 
   @override
-  State<WINRV2ComeBackBar> createState() => _WINRV2ComeBackBarState();
+  State<AvafliV2ComeBackBar> createState() => _AvafliV2ComeBackBarState();
 }
 
-class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
+class _AvafliV2ComeBackBarState extends State<AvafliV2ComeBackBar> {
   /// Whether the toast is on screen (the hold window). Seeded from
-  /// [WINRV2ComeBackBar.celebrating] so the toast is the bar's FIRST frame —
+  /// [AvafliV2ComeBackBar.celebrating] so the toast is the bar's FIRST frame —
   /// no pitch flash, no slide-in. Only the toast → pitch handoff animates.
   late bool _showToast;
   Timer? _holdTimer;
@@ -1069,7 +1071,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
   }
 
   @override
-  void didUpdateWidget(WINRV2ComeBackBar oldWidget) {
+  void didUpdateWidget(AvafliV2ComeBackBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Cache-first render: the dashboard now paints from cached values while
     // the network resolves, so the bar can MOUNT before the claim has been
@@ -1138,7 +1140,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
           ),
           // Celebratory sprinkles drifting over the reward line.
           const ClipRect(
-            child: WINRV2Confetti(count: 10, speed: 0.55),
+            child: AvafliV2Confetti(count: 10, speed: 0.55),
           ),
         ],
       ),
@@ -1165,7 +1167,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                     ? [
                         TextSpan(
                           text: 'Come back again',
-                          style: WINRV2Font.inter(12,
+                          style: AvafliV2Font.inter(12,
                               weight: FontWeight.w700, height: 1.2),
                         ),
                         const TextSpan(text: ' to receive:'),
@@ -1173,7 +1175,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                     : [
                         TextSpan(
                           text: 'Come back tomorrow',
-                          style: WINRV2Font.inter(12,
+                          style: AvafliV2Font.inter(12,
                               weight: FontWeight.w700, height: 1.2),
                         ),
                         const TextSpan(
@@ -1181,12 +1183,12 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                       ],
               ),
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(12, height: 1.2),
+              style: AvafliV2Font.inter(12, height: 1.2),
             ),
             const SizedBox(height: 1),
             Text(
-              '${winrV2FormatInt(widget.nextEntries)} ENTRIES',
-              style: WINRV2Font.inter(
+              '${avafliV2FormatInt(widget.nextEntries)} ENTRIES',
+              style: AvafliV2Font.inter(
                 16,
                 weight: FontWeight.w900,
                 color: accent,
@@ -1209,7 +1211,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
           const SizedBox(
             width: 38,
             height: 38,
-            child: WINRV2AnimatedCheckmark(lineWidth: 3.5),
+            child: AvafliV2AnimatedCheckmark(lineWidth: 3.5),
           ),
           const SizedBox(width: 16),
           Flexible(
@@ -1221,7 +1223,7 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                   child: Text(
                     widget.firstDay ? 'YOU’RE IN!' : 'YOU’RE ON A ROLL!',
                     maxLines: 1,
-                    style: WINRV2Font.inter(
+                    style: AvafliV2Font.inter(
                       20,
                       weight: FontWeight.w900,
                       color: accent,
@@ -1233,10 +1235,10 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Your ${winrV2FormatInt(widget.claimedEntries)} entries '
+                    'Your ${avafliV2FormatInt(widget.claimedEntries)} entries '
                     'have been added automatically.',
                     maxLines: 1,
-                    style: WINRV2Font.inter(
+                    style: AvafliV2Font.inter(
                       13,
                       weight: FontWeight.w700,
                       height: 1.1,
@@ -1256,14 +1258,14 @@ class _WINRV2ComeBackBarState extends State<WINRV2ComeBackBar> {
 // CTA + legal
 // ---------------------------------------------------------------------------
 
-class WINRV2PillButton extends StatelessWidget {
+class AvafliV2PillButton extends StatelessWidget {
   final Color accent;
   final String title;
   final bool isLoading;
   final bool enabled;
   final VoidCallback onTap;
 
-  const WINRV2PillButton({
+  const AvafliV2PillButton({
     super.key,
     required this.accent,
     required this.title,
@@ -1303,7 +1305,7 @@ class WINRV2PillButton extends StatelessWidget {
                     child: Text(
                       title,
                       maxLines: 1,
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         24,
                         weight: FontWeight.w800,
                         letterSpacing: -0.72,
@@ -1317,11 +1319,11 @@ class WINRV2PillButton extends StatelessWidget {
   }
 }
 
-class WINRV2LegalLinks extends StatelessWidget {
+class AvafliV2LegalLinks extends StatelessWidget {
   final String? rulesUrl;
   final bool showPoweredBy;
 
-  const WINRV2LegalLinks({
+  const AvafliV2LegalLinks({
     super.key,
     required this.rulesUrl,
     this.showPoweredBy = false,
@@ -1336,30 +1338,30 @@ class WINRV2LegalLinks extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // 2.9.4: both links open the in-app legal webview
-            // (winr_v2_legal.dart) instead of launching externally.
+            // (avafli_v2_legal.dart) instead of launching externally.
             _link(
               'OFFICIAL RULES',
-              () => winrV2OpenOfficialRules(context, rulesUrl),
+              () => avafliV2OpenOfficialRules(context, rulesUrl),
             ),
             const SizedBox(width: 8),
             Container(
               width: 4,
               height: 4,
               decoration: const BoxDecoration(
-                color: WINRV2Colors.textSecondary,
+                color: AvafliV2Colors.textSecondary,
                 shape: BoxShape.circle,
               ),
             ),
             const SizedBox(width: 8),
-            // The real policy, not rulesUrl — see [winrV2PrivacyPolicyUrl].
-            _link('PRIVACY POLICY', () => winrV2OpenPrivacyPolicy(context)),
+            // The real policy, not rulesUrl — see [avafliV2PrivacyPolicyUrl].
+            _link('PRIVACY POLICY', () => avafliV2OpenPrivacyPolicy(context)),
           ],
         ),
         if (showPoweredBy) ...[
           const SizedBox(height: 3),
           Text(
-            'Powered by © WINR Media',
-            style: WINRV2Font.inter(12, color: WINRV2Colors.textTertiary),
+            'Powered by © Avafli',
+            style: AvafliV2Font.inter(12, color: AvafliV2Colors.textTertiary),
           ),
         ],
       ],
@@ -1372,7 +1374,7 @@ class WINRV2LegalLinks extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Text(
         title,
-        style: WINRV2Font.inter(12, color: WINRV2Colors.textSecondary),
+        style: AvafliV2Font.inter(12, color: AvafliV2Colors.textSecondary),
       ),
     );
   }
@@ -1382,24 +1384,24 @@ class WINRV2LegalLinks extends StatelessWidget {
 // Counting total readout
 // ---------------------------------------------------------------------------
 
-/// The stats-strip total, ported from iOS `WINRV2CountUpText`: counts up
+/// The stats-strip total, ported from iOS `AvafliV2CountUpText`: counts up
 /// smoothly (~0.7s ease-out) when the value changes and pops Joe's one-shot
 /// confetti-burst GIF as it lands on the new total.
-class WINRV2CountUpText extends StatefulWidget {
+class AvafliV2CountUpText extends StatefulWidget {
   final int value;
   final Color accent;
 
-  const WINRV2CountUpText({
+  const AvafliV2CountUpText({
     super.key,
     required this.value,
     required this.accent,
   });
 
   @override
-  State<WINRV2CountUpText> createState() => _WINRV2CountUpTextState();
+  State<AvafliV2CountUpText> createState() => _AvafliV2CountUpTextState();
 }
 
-class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
+class _AvafliV2CountUpTextState extends State<AvafliV2CountUpText>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late int _from;
@@ -1421,7 +1423,7 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
   }
 
   @override
-  void didUpdateWidget(WINRV2CountUpText oldWidget) {
+  void didUpdateWidget(AvafliV2CountUpText oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value == oldWidget.value) return;
     // Restart the ramp from whatever number is currently displayed.
@@ -1449,8 +1451,8 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
             final eased = Curves.easeOutCubic.transform(_controller.value);
             final shown = (_from + (widget.value - _from) * eased).round();
             return Text(
-              winrV2FormatInt(shown),
-              style: WINRV2Font.inter(
+              avafliV2FormatInt(shown),
+              style: AvafliV2Font.inter(
                 15,
                 weight: FontWeight.w900,
                 color: widget.accent,
@@ -1465,8 +1467,8 @@ class _WINRV2CountUpTextState extends State<WINRV2CountUpText>
             width: 54,
             height: 44,
             child: IgnorePointer(
-              child: WINRV2GifView(
-                WINRV2Assets.confettiBurst,
+              child: AvafliV2GifView(
+                AvafliV2Assets.confettiBurst,
                 onFinished: () {
                   if (mounted) setState(() => _burst = false);
                 },

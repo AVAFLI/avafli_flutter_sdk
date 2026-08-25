@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
-/// Must match the bundleId passed to WINR.configure — the SDK namespaces its
+/// Must match the bundleId passed to Avafli.configure — the SDK namespaces its
 /// auto-present bookkeeping by bundle id.
 const String kBundleId = 'com.example.myapp';
 
@@ -17,11 +17,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'WINR Flutter SDK Example',
+      title: 'Avafli Flutter SDK Example',
       debugShowCheckedModeBanner: false,
       // REQUIRED for the V2 auto-open flow: the SDK presents the experience
       // through this navigator on the first app-open of the day.
-      navigatorKey: WINR.navigatorKey,
+      navigatorKey: Avafli.navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6366F1),
@@ -53,20 +53,20 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
 
   Future<void> _initializeSDK() async {
     try {
-      // 1. Configure the WINR SDK. The experience presents itself: on the
+      // 1. Configure the Avafli SDK. The experience presents itself: on the
       //    first app-open of each day the V2 drawer auto-opens — provided
-      //    WINR.navigatorKey is attached above. There is no manual launch API.
-      await WINR.configure(WINRConfiguration(
+      //    Avafli.navigatorKey is attached above. There is no manual launch API.
+      await Avafli.configure(AvafliConfiguration(
         apiKey:
             'winr_live_50b1b3b801a843d5e1f99593fcad4d14', // demo key for this example app
         bundleId: kBundleId,
-        environment: WINREnvironment.production,
-        user: const WINRUser(
+        environment: AvafliEnvironment.production,
+        user: const AvafliUser(
           id: 'user_123',
           firstName: 'Jane',
           lastName: 'Doe',
         ),
-        options: WINROptions(
+        options: AvafliOptions(
           logging: LoggingLevel.debug,
           analyticsAdapter: DemoAnalyticsAdapter(),
         ),
@@ -113,7 +113,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             CircularProgressIndicator(),
             SizedBox(height: 16),
             Text(
-              'Initializing WINR SDK...',
+              'Initializing Avafli SDK...',
               style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ],
@@ -173,7 +173,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           const SizedBox(height: 32),
           const Center(
             child: Text(
-              '© 2026 WINR MEDIA • All rights reserved.',
+              '© 2026 AVAFLI • All rights reserved.',
               style: TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ),
@@ -186,7 +186,17 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset('assets/winrmedia-logo-dark.png', height: 36),
+        // Avafli wordmark (the brand ships no PNG lockup yet — the site logo
+        // is SVG-only, which Image.asset can't render).
+        const Text(
+          'AVAFLI',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 3,
+          ),
+        ),
         const SizedBox(height: 24),
         Row(
           children: [
@@ -208,7 +218,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'WINR Flutter SDK',
+                    'Avafli Flutter SDK',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -322,7 +332,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   Future<void> _optOut() async {
     HapticFeedback.mediumImpact();
     try {
-      await WINR.optOut();
+      await Avafli.optOut();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

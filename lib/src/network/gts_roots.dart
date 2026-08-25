@@ -2,7 +2,7 @@
 // (fetched 2026-08; both roots valid through 2036-06-22).
 //
 // Google Trust Services roots used to RESTRICT the SDK's trust store: the
-// WINR backend lives on `*.cloudfunctions.net`, whose certificates chain to
+// Avafli backend lives on `*.cloudfunctions.net`, whose certificates chain to
 // the GTS hierarchy. Loading ONLY these roots into a
 // `SecurityContext(withTrustedRoots: false)` means the platform's full trust
 // store is bypassed for SDK traffic — a certificate issued by ANY other CA

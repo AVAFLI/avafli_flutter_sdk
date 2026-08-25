@@ -2,7 +2,7 @@
 ///
 /// Provides a pluggable analytics system that allows apps to integrate
 /// with their preferred analytics provider (Firebase, Mixpanel, etc.)
-/// while keeping the WINR SDK analytics-agnostic.
+/// while keeping the Avafli SDK analytics-agnostic.
 abstract class AnalyticsAdapter {
   /// Tracks an event with optional parameters.
   ///
@@ -36,8 +36,8 @@ abstract class AnalyticsAdapter {
   void identify(String userId);
 }
 
-/// Built-in analytics events tracked by the WINR SDK.
-class WINRAnalyticsEvents {
+/// Built-in analytics events tracked by the Avafli SDK.
+class AvafliAnalyticsEvents {
   // Configuration events
   static const String sdkConfigured = 'winr_sdk_configured';
   static const String userSet = 'winr_user_set';
@@ -63,5 +63,5 @@ class WINRAnalyticsEvents {
   static const String networkError = 'winr_network_error';
 
   // Prevent instantiation
-  WINRAnalyticsEvents._();
+  AvafliAnalyticsEvents._();
 }

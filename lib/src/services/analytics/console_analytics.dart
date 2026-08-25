@@ -27,12 +27,12 @@ class ConsoleAnalyticsAdapter implements AnalyticsAdapter {
 
       developer.log(
         '$timestamp📊 $eventName | $paramsStr',
-        name: 'WINR Analytics',
+        name: 'Avafli Analytics',
       );
     } else {
       developer.log(
         '$timestamp📊 $eventName',
-        name: 'WINR Analytics',
+        name: 'Avafli Analytics',
       );
     }
   }
@@ -44,7 +44,7 @@ class ConsoleAnalyticsAdapter implements AnalyticsAdapter {
 
     developer.log(
       '$timestamp👤 User Property: $name = $value',
-      name: 'WINR Analytics',
+      name: 'Avafli Analytics',
     );
   }
 
@@ -55,7 +55,7 @@ class ConsoleAnalyticsAdapter implements AnalyticsAdapter {
 
     developer.log(
       '$timestamp🆔 User Identified: ${_redact(userId)}',
-      name: 'WINR Analytics',
+      name: 'Avafli Analytics',
     );
   }
 

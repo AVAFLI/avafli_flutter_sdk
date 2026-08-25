@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Defines the visual branding and theme for the WINR SDK.
+/// Defines the visual branding and theme for the Avafli SDK.
 ///
 /// This class allows customization of colors, typography, and imagery
 /// to match your app's brand identity and provide a cohesive user experience.
-class WINRBranding {
+class AvafliBranding {
   /// Primary text color
   final Color primaryColor;
 
@@ -62,8 +62,8 @@ class WINRBranding {
   /// Size for secondary logo display
   final Size? secondaryLogoSize;
 
-  /// Creates a new [WINRBranding] instance with the specified visual properties.
-  const WINRBranding({
+  /// Creates a new [AvafliBranding] instance with the specified visual properties.
+  const AvafliBranding({
     required this.primaryColor,
     required this.secondaryTextColor,
     required this.mutedTextColor,
@@ -85,12 +85,12 @@ class WINRBranding {
     this.secondaryLogoSize,
   });
 
-  /// Creates the default WINR branding theme.
+  /// Creates the default Avafli branding theme.
   ///
   /// This provides a dark theme with blue accents that matches
-  /// the standard WINR aesthetic.
-  factory WINRBranding.defaultBranding({Widget? logo, Widget? logoTwo}) {
-    return WINRBranding(
+  /// the standard Avafli aesthetic.
+  factory AvafliBranding.defaultBranding({Widget? logo, Widget? logoTwo}) {
+    return AvafliBranding(
       primaryColor: Colors.white,
       secondaryTextColor: Colors.white.withValues(alpha: 0.96),
       mutedTextColor: Colors.white.withValues(alpha: 0.74),
@@ -114,8 +114,8 @@ class WINRBranding {
   }
 
   /// Creates a carnival-style theme with blue and orange accents.
-  factory WINRBranding.carnivalBlueOrange({Widget? logo, Widget? logoTwo}) {
-    return WINRBranding(
+  factory AvafliBranding.carnivalBlueOrange({Widget? logo, Widget? logoTwo}) {
+    return AvafliBranding(
       primaryColor: Colors.white,
       secondaryTextColor: Colors.white.withValues(alpha: 0.95),
       mutedTextColor: Colors.white.withValues(alpha: 0.7),
@@ -139,8 +139,8 @@ class WINRBranding {
   }
 
   /// Creates a premium gold-themed branding.
-  factory WINRBranding.luxuryGold({Widget? logo, Widget? logoTwo}) {
-    return WINRBranding(
+  factory AvafliBranding.luxuryGold({Widget? logo, Widget? logoTwo}) {
+    return AvafliBranding(
       primaryColor: const Color(0xFFF59E0B),
       secondaryTextColor: Colors.white,
       mutedTextColor: const Color(0xFFF59E0B).withValues(alpha: 0.8),
@@ -164,7 +164,7 @@ class WINRBranding {
     );
   }
 
-  /// Returns a new [WINRBranding] with server-driven overrides applied.
+  /// Returns a new [AvafliBranding] with server-driven overrides applied.
   ///
   /// Server values from `sdkConfig.branding` override code-level defaults.
   /// Missing or null server fields fall back to the current values.
@@ -174,7 +174,7 @@ class WINRBranding {
   /// - `secondaryColor` → [secondaryButtonColor], [accentGlowColor]
   /// - `backgroundColor`→ [backgroundColor]
   /// - `logoUrl`        → reserved for future network-image logo support
-  WINRBranding applyingServerBranding(Map<String, dynamic>? serverBranding) {
+  AvafliBranding applyingServerBranding(Map<String, dynamic>? serverBranding) {
     if (serverBranding == null || serverBranding.isEmpty) return this;
 
     final serverPrimary = _parseColor(serverBranding['primaryColor']);
@@ -183,7 +183,7 @@ class WINRBranding {
     // logoUrl reserved for future use
     // final serverLogoUrl = serverBranding['logoUrl'] as String?;
 
-    return WINRBranding(
+    return AvafliBranding(
       primaryColor: serverPrimary ?? primaryColor,
       secondaryTextColor: secondaryTextColor,
       mutedTextColor: mutedTextColor,
@@ -218,8 +218,8 @@ class WINRBranding {
   }
 
   /// Creates a cosmic purple and pink themed branding.
-  factory WINRBranding.cosmicPurplePink({Widget? logo, Widget? logoTwo}) {
-    return WINRBranding(
+  factory AvafliBranding.cosmicPurplePink({Widget? logo, Widget? logoTwo}) {
+    return AvafliBranding(
       primaryColor: Colors.white,
       secondaryTextColor: Colors.white.withValues(alpha: 0.96),
       mutedTextColor: Colors.white.withValues(alpha: 0.74),

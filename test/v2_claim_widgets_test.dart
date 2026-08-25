@@ -5,9 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_claim.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_claim.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_effects.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
 
 Widget _host(Widget child) {
   return MaterialApp(
@@ -18,7 +18,7 @@ Widget _host(Widget child) {
 
 /// Loads the real bundled Inter faces so text measures like production.
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -35,21 +35,21 @@ Future<void> _loadRealFonts() async {
 void main() {
   setUpAll(_loadRealFonts);
 
-  final accent = WINRV2Accent(null).color;
+  final accent = AvafliV2Accent(null).color;
 
   Widget stepsFlow({
-    String? maskedEmail = 'c******a@winr.example.com',
+    String? maskedEmail = 'c******a@avafli.example.com',
     String? appName,
-    WINRPrizeClaimForm? initialForm,
+    AvafliPrizeClaimForm? initialForm,
     String? submitError,
-    ValueChanged<WINRPrizeClaimForm>? onSubmit,
+    ValueChanged<AvafliPrizeClaimForm>? onSubmit,
   }) {
-    return _host(WINRV2ClaimStepsFlow(
+    return _host(AvafliV2ClaimStepsFlow(
       accent: accent,
       logoUrl: null,
       appName: appName,
       maskedEmail: maskedEmail,
-      initialForm: initialForm ?? WINRPrizeClaimForm(),
+      initialForm: initialForm ?? AvafliPrizeClaimForm(),
       isSubmitting: false,
       submitError: submitError,
       onSubmit: onSubmit ?? (_) {},
@@ -66,7 +66,7 @@ void main() {
 
   testWidgets('winner splash renders and CONTINUE advances', (tester) async {
     var continued = false;
-    await tester.pumpWidget(_host(WINRV2WinnerSplashView(
+    await tester.pumpWidget(_host(AvafliV2WinnerSplashView(
       accent: accent,
       logoUrl: null,
       prizeHeadline: r'$1,000.00 CASH PRIZE',
@@ -77,10 +77,10 @@ void main() {
     // machinery as the streak tile's reveal beat — wrapped in IgnorePointer
     // so it can never block CONTINUE. (It removes itself when the GIF ends,
     // so assert on the first frame, before the clock advances.)
-    expect(find.byType(WINRV2GifView), findsOneWidget);
+    expect(find.byType(AvafliV2GifView), findsOneWidget);
     expect(
       find.ancestor(
-        of: find.byType(WINRV2GifView),
+        of: find.byType(AvafliV2GifView),
         matching: find.byType(IgnorePointer),
       ),
       findsWidgets,
@@ -104,9 +104,9 @@ void main() {
 
   testWidgets('stepped form walks 2 steps, gates each, and submits',
       (tester) async {
-    WINRPrizeClaimForm? submitted;
+    AvafliPrizeClaimForm? submitted;
     await tester.pumpWidget(stepsFlow(
-      initialForm: WINRPrizeClaimForm(
+      initialForm: AvafliPrizeClaimForm(
         firstName: 'Catherine',
         lastName: 'Cinosta',
       ),
@@ -118,7 +118,7 @@ void main() {
     expect(find.text('STEP 1 OF 2'), findsOneWidget);
     expect(find.text('TELL US ABOUT YOURSELF'), findsOneWidget);
     // The winning email is locked/display-only, masked by the backend.
-    expect(find.text('c******a@winr.example.com'), findsOneWidget);
+    expect(find.text('c******a@avafli.example.com'), findsOneWidget);
     // No back chevron on step 1.
     expect(find.byKey(const ValueKey('claim-back')), findsNothing);
 
@@ -140,7 +140,7 @@ void main() {
     await tester.enterText(fields.at(0), '5 Haide Pl.');
     await tester.enterText(fields.at(2), 'Brooklyn');
     await tester.enterText(fields.at(3), '11737');
-    // Let the focus-follows-keyboard centering (WINRV2EnsureVisible) finish
+    // Let the focus-follows-keyboard centering (AvafliV2EnsureVisible) finish
     // before choreographing taps against fixed positions.
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
@@ -207,7 +207,7 @@ void main() {
   testWidgets('back chevron returns to the previous step keeping values',
       (tester) async {
     await tester.pumpWidget(stepsFlow(
-      initialForm: WINRPrizeClaimForm(firstName: 'Sam', lastName: 'Winner'),
+      initialForm: AvafliPrizeClaimForm(firstName: 'Sam', lastName: 'Winner'),
     ));
     await tester.pump(const Duration(seconds: 1));
 
@@ -232,7 +232,7 @@ void main() {
 
   testWidgets('review surfaces the inline submit error', (tester) async {
     await tester.pumpWidget(stepsFlow(
-      initialForm: WINRPrizeClaimForm(
+      initialForm: AvafliPrizeClaimForm(
         firstName: 'Catherine',
         lastName: 'Cinosta',
         street: '5 Haide Pl.',
@@ -260,7 +260,7 @@ void main() {
 
   test('likeness consent copy names the publisher only when configured', () {
     expect(
-      WINRV2ClaimStepsFlow.likenessConsentLabel('Skape'),
+      AvafliV2ClaimStepsFlow.likenessConsentLabel('Skape'),
       'I authorize Skape and its promotional partners to use my name, city, '
       'profile photo, and likeness for winner announcements and promotional '
       'purposes. (Optional)',
@@ -268,7 +268,7 @@ void main() {
     // Absent/blank appName → the generic wording, unchanged.
     for (final absent in [null, '', '   ']) {
       expect(
-        WINRV2ClaimStepsFlow.likenessConsentLabel(absent),
+        AvafliV2ClaimStepsFlow.likenessConsentLabel(absent),
         "(Optional) I authorize this app's publisher and its promotional "
         'partners to use my name, city, profile photo, and likeness for '
         'winner announcements and promotional purposes.',
@@ -280,7 +280,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(stepsFlow(
       appName: 'Skape',
-      initialForm: WINRPrizeClaimForm(
+      initialForm: AvafliPrizeClaimForm(
         firstName: 'Catherine',
         lastName: 'Cinosta',
         street: '5 Haide Pl.',
@@ -304,10 +304,10 @@ void main() {
 
   testWidgets('confirmation renders the OFFICIAL WINNER card', (tester) async {
     var done = false;
-    await tester.pumpWidget(_host(WINRV2ClaimConfirmationView(
+    await tester.pumpWidget(_host(AvafliV2ClaimConfirmationView(
       accent: accent,
       logoUrl: null,
-      form: WINRPrizeClaimForm(
+      form: AvafliPrizeClaimForm(
         firstName: 'Catherine',
         lastName: 'Cinosta',
         street: '5 Haide Pl.',
@@ -323,14 +323,14 @@ void main() {
     // confetti field plus the one-shot burst GIF (asserted on the first
     // frame, before the burst can finish and remove itself) — both behind
     // IgnorePointer so RETURN TO APP is never blocked.
-    expect(find.byType(WINRV2Confetti), findsOneWidget);
-    expect(find.byType(WINRV2GifView), findsOneWidget);
+    expect(find.byType(AvafliV2Confetti), findsOneWidget);
+    expect(find.byType(AvafliV2GifView), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('YOUR PRIZE CLAIM HAS BEEN SUBMITTED'), findsOneWidget);
-    // No white "WINR MEDIA PRIZE CLAIM" strip — that's a canvas label in
+    // No white "Avafli MEDIA PRIZE CLAIM" strip — that's a canvas label in
     // Joe's frame, not UI.
-    expect(find.text('WINR MEDIA PRIZE CLAIM'), findsNothing);
+    expect(find.text('Avafli MEDIA PRIZE CLAIM'), findsNothing);
     expect(find.text('3-5 Business Days'), findsOneWidget);
     expect(find.text('OFFICIAL'), findsOneWidget);
     expect(find.text('WINNER'), findsOneWidget);
@@ -348,15 +348,15 @@ void main() {
 
   test('share line drops the app clause when no appName is configured', () {
     expect(
-      WINRV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', 'Skape'),
+      AvafliV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', 'Skape'),
       r'I just won $1,000.00 CASH PRIZE in Skape!',
     );
     expect(
-      WINRV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', null),
+      AvafliV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', null),
       r'I just won $1,000.00 CASH PRIZE!',
     );
     expect(
-      WINRV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', '  '),
+      AvafliV2ClaimShareView.shareLine(r'$1,000.00 CASH PRIZE', '  '),
       r'I just won $1,000.00 CASH PRIZE!',
     );
   });
@@ -364,29 +364,29 @@ void main() {
   group('share-link UTM tagging', () {
     test('appends utm params to a plain URL', () {
       expect(
-        WINRV2ClaimShareView.taggedShareUrl('https://example.com/app', 'x'),
-        'https://example.com/app?utm_source=x&utm_medium=winr_share',
+        AvafliV2ClaimShareView.taggedShareUrl('https://example.com/app', 'x'),
+        'https://example.com/app?utm_source=x&utm_medium=avafli_share',
       );
     });
 
     test('appends utm params to a URL with an existing query string', () {
       expect(
-        WINRV2ClaimShareView.taggedShareUrl(
+        AvafliV2ClaimShareView.taggedShareUrl(
             'https://example.com/app?ref=abc', 'facebook'),
         'https://example.com/app?ref=abc&utm_source=facebook'
-        '&utm_medium=winr_share',
+        '&utm_medium=avafli_share',
       );
     });
 
     test('leaves a URL with an existing utm_source untouched', () {
       const url = 'https://example.com/app?utm_source=publisher'
           '&utm_medium=email';
-      expect(WINRV2ClaimShareView.taggedShareUrl(url, 'x'), url);
+      expect(AvafliV2ClaimShareView.taggedShareUrl(url, 'x'), url);
     });
 
     test('passes through null and empty', () {
-      expect(WINRV2ClaimShareView.taggedShareUrl(null, 'x'), isNull);
-      expect(WINRV2ClaimShareView.taggedShareUrl('', 'x'), '');
+      expect(AvafliV2ClaimShareView.taggedShareUrl(null, 'x'), isNull);
+      expect(AvafliV2ClaimShareView.taggedShareUrl('', 'x'), '');
     });
 
     test('each network carries its own utm_source value', () {
@@ -397,13 +397,13 @@ void main() {
         'snapchat',
         'tiktok'
       ]) {
-        final tagged = WINRV2ClaimShareView.taggedShareUrl(
+        final tagged = AvafliV2ClaimShareView.taggedShareUrl(
             'https://example.com/app', network);
         expect(
           Uri.parse(tagged!).queryParameters['utm_source'],
           network,
         );
-        expect(Uri.parse(tagged).queryParameters['utm_medium'], 'winr_share');
+        expect(Uri.parse(tagged).queryParameters['utm_medium'], 'avafli_share');
       }
     });
   });
@@ -426,12 +426,12 @@ void main() {
         .setMockMethodCallHandler(SystemChannels.platform, null));
 
     final stories = <String>[];
-    await tester.pumpWidget(_host(WINRV2ClaimShareView(
+    await tester.pumpWidget(_host(AvafliV2ClaimShareView(
       accent: accent,
       logoUrl: null,
       prizeHeadline: r'$1,000.00 CASH PRIZE',
       appName: 'Skape',
-      shareUrl: 'https://winr.example.com/s/abc',
+      shareUrl: 'https://avafli.example.com/s/abc',
       onStory: stories.add,
       onDone: () => advanced = true,
       onClose: () {},
@@ -455,8 +455,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(copied, [
       r'I just won $1,000.00 CASH PRIZE in Skape! '
-          'https://winr.example.com/s/abc'
-          '?utm_source=instagram&utm_medium=winr_share',
+          'https://avafli.example.com/s/abc'
+          '?utm_source=instagram&utm_medium=avafli_share',
     ]);
     // The confirmation is faded IN (it lives in the tree at opacity 0
     // otherwise), then clears itself after the hold.
@@ -484,7 +484,7 @@ void main() {
       (tester) async {
     final stories = <String>[];
     var closed = 0;
-    await tester.pumpWidget(_host(WINRV2ClaimShareView(
+    await tester.pumpWidget(_host(AvafliV2ClaimShareView(
       accent: accent,
       logoUrl: null,
       prizeHeadline: r'$1,000.00 CASH PRIZE',
@@ -507,7 +507,7 @@ void main() {
   testWidgets('an empty story is never delivered', (tester) async {
     final stories = <String>[];
     var advanced = false;
-    await tester.pumpWidget(_host(WINRV2ClaimShareView(
+    await tester.pumpWidget(_host(AvafliV2ClaimShareView(
       accent: accent,
       logoUrl: null,
       prizeHeadline: r'$1,000.00 CASH PRIZE',

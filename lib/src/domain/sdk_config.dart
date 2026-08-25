@@ -1,12 +1,12 @@
 /// Typed view over the server-driven `sdkConfig` payload (mirrors the iOS
-/// SDK's `SDKConfigResponse` / `ExperienceConfig` in WINRAPI.swift).
+/// SDK's `SDKConfigResponse` / `ExperienceConfig` in AvafliAPI.swift).
 ///
 /// V2 hardcodes the design; publishers can customize ONLY their logo, prize
 /// image, and primary color — so this parses just what V2 needs plus the
 /// experience behavior flags.
-class WinrSdkConfig {
+class AvafliSdkConfig {
   /// Publisher branding (primary color + logo).
-  final WinrSdkBranding? branding;
+  final AvafliSdkBranding? branding;
 
   /// Publisher-level official-rules URL fallback.
   final String? rulesUrl;
@@ -30,10 +30,10 @@ class WinrSdkConfig {
   final String? placesApiKey;
 
   /// Experience behavior (V2 auto-open flow). Absent → SDK defaults apply.
-  final WinrExperienceConfig? experience;
+  final AvafliExperienceConfig? experience;
 
   /// Server-driven copy overrides. V2 uses only the email-consent line.
-  final WinrSdkCopy? copy;
+  final AvafliSdkCopy? copy;
 
   /// Whether the capture-screen age gate is shown (top-level config, mirrors
   /// the web SDK's `SDKConfig.ageGateEnabled`). Absent → SDK default (true).
@@ -43,7 +43,7 @@ class WinrSdkConfig {
   /// sentence when the server sends no explicit `ageGateText`. Absent → 18.
   final int? ageGateMinAge;
 
-  const WinrSdkConfig({
+  const AvafliSdkConfig({
     this.branding,
     this.rulesUrl,
     this.shareUrl,
@@ -55,20 +55,20 @@ class WinrSdkConfig {
     this.ageGateMinAge,
   });
 
-  factory WinrSdkConfig.fromJson(Map<String, dynamic> json) {
-    return WinrSdkConfig(
+  factory AvafliSdkConfig.fromJson(Map<String, dynamic> json) {
+    return AvafliSdkConfig(
       branding: json['branding'] is Map<String, dynamic>
-          ? WinrSdkBranding.fromJson(json['branding'])
+          ? AvafliSdkBranding.fromJson(json['branding'])
           : null,
       rulesUrl: json['rulesUrl'] as String?,
       shareUrl: json['shareUrl'] as String?,
       appName: json['appName'] as String?,
       placesApiKey: json['placesApiKey'] as String?,
       experience: json['experience'] is Map<String, dynamic>
-          ? WinrExperienceConfig.fromJson(json['experience'])
+          ? AvafliExperienceConfig.fromJson(json['experience'])
           : null,
       copy: json['copy'] is Map<String, dynamic>
-          ? WinrSdkCopy.fromJson(json['copy'])
+          ? AvafliSdkCopy.fromJson(json['copy'])
           : null,
       ageGateEnabled: json['ageGateEnabled'] as bool?,
       ageGateMinAge: (json['ageGateMinAge'] as num?)?.toInt(),
@@ -80,7 +80,7 @@ class WinrSdkConfig {
   /// server-provided `ageGateText` wins verbatim (nested per-screen, then flat
   /// legacy); only when absent is the sentence BUILT from [ageGateMinAge]
   /// (default 18) — never a hardcoded "18". Mirrors the web SDK's
-  /// `WINRV2Controller.ageGateText`.
+  /// `AvafliV2Controller.ageGateText`.
   String get resolvedAgeGateText {
     final serverText = copy?.resolvedAgeGateText;
     if (serverText != null) return serverText;
@@ -89,8 +89,8 @@ class WinrSdkConfig {
   }
 
   /// Null-tolerant convenience parser.
-  static WinrSdkConfig? tryParse(Map<String, dynamic>? json) =>
-      json == null ? null : WinrSdkConfig.fromJson(json);
+  static AvafliSdkConfig? tryParse(Map<String, dynamic>? json) =>
+      json == null ? null : AvafliSdkConfig.fromJson(json);
 }
 
 /// Server-driven copy overrides (mirrors the iOS SDK's `SDKCopyConfig`).
@@ -98,9 +98,9 @@ class WinrSdkConfig {
 /// The backend emits per-screen nested objects; older payloads carried a few
 /// flat fields instead. Both shapes are parsed so the SDK reads whichever the
 /// publisher's dashboard happens to send.
-class WinrSdkCopy {
+class AvafliSdkCopy {
   /// Nested per-screen copy (current backend format).
-  final WinrEmailCaptureCopy? emailCapture;
+  final AvafliEmailCaptureCopy? emailCapture;
 
   /// Flat legacy field, kept as a fallback for older payloads.
   final String? emailConsentText;
@@ -108,16 +108,16 @@ class WinrSdkCopy {
   /// Flat legacy age-gate label, kept as a fallback for older payloads.
   final String? ageGateText;
 
-  const WinrSdkCopy({
+  const AvafliSdkCopy({
     this.emailCapture,
     this.emailConsentText,
     this.ageGateText,
   });
 
-  factory WinrSdkCopy.fromJson(Map<String, dynamic> json) {
-    return WinrSdkCopy(
+  factory AvafliSdkCopy.fromJson(Map<String, dynamic> json) {
+    return AvafliSdkCopy(
       emailCapture: json['emailCapture'] is Map<String, dynamic>
-          ? WinrEmailCaptureCopy.fromJson(json['emailCapture'])
+          ? AvafliEmailCaptureCopy.fromJson(json['emailCapture'])
           : null,
       emailConsentText: json['emailConsentText'] as String?,
       ageGateText: json['ageGateText'] as String?,
@@ -153,8 +153,8 @@ class WinrSdkCopy {
 
 /// Email-capture screen copy. V2 hardcodes the design and only honors the
 /// consent line, but the field is namespaced with the rest of the screen's
-/// copy so the backend contract matches the other WINR SDKs.
-class WinrEmailCaptureCopy {
+/// copy so the backend contract matches the other Avafli SDKs.
+class AvafliEmailCaptureCopy {
   /// Marketing-consent line, e.g. "I agree to receive marketing emails from
   /// {PublisherName}" with the name already substituted by the backend.
   final String? emailConsentText;
@@ -163,10 +163,10 @@ class WinrEmailCaptureCopy {
   /// or older". Rendered verbatim; overrides the SDK's built sentence.
   final String? ageGateText;
 
-  const WinrEmailCaptureCopy({this.emailConsentText, this.ageGateText});
+  const AvafliEmailCaptureCopy({this.emailConsentText, this.ageGateText});
 
-  factory WinrEmailCaptureCopy.fromJson(Map<String, dynamic> json) {
-    return WinrEmailCaptureCopy(
+  factory AvafliEmailCaptureCopy.fromJson(Map<String, dynamic> json) {
+    return AvafliEmailCaptureCopy(
       emailConsentText: json['emailConsentText'] as String?,
       ageGateText: json['ageGateText'] as String?,
     );
@@ -174,17 +174,17 @@ class WinrEmailCaptureCopy {
 }
 
 /// Publisher branding config — only the V2 publisher-configurable bits.
-class WinrSdkBranding {
+class AvafliSdkBranding {
   /// Hex string like "#268FFF"; drives the accent color.
   final String? primaryColor;
 
   /// URL of the publisher logo shown in the drawer header.
   final String? logoUrl;
 
-  const WinrSdkBranding({this.primaryColor, this.logoUrl});
+  const AvafliSdkBranding({this.primaryColor, this.logoUrl});
 
-  factory WinrSdkBranding.fromJson(Map<String, dynamic> json) {
-    return WinrSdkBranding(
+  factory AvafliSdkBranding.fromJson(Map<String, dynamic> json) {
+    return AvafliSdkBranding(
       primaryColor: json['primaryColor'] as String?,
       logoUrl: json['logoUrl'] as String?,
     );
@@ -192,7 +192,7 @@ class WinrSdkBranding {
 }
 
 /// Server-driven experience behavior flags (mirrors iOS `ExperienceConfig`).
-class WinrExperienceConfig {
+class AvafliExperienceConfig {
   /// Auto-present the experience on the first app-open of the day
   /// (default true).
   final bool? autoOpenEnabled;
@@ -204,14 +204,14 @@ class WinrExperienceConfig {
   /// Dismissal requires an explicit tap; never auto-fade (default true).
   final bool? requireDismissClick;
 
-  const WinrExperienceConfig({
+  const AvafliExperienceConfig({
     this.autoOpenEnabled,
     this.unregisteredImpressionCap,
     this.requireDismissClick,
   });
 
-  factory WinrExperienceConfig.fromJson(Map<String, dynamic> json) {
-    return WinrExperienceConfig(
+  factory AvafliExperienceConfig.fromJson(Map<String, dynamic> json) {
+    return AvafliExperienceConfig(
       autoOpenEnabled: json['autoOpenEnabled'] as bool?,
       unregisteredImpressionCap:
           (json['unregisteredImpressionCap'] as num?)?.toInt(),

@@ -11,39 +11,39 @@ import 'domain/daily_entry_grant.dart';
 import 'domain/sdk_config.dart';
 import 'domain/streak_engine.dart';
 import 'network/network_client.dart';
-import 'network/winr_api.dart';
+import 'network/avafli_api.dart';
 import 'services/analytics/analytics_adapter.dart';
 import 'services/logger.dart';
 import 'services/push_notification_manager.dart';
 import 'storage/preferences_storage.dart';
 import 'storage/secure_storage.dart';
 import 'storage/storage.dart';
-import 'ui/v2/winr_v2_effects.dart';
-import 'ui/v2/winr_v2_experience.dart';
-import 'winr_configuration.dart';
-import 'winr_error.dart';
-import 'winr_user.dart';
+import 'ui/v2/avafli_v2_effects.dart';
+import 'ui/v2/avafli_v2_experience.dart';
+import 'avafli_configuration.dart';
+import 'avafli_error.dart';
+import 'avafli_user.dart';
 
-/// Main entry point for the WINR Flutter SDK.
+/// Main entry point for the Avafli Flutter SDK.
 ///
 /// This class provides the primary interface for initializing the SDK. The
-/// WINR experience presents itself — the SDK auto-opens the bottom drawer at
+/// Avafli experience presents itself — the SDK auto-opens the bottom drawer at
 /// most once per calendar day; there is no manual launch API.
 ///
 /// Example usage:
 /// ```dart
 /// // Configure the SDK with user (call once at app launch)
-/// await WINR.configure(WINRConfiguration(
+/// await Avafli.configure(AvafliConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
-///   environment: WINREnvironment.production,
-///   user: WINRUser(id: 'user123', firstName: 'Jane', lastName: 'Doe'),
+///   environment: AvafliEnvironment.production,
+///   user: AvafliUser(id: 'user123', firstName: 'Jane', lastName: 'Doe'),
 /// ));
 ///
 /// // For the once-a-day auto-open, attach the SDK's navigator key:
-/// MaterialApp(navigatorKey: WINR.navigatorKey, ...)
+/// MaterialApp(navigatorKey: Avafli.navigatorKey, ...)
 /// ```
-class WINR {
-  static WINRConfiguration? _configuration;
+class Avafli {
+  static AvafliConfiguration? _configuration;
   static NetworkClient? _networkClient;
   static SecureStorage? _secureStorage;
   static PreferencesStorage? _preferencesStorage;
@@ -52,7 +52,7 @@ class WINR {
   // Cached data
   static Giveaway? _cachedGiveaway;
   static Map<String, dynamic>? _cachedSdkConfigRaw;
-  static WinrSdkConfig? _cachedSdkConfig;
+  static AvafliSdkConfig? _cachedSdkConfig;
   static bool? _cachedClaimedToday;
   static int? _cachedStreakDay;
 
@@ -83,23 +83,23 @@ class WINR {
   /// Whether the experience route is currently on screen (don't stack).
   static bool _isPresenting = false;
 
-  static _WinrLifecycleObserver? _lifecycleObserver;
+  static _AvafliLifecycleObserver? _lifecycleObserver;
 
   /// Navigator key for the V2 auto-open flow. Attach it to your app's
-  /// `MaterialApp(navigatorKey: WINR.navigatorKey)` so the SDK can present the
+  /// `MaterialApp(navigatorKey: Avafli.navigatorKey)` so the SDK can present the
   /// experience on the first app-open of the day. Without it, auto-open is
   /// silently skipped and the experience never appears.
   ///
   /// Apps that already have their own navigator key can hand it to the SDK
   /// instead (before the first auto-open opportunity):
-  /// `WINR.navigatorKey = myExistingKey;`
+  /// `Avafli.navigatorKey = myExistingKey;`
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   /// Package version and constants.
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '2.9.5';
+  static const String sdkVersion = '3.0.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -116,7 +116,7 @@ class WINR {
   static String get _optedOutKey =>
       'winr_opted_out_${_configuration?.bundleId ?? ''}';
 
-  /// Configures the WINR SDK with the provided configuration.
+  /// Configures the Avafli SDK with the provided configuration.
   ///
   /// This must be called before any other SDK methods. It initializes the
   /// networking, storage, and other core components, registers the device in
@@ -125,7 +125,7 @@ class WINR {
   /// respected).
   ///
   /// Returns `true` if configuration was successful, `false` otherwise.
-  static Future<bool> configure(WINRConfiguration config) async {
+  static Future<bool> configure(AvafliConfiguration config) async {
     try {
       // Store configuration
       _configuration = config;
@@ -136,11 +136,11 @@ class WINR {
 
       // Initialize logger
       Logger.instance.level = config.options.logging;
-      Logger.instance.info('WINR SDK configured for ${config.environment}');
+      Logger.instance.info('Avafli SDK configured for ${config.environment}');
 
       // Keep request metadata in sync (used by claim requests).
-      WINRRequestDefaults.platformOS = platformOS;
-      WINRRequestDefaults.sdkVersion = sdkVersion;
+      AvafliRequestDefaults.platformOS = platformOS;
+      AvafliRequestDefaults.sdkVersion = sdkVersion;
 
       // Initialize storage
       _secureStorage = SecureStorage();
@@ -165,11 +165,13 @@ class WINR {
 
       // Initialize push notification manager
       if (config.options.enablePushReminders) {
-        WINRPushNotificationManager.instance.setNetworkClient(_networkClient!);
+        AvafliPushNotificationManager.instance
+            .setNetworkClient(_networkClient!);
       }
 
       // Track configuration event
-      config.options.analyticsAdapter?.track(WINRAnalyticsEvents.sdkConfigured);
+      config.options.analyticsAdapter
+          ?.track(AvafliAnalyticsEvents.sdkConfigured);
 
       // Identify user and submit profile
       if (!config.user.isGuest) {
@@ -187,7 +189,7 @@ class WINR {
       // Auto-present on subsequent foregrounds too (covers the "app stayed in
       // memory overnight" case — a new day should re-open the experience).
       if (_lifecycleObserver == null) {
-        _lifecycleObserver = _WinrLifecycleObserver();
+        _lifecycleObserver = _AvafliLifecycleObserver();
         WidgetsBinding.instance.addObserver(_lifecycleObserver!);
       }
 
@@ -201,7 +203,7 @@ class WINR {
     }
   }
 
-  /// Whether the WINR experience is currently available (i.e. eligible to
+  /// Whether the Avafli experience is currently available (i.e. eligible to
   /// auto-open).
   ///
   /// Returns `false` if the SDK has not been configured, or if the publisher
@@ -289,13 +291,13 @@ class WINR {
     }
 
     // Don't stack on top of an already-presented experience, and require a
-    // navigator (host must attach WINR.navigatorKey to its MaterialApp).
+    // navigator (host must attach Avafli.navigatorKey to its MaterialApp).
     if (_isPresenting) return;
     final navigator = navigatorKey.currentState;
     final context = navigatorKey.currentContext;
     if (navigator == null || context == null) {
       Logger.instance.debug(
-          'Auto-present skipped: WINR.navigatorKey not attached to a MaterialApp');
+          'Auto-present skipped: Avafli.navigatorKey not attached to a MaterialApp');
       return;
     }
 
@@ -305,7 +307,7 @@ class WINR {
     }
     await prefs.setString(_lastAutoPresentKey, today);
     Logger.instance
-        .info('Auto-presenting WINR experience (first open of the day)');
+        .info('Auto-presenting Avafli experience (first open of the day)');
     // Re-fetch the navigator context after the awaits above.
     final presentContext = navigatorKey.currentContext;
     if (presentContext == null || !presentContext.mounted) return;
@@ -332,8 +334,8 @@ class WINR {
           .info('Auto-presented experience was removed by host navigation — '
               'retrying ($_autoPresentRetries/$_maxAutoPresentRetries). '
               'If your app boots through a splash screen that clears the '
-              'navigation stack, call WINR.holdAutoOpen() during boot and '
-              'WINR.releaseAutoOpen() once your main screen is mounted.');
+              'navigation stack, call Avafli.holdAutoOpen() during boot and '
+              'Avafli.releaseAutoOpen() once your main screen is mounted.');
       await prefs.remove(_lastAutoPresentKey);
       if (pendingImpressionCount) {
         final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
@@ -356,13 +358,13 @@ class WINR {
 
   // MARK: - Push reminders
 
-  /// Register the host app's Firebase Cloud Messaging token so the WINR
+  /// Register the host app's Firebase Cloud Messaging token so the Avafli
   /// backend can send streak-reminder pushes through the publisher's own
   /// Firebase project (configured in the publisher dashboard).
   ///
   /// Call whenever FirebaseMessaging hands you a token:
   /// ```dart
-  /// FirebaseMessaging.instance.onTokenRefresh.listen(WINR.registerPushToken);
+  /// FirebaseMessaging.instance.onTokenRefresh.listen(Avafli.registerPushToken);
   /// ```
   /// No-ops silently if the SDK isn't configured yet.
   static Future<void> registerPushToken(String fcmToken) async {
@@ -387,12 +389,12 @@ class WINR {
   static Future<void> optOut() async {
     final networkClient = _networkClient;
     if (networkClient == null) {
-      throw const WINRException(WINRError.notConfigured);
+      throw const AvafliException(AvafliError.notConfigured);
     }
     await networkClient.send(OptOutRequest());
     markOptedOut();
-    Logger.instance
-        .info('User opted out of WINR (RTD) — experience permanently silenced');
+    Logger.instance.info(
+        'User opted out of Avafli (RTD) — experience permanently silenced');
   }
 
   /// @internal — Records the RTD flag (from the backend or [optOut]) so the
@@ -423,7 +425,7 @@ class WINR {
     _cachedAdoptionPending = null;
   }
 
-  /// Presents the WINR experience (the V2 bottom drawer) over the host app.
+  /// Presents the Avafli experience (the V2 bottom drawer) over the host app.
   ///
   /// Internal-only: the experience is exclusively SDK-driven — it is opened by
   /// the once-a-day auto-present flow ([_autoPresentIfEligible]) and cannot be
@@ -432,13 +434,13 @@ class WINR {
   /// dismissed without a (new) claim.
   ///
   /// If the publisher account is suspended / its API key has been revoked,
-  /// this does NOT push any screen and instead throws a [WINRException]
-  /// wrapping [WINRError.serviceUnavailable]. If the person opted out (RTD),
-  /// throws [WINRError.optedOut].
+  /// this does NOT push any screen and instead throws a [AvafliException]
+  /// wrapping [AvafliError.serviceUnavailable]. If the person opted out (RTD),
+  /// throws [AvafliError.optedOut].
   static Future<DailyEntryGrant?> _present(BuildContext context) async {
     final config = _configuration;
     if (config == null) {
-      throw const WINRException(WINRError.notConfigured);
+      throw const AvafliException(AvafliError.notConfigured);
     }
 
     // Ensure registration is complete — registration may flip _isSuspended.
@@ -446,21 +448,21 @@ class WINR {
 
     // If the publisher is suspended, do not present anything.
     if (_isSuspended) {
-      Logger.instance.info('WINR present suppressed: publisher suspended');
-      throw const WINRException(WINRError.serviceUnavailable);
+      Logger.instance.info('Avafli present suppressed: publisher suspended');
+      throw const AvafliException(AvafliError.serviceUnavailable);
     }
 
     // RTD: an opted-out person never sees the experience again.
     if (_cachedOptedOut) {
-      Logger.instance.info('WINR present suppressed: user opted out (RTD)');
-      throw const WINRException(WINRError.optedOut);
+      Logger.instance.info('Avafli present suppressed: user opted out (RTD)');
+      throw const AvafliException(AvafliError.optedOut);
     }
 
     if (_isPresenting) return null;
 
     // Track presentation
     config.options.analyticsAdapter
-        ?.track(WINRAnalyticsEvents.experiencePresented);
+        ?.track(AvafliAnalyticsEvents.experiencePresented);
 
     if (!context.mounted) return null;
 
@@ -480,7 +482,7 @@ class WINR {
           // host app during dismissal.
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
-          pageBuilder: (context, animation, secondary) => WINRV2Experience(
+          pageBuilder: (context, animation, secondary) => AvafliV2Experience(
             configuration: config,
             networkClient: _networkClient!,
             secureStorage: _secureStorage!,
@@ -501,7 +503,7 @@ class WINR {
       }
       // User dismissed without claiming — NOT an error.
       config.options.analyticsAdapter
-          ?.track(WINRAnalyticsEvents.experienceDismissed);
+          ?.track(AvafliAnalyticsEvents.experienceDismissed);
       return null;
     } finally {
       _isPresenting = false;
@@ -515,7 +517,7 @@ class WINR {
   static Future<void> registerForPushNotifications() async {
     final config = _configuration;
     if (config == null) {
-      throw const WINRException(WINRError.notConfigured);
+      throw const AvafliException(AvafliError.notConfigured);
     }
 
     if (!config.options.enablePushReminders) {
@@ -524,7 +526,7 @@ class WINR {
     }
 
     Logger.instance.debug(
-        'Push reminders enabled — call WINRPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
+        'Push reminders enabled — call AvafliPushNotificationManager.instance.didReceiveRegistrationToken(token) with your FCM token');
   }
 
   /// Right-to-be-Forgotten (GDPR/CCPA)
@@ -570,10 +572,10 @@ class WINR {
           // Try to refresh giveaway data with the cached token
           await _refreshGiveawayData();
           return;
-        } on WINRException catch (e) {
+        } on AvafliException catch (e) {
           // If auth failed, the cached token is stale — clear it and
           // re-register
-          if (e.error == WINRError.authenticationFailed) {
+          if (e.error == AvafliError.authenticationFailed) {
             Logger.instance.info('Cached token expired, re-registering device');
             _networkClient!.setAuthToken(null);
             await secureStorage.deleteAuthData();
@@ -588,7 +590,7 @@ class WINR {
       final deviceFingerprint = await _generateDeviceFingerprint();
 
       // Register with backend
-      // TODO(winr): user_timezone should be a proper IANA TZ DB identifier
+      // TODO(avafli): user_timezone should be a proper IANA TZ DB identifier
       // (e.g. "America/New_York"), per spec field 16. `DateTime.now()
       // .timeZoneName` returns a locale abbreviation (e.g. "EST"), NOT IANA.
       // dart:core has no IANA source; add the `flutter_timezone` plugin
@@ -619,7 +621,7 @@ class WINR {
       _cachedClaimedToday = response.claimedToday;
       _cachedStreakDay = response.streakDay;
       _cachedSdkConfigRaw = response.sdkConfig;
-      _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
+      _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedAdoptionPending = response.adoptionPending;
       if (response.optedOut == true) markOptedOut();
 
@@ -657,16 +659,17 @@ class WINR {
   /// its first frame instead of the art popping in after everything else.
   /// Fire-and-forget; failures just fall back to loading at display time.
   static void _prewarmPublisherArt() {
-    WINRV2ImageWarmer.prewarm(_cachedGiveaway?.prizeImageUrl);
-    WINRV2ImageWarmer.prewarm(_cachedSdkConfig?.branding?.logoUrl);
+    AvafliV2ImageWarmer.prewarm(_cachedGiveaway?.prizeImageUrl);
+    AvafliV2ImageWarmer.prewarm(_cachedSdkConfig?.branding?.logoUrl);
   }
 
   /// If [error] indicates the publisher is suspended / API key revoked, caches
   /// that state so subsequent [present] calls short-circuit cleanly.
   static void _handleSuspensionIfNeeded(Object error) {
-    if (error is WINRException && error.error == WINRError.serviceUnavailable) {
+    if (error is AvafliException &&
+        error.error == AvafliError.serviceUnavailable) {
       _isSuspended = true;
-      Logger.instance.info('Publisher suspended — WINR experience disabled');
+      Logger.instance.info('Publisher suspended — Avafli experience disabled');
     }
   }
 
@@ -682,7 +685,7 @@ class WINR {
       _cachedClaimedToday = response.claimedToday;
       _cachedStreakDay = response.streakDay;
       _cachedSdkConfigRaw = response.sdkConfig;
-      _cachedSdkConfig = WinrSdkConfig.tryParse(response.sdkConfig);
+      _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedEmailConsent = response.emailConsentStatus;
       _cachedAdoptionPending = response.adoptionPending;
       if (response.optedOut == true) markOptedOut();
@@ -703,14 +706,14 @@ class WINR {
       }
 
       Logger.instance.debug('Giveaway data refreshed');
-    } on WINRException catch (e) {
+    } on AvafliException catch (e) {
       // Rethrow auth errors so callers can handle stale token recovery
-      if (e.error == WINRError.authenticationFailed) {
+      if (e.error == AvafliError.authenticationFailed) {
         Logger.instance.error('Auth failed during giveaway refresh', e);
         rethrow;
       }
       // Rethrow suspension so the caller can cache it and short-circuit.
-      if (e.error == WINRError.serviceUnavailable) {
+      if (e.error == AvafliError.serviceUnavailable) {
         Logger.instance.error('Publisher suspended during giveaway refresh', e);
         rethrow;
       }
@@ -774,7 +777,7 @@ class WINR {
   /// Optional name/phone fields are validated/normalized before submit (spec
   /// fields 4–6). Invalid values are dropped (sent as null) rather than
   /// rejecting the whole profile, since these are optional.
-  static Future<void> _submitUserProfileIfNeeded(WINRUser user) async {
+  static Future<void> _submitUserProfileIfNeeded(AvafliUser user) async {
     try {
       // Guests get the SDK-minted stable id (persisted, so attribution doesn't
       // churn per session); a later configure with the signed-in user
@@ -897,11 +900,11 @@ class WINR {
 
   /// Gets the current configuration (for testing).
   @visibleForTesting
-  static WINRConfiguration? get configurationForTesting => _configuration;
+  static AvafliConfiguration? get configurationForTesting => _configuration;
 
   /// Gets the current user (for testing).
   @visibleForTesting
-  static WINRUser? get userForTesting => _configuration?.user;
+  static AvafliUser? get userForTesting => _configuration?.user;
 
   /// Gets the raw server sdkConfig (for testing).
   @visibleForTesting
@@ -939,11 +942,11 @@ class WINR {
 
 /// Observes app lifecycle to re-attempt the once-a-day auto-present when the
 /// app returns to the foreground (mirrors iOS `didBecomeActiveNotification`).
-class _WinrLifecycleObserver with WidgetsBindingObserver {
+class _AvafliLifecycleObserver with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(WINR.handleAppResumed());
+      unawaited(Avafli.handleAppResumed());
     }
   }
 }

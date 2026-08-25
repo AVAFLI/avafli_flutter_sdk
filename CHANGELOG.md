@@ -1,3 +1,52 @@
+## 3.0.0 — 2026-08-25
+
+**Full brand rename: WINR → Avafli.** This release renames the package, its
+entrypoint, and the entire public API. It is published as the NEW pub.dev
+package `avafli_sdk`; the old `winr_flutter_sdk` listing will be marked
+discontinued (with `avafli_sdk` as its replacement) and receives no further
+updates. No feature or behavior changes beyond the rename.
+
+### Migration
+
+| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.0.0) |
+| --- | --- |
+| `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` dependencies | `avafli_sdk: ^3.0.0` |
+| `import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';` | `import 'package:avafli_sdk/avafli_sdk.dart';` |
+| `WINR.configure(...)`, `WINR.navigatorKey`, `WINR.holdAutoOpen()` / `WINR.releaseAutoOpen()`, `WINR.optOut()`, `WINR.registerPushToken` | `Avafli.` equivalents |
+| `WINRConfiguration`, `WINRUser`, `WINROptions`, `WINREnvironment` | `AvafliConfiguration`, `AvafliUser`, `AvafliOptions`, `AvafliEnvironment` |
+| `WINRError`, `WINRException` | `AvafliError`, `AvafliException` |
+| `WINRPushNotificationManager.instance` | `AvafliPushNotificationManager.instance` |
+| `WINRBranding` | `AvafliBranding` |
+| Internal `winr_*.dart` / `winr_v2_*.dart` files, `WINRV2*` classes | `avafli_*.dart` / `avafli_v2_*.dart`, `AvafliV2*` |
+
+`Avafli.sdkVersion` (and the request-metadata default) now report `3.0.0`.
+
+### Deliberately unchanged — compatibility
+
+- **API keys**: the `winr_live_…` / `winr_test_…` key formats are issued by the
+  backend and keep working as-is.
+- **Legal webview URLs stay on winrmedia.com** (`https://winrmedia.com/sdk/privacy`
+  et al.) — the hosted legal surface has not moved.
+- **Delete bridge accepts both schemes**: the privacy page's Delete-my-data
+  bridge is intercepted as `winr://delete` (what the hosted page emits today)
+  AND `avafli://delete` (the canonical 3.0 scheme), so the page can migrate
+  schemes without stranding either SDK generation.
+- **On-device state survives the upgrade**: secure-storage keychain account
+  (`winr_flutter_sdk`), token/streak storage keys (`winr_*`), and the
+  per-bundle SharedPreferences bookkeeping keys are unchanged — upgraded users
+  keep their session, streak, and opt-out state.
+- **Analytics event names are unchanged** (`winr_sdk_configured`,
+  `winr_daily_entry_claimed`, …) so existing dashboards and adapter filters
+  keep matching.
+
+### User-visible branding
+
+- All user-facing "WINR" copy now reads Avafli: the fallback header wordmark
+  (AVAFLI), "Powered by © Avafli", the delete-my-data confirmation copy, error
+  messages, and log/analytics console tags.
+- Share-link UTM tagging now appends `utm_medium=avafli_share` (was
+  `winr_share`) — update any campaign filters keyed on the old value.
+
 ## 2.9.5 — 2026-08-18
 
 - **Delete confirmation now presents over the experience after the webview

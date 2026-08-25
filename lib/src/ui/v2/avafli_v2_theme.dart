@@ -1,17 +1,17 @@
 // Design system for the V2 experience — tokens, fonts, and assets extracted
-// from the WINR-High-V2 Figma. Everything here is intentionally HARDCODED to
+// from the Avafli-High-V2 Figma. Everything here is intentionally HARDCODED to
 // the design except the publisher-configurable primary color: publishers can
 // customize ONLY their logo, prize image, and primary color.
 //
-// Mirrors the iOS SDK's WINRV2Theme.swift.
+// Mirrors the iOS SDK's AvafliV2Theme.swift.
 
 import 'package:flutter/widgets.dart';
 
 import '../../domain/giveaway.dart';
 
-/// Colors (Figma design tokens) — mirrors iOS `WINRV2Color`.
-class WINRV2Colors {
-  WINRV2Colors._();
+/// Colors (Figma design tokens) — mirrors iOS `AvafliV2Color`.
+class AvafliV2Colors {
+  AvafliV2Colors._();
 
   /// background/primary — the drawer + tile background ("gunmetal").
   static const Color gunmetal = Color(0xFF1D2330);
@@ -25,8 +25,8 @@ class WINRV2Colors {
   /// Modal hairline border.
   static const Color panelBorder = Color(0xFF515151);
 
-  /// WINR brand blue — the DEFAULT primary when a publisher hasn't set one.
-  static const Color winrBlue = Color(0xFF268FFF);
+  /// Avafli brand blue — the DEFAULT primary when a publisher hasn't set one.
+  static const Color avafliBlue = Color(0xFF268FFF);
 
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xBFFFFFFF); // white 75%
@@ -38,13 +38,14 @@ class WINRV2Colors {
   static const Color errorRed = Color(0xFFFF6B63);
 }
 
-/// The publisher's primary color (branding.primaryColor) with the WINR-blue
+/// The publisher's primary color (branding.primaryColor) with the Avafli-blue
 /// default. Drives: CTA buttons, streak-tile outlines/glow, accent text,
-/// power-up tiles. Mirrors iOS `WINRV2Accent`.
-class WINRV2Accent {
+/// power-up tiles. Mirrors iOS `AvafliV2Accent`.
+class AvafliV2Accent {
   final Color color;
 
-  WINRV2Accent(String? hex) : color = _parse(hex) ?? WINRV2Colors.winrBlue;
+  AvafliV2Accent(String? hex)
+      : color = _parse(hex) ?? AvafliV2Colors.avafliBlue;
 
   static Color? _parse(String? hex) {
     if (hex == null) return null;
@@ -58,17 +59,17 @@ class WINRV2Accent {
 }
 
 /// Fonts (Inter + Oswald, bundled with the package) — mirrors iOS
-/// `WINRV2Font`. Fonts are declared in this package's pubspec so host apps
+/// `AvafliV2Font`. Fonts are declared in this package's pubspec so host apps
 /// get them automatically; the `package:` parameter namespaces the family.
-class WINRV2Font {
-  WINRV2Font._();
+class AvafliV2Font {
+  AvafliV2Font._();
 
-  static const String _package = 'winr_flutter_sdk';
+  static const String _package = 'avafli_sdk';
 
   static TextStyle inter(
     double size, {
     FontWeight weight = FontWeight.w400,
-    Color color = WINRV2Colors.textPrimary,
+    Color color = AvafliV2Colors.textPrimary,
     double? letterSpacing,
     double? height,
   }) {
@@ -87,7 +88,7 @@ class WINRV2Font {
   static TextStyle oswald(
     double size, {
     bool bold = false,
-    Color color = WINRV2Colors.textPrimary,
+    Color color = AvafliV2Colors.textPrimary,
     double? letterSpacing,
     double? height,
   }) {
@@ -114,13 +115,13 @@ class WINRV2Font {
 /// descent space — roughly double the deepest descender in these strings (the
 /// comma in "$1,000" and the "$" tail) — so stacked display lines can never
 /// touch, at any FittedBox scale.
-const double winrV2HeadlineLineHeight = 1.15;
+const double avafliV2HeadlineLineHeight = 1.15;
 
-/// Bundled images — mirrors iOS `WINRV2Asset`.
-class WINRV2Assets {
-  WINRV2Assets._();
+/// Bundled images — mirrors iOS `AvafliV2Asset`.
+class AvafliV2Assets {
+  AvafliV2Assets._();
 
-  static const String package = 'winr_flutter_sdk';
+  static const String package = 'avafli_sdk';
 
   /// Default prize hero (money pile) — used when the publisher hasn't set a
   /// prize image.
@@ -129,7 +130,7 @@ class WINRV2Assets {
   static const String winnerModalBg = 'assets/images/winner-modal-bg.png';
 
   /// Joe's Figma reveal-beat confetti explosion (one-shot GIF played by
-  /// `WINRV2GifView`; same file the iOS SDK bundles).
+  /// `AvafliV2GifView`; same file the iOS SDK bundles).
   static const String confettiBurst = 'assets/images/confetti-burst.gif';
 
   static Image image(String name, {BoxFit fit = BoxFit.contain}) {
@@ -137,9 +138,9 @@ class WINRV2Assets {
   }
 }
 
-/// Ladder math (mirrors the backend + iOS `WINRV2Ladder` exactly).
-class WINRV2Ladder {
-  WINRV2Ladder._();
+/// Ladder math (mirrors the backend + iOS `AvafliV2Ladder` exactly).
+class AvafliV2Ladder {
+  AvafliV2Ladder._();
 
   /// Explicit ladder values cover days 1..ladder.length; beyond that the daily
   /// increment is the bonusEntries of the LATEST passed milestone (the
@@ -169,7 +170,7 @@ class WINRV2Ladder {
 
 /// Formats an int with comma grouping ("12,345") — mirrors Swift's
 /// `formatted()`.
-String winrV2FormatInt(int value) {
+String avafliV2FormatInt(int value) {
   final digits = value.abs().toString();
   final grouped = digits.replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+(?!\d))'),

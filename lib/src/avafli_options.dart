@@ -1,18 +1,18 @@
 import 'services/analytics/analytics_adapter.dart';
 
-/// Optional behavior toggles for the WINR SDK.
+/// Optional behavior toggles for the Avafli SDK.
 ///
 /// These are non-required settings that customize SDK behavior.
-/// Pass them to [WINRConfiguration.options] when configuring the SDK.
+/// Pass them to [AvafliConfiguration.options] when configuring the SDK.
 ///
 /// Example:
 /// ```dart
-/// final options = WINROptions(
+/// final options = AvafliOptions(
 ///   logging: LoggingLevel.debug,
 ///   enablePushReminders: false,
 /// );
 /// ```
-class WINROptions {
+class AvafliOptions {
   /// Logging level for SDK debug output.
   final LoggingLevel logging;
 
@@ -22,20 +22,20 @@ class WINROptions {
   /// Whether to enable push notification reminders.
   final bool enablePushReminders;
 
-  /// Creates a new [WINROptions] instance with optional behavior toggles.
-  const WINROptions({
+  /// Creates a new [AvafliOptions] instance with optional behavior toggles.
+  const AvafliOptions({
     this.logging = LoggingLevel.error,
     this.analyticsAdapter,
     this.enablePushReminders = true,
   });
 
   /// Creates a copy with the given fields replaced.
-  WINROptions copyWith({
+  AvafliOptions copyWith({
     LoggingLevel? logging,
     AnalyticsAdapter? analyticsAdapter,
     bool? enablePushReminders,
   }) {
-    return WINROptions(
+    return AvafliOptions(
       logging: logging ?? this.logging,
       analyticsAdapter: analyticsAdapter ?? this.analyticsAdapter,
       enablePushReminders: enablePushReminders ?? this.enablePushReminders,

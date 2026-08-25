@@ -2,7 +2,7 @@
 ///
 /// Contains all the settings and rules for a specific sweepstakes giveaway,
 /// including streak configuration and entry limits. Mirrors the iOS SDK's
-/// `GiveawayConfig` (WINRAPI.swift).
+/// `GiveawayConfig` (AvafliAPI.swift).
 class Giveaway {
   /// Unique giveaway identifier
   final String id;

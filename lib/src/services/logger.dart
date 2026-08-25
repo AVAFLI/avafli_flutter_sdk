@@ -1,9 +1,9 @@
 import 'dart:developer' as developer;
-import '../winr_options.dart';
+import '../avafli_options.dart';
 
-/// Internal logging utility for the WINR SDK.
+/// Internal logging utility for the Avafli SDK.
 ///
-/// Provides leveled logging that can be controlled via [WINROptions.logging]
+/// Provides leveled logging that can be controlled via [AvafliOptions.logging]
 /// to help with development and debugging.
 class Logger {
   static final Logger _instance = Logger._internal();
@@ -19,7 +19,7 @@ class Logger {
     if (_shouldLog(LoggingLevel.error)) {
       developer.log(
         message,
-        name: 'WINR SDK',
+        name: 'Avafli SDK',
         level: 1000, // Error level
         error: error,
         stackTrace: stackTrace,
@@ -32,7 +32,7 @@ class Logger {
     if (_shouldLog(LoggingLevel.info)) {
       developer.log(
         message,
-        name: 'WINR SDK',
+        name: 'Avafli SDK',
         level: 800, // Info level
       );
     }
@@ -43,7 +43,7 @@ class Logger {
     if (_shouldLog(LoggingLevel.debug)) {
       developer.log(
         message,
-        name: 'WINR SDK',
+        name: 'Avafli SDK',
         level: 700, // Debug level
       );
     }

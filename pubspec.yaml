@@ -1,10 +1,12 @@
-name: winr_flutter_sdk
+name: avafli_sdk
 description: >
-  WINR Flutter SDK — A sweepstakes and engagement SDK for Flutter apps.
-  Add daily streaks and sweepstakes campaigns to your app with a few
+  Avafli Engagement SDK for Flutter (formerly winr_flutter_sdk) — add
+  daily-streak sweepstakes and prize experiences to your app with a few
   lines of code.
-version: 2.9.5
+version: 3.0.0
 homepage: https://winrmedia.com/sdk
+# Still the repo's pre-rename GitHub URL: GitHub 404s AVAFLI/avafli_sdk until
+# the repo itself is renamed, and redirects this URL forever afterwards.
 repository: https://github.com/AVAFLI/winr_flutter_sdk
 
 environment:
@@ -37,7 +39,7 @@ flutter:
     - assets/images/
 
   # Bundled V2 design fonts (Inter + Oswald). Consumed inside the SDK via
-  # TextStyle(fontFamily: ..., package: 'winr_flutter_sdk').
+  # TextStyle(fontFamily: ..., package: 'avafli_sdk').
   fonts:
     - family: Inter
       fonts:

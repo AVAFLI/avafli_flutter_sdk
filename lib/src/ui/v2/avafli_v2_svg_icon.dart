@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 // ── Minimal SVG path-data renderer ──
-// Renders plain SVG `d` path strings (the export format of the WINR Figma
+// Renders plain SVG `d` path strings (the export format of the Avafli Figma
 // brand icons: fill-only paths, no strokes/arcs/transforms) without any
 // third-party SVG dependency. Supports the M/L/H/V/C/S/Q/T/Z commands in
 // absolute and relative form with implicit repetition — everything the brand
@@ -14,7 +14,7 @@ import 'package:flutter/widgets.dart';
 ///
 /// Throws [FormatException] on an unsupported command so a bad asset fails
 /// loudly in development rather than drawing garbage.
-Path winrParseSvgPathData(String d) {
+Path avafliParseSvgPathData(String d) {
   final tokens = RegExp(
     r'[A-DF-Za-df-z]|[+-]?(?:\d*\.\d+|\d+\.?)(?:[eE][+-]?\d+)?',
   ).allMatches(d).map((m) => m.group(0)!).toList();
@@ -119,8 +119,8 @@ Path winrParseSvgPathData(String d) {
 /// `0 0 viewBox viewBox`) in a single color, scaled to fit and centered in
 /// the widget's size. Uses the SVG-default nonzero fill rule, which is what
 /// gives the brand glyphs their cutouts.
-class WINRSvgIconPainter extends CustomPainter {
-  const WINRSvgIconPainter({
+class AvafliSvgIconPainter extends CustomPainter {
+  const AvafliSvgIconPainter({
     required this.pathData,
     required this.color,
     this.viewBox = 48,
@@ -139,7 +139,7 @@ class WINRSvgIconPainter extends CustomPainter {
   static final Map<String, Path> _cache = {};
 
   static Path _pathFor(String d) =>
-      _cache.putIfAbsent(d, () => winrParseSvgPathData(d));
+      _cache.putIfAbsent(d, () => avafliParseSvgPathData(d));
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -161,7 +161,7 @@ class WINRSvgIconPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant WINRSvgIconPainter oldDelegate) =>
+  bool shouldRepaint(covariant AvafliSvgIconPainter oldDelegate) =>
       oldDelegate.pathData != pathData ||
       oldDelegate.color != color ||
       oldDelegate.viewBox != viewBox;

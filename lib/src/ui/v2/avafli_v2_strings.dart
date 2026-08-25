@@ -5,11 +5,11 @@
 // the iOS/Android SDKs) exactly.
 //
 // Rule of the house: users NEVER see raw backend text. Anything thrown as a
-// `WINRException` keeps its `serverMessage` for logs only; what renders is
+// `AvafliException` keeps its `serverMessage` for logs only; what renders is
 // always one of the strings below (or the quiet empty state).
 
 /// User-facing copy for the V2 experience's error and notice states.
-abstract final class WINRV2Strings {
+abstract final class AvafliV2Strings {
   // ── Field validation (email capture + winner claim form) ──
 
   /// Inline error under the capture screen's email field.
@@ -118,7 +118,7 @@ abstract final class WINRV2Strings {
 
   /// The destructive confirmation's body.
   static const String optOutBody =
-      'This permanently deletes your WINR data, ends your giveaway '
+      'This permanently deletes your Avafli data, ends your giveaway '
       'participation, and cannot be undone. You can also email '
       'info@avafli.com.';
 
@@ -138,7 +138,7 @@ abstract final class WINRV2Strings {
 
   // ── Dedicated full-drawer states ──
 
-  /// Geo-blocked ([WINRError.geographyNotAllowed]) headline.
+  /// Geo-blocked ([AvafliError.geographyNotAllowed]) headline.
   static const String geoBlockedHeadline = 'Not available in your location';
 
   /// Geo-blocked body.

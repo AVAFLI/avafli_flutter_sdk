@@ -1,5 +1,11 @@
-# WINR Flutter SDK
+# Avafli Engagement SDK for Flutter
 **Drop-in sweepstakes, prizing, and gamification for your Flutter app**
+
+> **Formerly `winr_flutter_sdk`.** Version 3.0.0 renames the package and its
+> public API from WINR to Avafli — see [Migrating from
+> winr_flutter_sdk](#migrating-from-winr_flutter_sdk). Existing API keys
+> (`winr_live_…` / `winr_test_…`), analytics event names, and on-device user
+> state all keep working unchanged.
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.10%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.0%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
@@ -9,11 +15,11 @@
 
 ## Overview
 
-WINR lets you add daily-entry sweepstakes and prize experiences to your app in under 20 lines of code. The entire UI — branding, theming, copy, and prize configuration — is managed server-side from the WINR dashboard. You integrate once; your marketing team controls the rest.
+Avafli lets you add daily-entry sweepstakes and prize experiences to your app in under 20 lines of code. The entire UI — branding, theming, copy, and prize configuration — is managed server-side from the Avafli dashboard. You integrate once; your marketing team controls the rest.
 
 **Key capabilities:**
 - **Daily entry sweepstakes** — Users earn entries every day they engage
-- **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically (requires `WINR.navigatorKey` on your `MaterialApp`)
+- **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically (requires `Avafli.navigatorKey` on your `MaterialApp`)
 - **Daily streak + auto-claim** — Entries climb a +10/day ladder; the drawer auto-opens once per day and claims that day's entries — there is no manual present API
 - **Email capture** — The SDK captures an email through its own opt-in screen, with an UNCHECKED-by-default marketing-consent tick and a publisher-configurable age gate
 - **Cross-device verified adoption** — When a typed email matches an existing account, the SDK confirms a 6-digit code before merging the streak across devices
@@ -28,29 +34,29 @@ WINR lets you add daily-entry sweepstakes and prize experiences to your app in u
 ## Quick Start
 
 ```dart
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
-await WINR.configure(WINRConfiguration(
+await Avafli.configure(AvafliConfiguration(
   apiKey: 'YOUR_API_KEY', // debug builds: use your winr_test_ sandbox key
   bundleId: 'com.example.myapp',
-  user: WINRUser(
+  user: AvafliUser(
     id: 'user_123',             // only id is required — pass whatever identity you have
     firstName: 'Jane',
     lastName: 'Doe',
     email: 'jane@example.com',  // include it when you have it — pre-fills & locks the capture form (consent stays explicit)
   ),
-  // Nobody signed in? use user: WINRUser.guest
-  options: WINROptions(
+  // Nobody signed in? use user: AvafliUser.guest
+  options: AvafliOptions(
     logging: LoggingLevel.error,  // LoggingLevel.debug while integrating
     enablePushReminders: true,    // streak reminders via YOUR Firebase project (upload the key in your dashboard)
   ),
 ));
 
 // Attach the navigator key so the daily auto-open can present:
-//   MaterialApp(navigatorKey: WINR.navigatorKey, ...)
-// Splash screen that clears the nav stack? Call WINR.holdAutoOpen() before
-// configure, then WINR.releaseAutoOpen() once your main screen mounts.
-// Push reminders: forward FCM tokens with WINR.registerPushToken(token).
+//   MaterialApp(navigatorKey: Avafli.navigatorKey, ...)
+// Splash screen that clears the nav stack? Call Avafli.holdAutoOpen() before
+// configure, then Avafli.releaseAutoOpen() once your main screen mounts.
+// Push reminders: forward FCM tokens with Avafli.registerPushToken(token).
 ```
 
 That's the whole integration — the experience presents itself once per day.
@@ -58,27 +64,27 @@ That's the whole integration — the experience presents itself once per day.
 > **Boot flows that clear the nav stack.** If your app boots through a splash
 > screen or auth gate that ends by clearing the navigation stack
 > (`Get.offAll`, `Navigator.pushAndRemoveUntil`, …), that navigation can destroy
-> the drawer the instant it auto-opens. Call `WINR.holdAutoOpen()` **before**
-> `configure()` during boot, then `WINR.releaseAutoOpen()` once your main screen
+> the drawer the instant it auto-opens. Call `Avafli.holdAutoOpen()` **before**
+> `configure()` during boot, then `Avafli.releaseAutoOpen()` once your main screen
 > is mounted — it releases the hold and immediately opens if the day is due.
 
 ### Identity — pass what you have, the SDK captures the rest
 
-Only `id` is required. Construct a `WINRUser` from whatever identity data you
+Only `id` is required. Construct an `AvafliUser` from whatever identity data you
 already hold — even just an id — and the SDK fills in the gaps: it captures the
 email through its own screen, and the name at prize-claim time if the user wins.
 There are three cases:
 
-**1. Signed-in user without an email (the common case, and WINR's main value).**
+**1. Signed-in user without an email (the common case, and Avafli's main value).**
 Pass the id plus whatever you have and OMIT `email`. The SDK shows its capture
 screen and the user types their email — so you capture an address you didn't
 have before:
 
 ```dart
-user: WINRUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe')   // no email
+user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe')   // no email
 ```
 
-Even just `WINRUser(id: 'user_123')` is valid — name is collected later at
+Even just `AvafliUser(id: 'user_123')` is valid — name is collected later at
 prize-claim, only if they win.
 
 **2. Signed-in user with an email.** Pass `email` too and it pre-fills and
@@ -86,16 +92,16 @@ prize-claim, only if they win.
 `email` is a plain `String`:
 
 ```dart
-user: WINRUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com')
+user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com')
 ```
 
-**3. No signed-in user at all.** Pass `WINRUser.guest`:
+**3. No signed-in user at all.** Pass `AvafliUser.guest`:
 
 ```dart
-await WINR.configure(WINRConfiguration(
+await Avafli.configure(AvafliConfiguration(
   apiKey: 'winr_live_…',
   bundleId: 'com.example.myapp',
-  user: WINRUser.guest,
+  user: AvafliUser.guest,
 ));
 ```
 
@@ -110,10 +116,29 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  winr_flutter_sdk: ^2.9.5
+  avafli_sdk: ^3.0.0
 ```
 
-> Published on [pub.dev](https://pub.dev/packages/winr_flutter_sdk). A git dependency on this repo also works if you need an unreleased revision.
+> Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
+
+### Migrating from winr_flutter_sdk
+
+`avafli_sdk` 3.0.0 is the same SDK under its new brand — the old
+`winr_flutter_sdk` pub.dev listing is discontinued and receives no further
+updates. Migration is a mechanical rename; no behavior changes:
+
+| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.0.0) |
+| --- | --- |
+| `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` | `avafli_sdk: ^3.0.0` |
+| `import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';` | `import 'package:avafli_sdk/avafli_sdk.dart';` |
+| `WINR.configure(...)` / `WINR.navigatorKey` / `WINR.optOut()` | `Avafli.configure(...)` / `Avafli.navigatorKey` / `Avafli.optOut()` |
+| `WINRConfiguration`, `WINRUser`, `WINROptions` | `AvafliConfiguration`, `AvafliUser`, `AvafliOptions` |
+| `WINREnvironment`, `WINRError`, `WINRException` | `AvafliEnvironment`, `AvafliError`, `AvafliException` |
+| `WINRPushNotificationManager` | `AvafliPushNotificationManager` |
+
+Everything wire- and device-facing is intentionally unchanged: your API keys,
+analytics event names (`winr_*`), and users' stored streaks/sessions survive
+the upgrade in place.
 
 Then run:
 
@@ -128,37 +153,37 @@ flutter pub get
 Initialize the SDK with your user and environment settings:
 
 ```dart
-final config = WINRConfiguration(
+final config = AvafliConfiguration(
   apiKey: 'winr_live_xxxxxxxxxx',
   bundleId: 'com.example.myapp',
-  environment: WINREnvironment.production,
-  user: WINRUser(
+  environment: AvafliEnvironment.production,
+  user: AvafliUser(
     id: 'user_abc123',
     firstName: 'Jane',
     lastName: 'Doe',
     phone: '+15551234567',  // optional
   ),
-  options: WINROptions(
+  options: AvafliOptions(
     logging: LoggingLevel.debug,
     enablePushReminders: true,
     analyticsAdapter: myAdapter,  // optional
   ),
 );
 
-final success = await WINR.configure(config);
+final success = await Avafli.configure(config);
 ```
 
-### WINRConfiguration
+### AvafliConfiguration
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| `apiKey` | `String` | ✅ | Your WINR API key from the dashboard |
+| `apiKey` | `String` | ✅ | Your Avafli API key from the dashboard |
 | `bundleId` | `String` | ✅ | App bundle ID (e.g., com.example.myapp) |
-| `environment` | `WINREnvironment` | — | `.production` (default) |
-| `user` | `WINRUser` | ✅ | The authenticated user |
-| `options` | `WINROptions?` | — | Optional behavior toggles |
+| `environment` | `AvafliEnvironment` | — | `.production` (default) |
+| `user` | `AvafliUser` | ✅ | The authenticated user |
+| `options` | `AvafliOptions?` | — | Optional behavior toggles |
 
-### WINRUser
+### AvafliUser
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
@@ -196,11 +221,11 @@ changes.
 
 ## The Experience Presents Itself
 
-There is no manual launch API — the WINR experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `WINR.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
+There is no manual launch API — the Avafli experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `Avafli.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
 
 Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then land straight on the same celebrating dashboard — the toast just reads "YOU'RE IN!" on Day 1.
 
-If your app boots through a splash/auth flow that clears the navigation stack, guard the auto-open with `WINR.holdAutoOpen()` / `WINR.releaseAutoOpen()` (see [Quick Start](#quick-start)).
+If your app boots through a splash/auth flow that clears the navigation stack, guard the auto-open with `Avafli.holdAutoOpen()` / `Avafli.releaseAutoOpen()` (see [Quick Start](#quick-start)).
 
 ## Email Capture & Verification
 
@@ -208,7 +233,7 @@ Email is captured inside the SDK's own opt-in screen (see the identity section a
 
 Two verification paths run from that screen:
 
-- **Cross-device verified adoption.** When the typed email matches an existing WINR account (from another device or install), the SDK asks for a **6-digit code** emailed to that address before the two identities are merged — so a streak follows the person across devices without letting anyone attach to someone else's record.
+- **Cross-device verified adoption.** When the typed email matches an existing Avafli account (from another device or install), the SDK asks for a **6-digit code** emailed to that address before the two identities are merged — so a streak follows the person across devices without letting anyone attach to someone else's record.
 - **Soft email verification (2.7.0+).** A brand-new, never-before-seen typed email surfaces a persistent, dismissible **"Verify your email"** chip on the dashboard. It **never blocks play** — the user keeps earning entries — it only affects prize-draw eligibility until the address is confirmed.
 
 ## Winner Experience
@@ -217,7 +242,7 @@ When one of your users is drawn as a giveaway winner, the drawer automatically o
 
 ## Push Notifications
 
-Drive re-engagement with daily reminders. Publishers forward their FCM token to WINR:
+Drive re-engagement with daily reminders. Publishers forward their FCM token to Avafli:
 
 ### 1. Setup Firebase Cloud Messaging
 
@@ -228,41 +253,41 @@ Follow the [Firebase setup guide](https://firebase.google.com/docs/cloud-messagi
 ```dart
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-// Get the FCM token and forward it to WINR
+// Get the FCM token and forward it to Avafli
 final fcmToken = await FirebaseMessaging.instance.getToken();
 if (fcmToken != null) {
-  await WINRPushNotificationManager.instance.didReceiveRegistrationToken(fcmToken);
+  await AvafliPushNotificationManager.instance.didReceiveRegistrationToken(fcmToken);
 }
 
 // Listen for token refreshes
 FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-  WINRPushNotificationManager.instance.didReceiveRegistrationToken(token);
+  AvafliPushNotificationManager.instance.didReceiveRegistrationToken(token);
 });
 ```
 
 Or the one-line equivalent:
 
 ```dart
-FirebaseMessaging.instance.onTokenRefresh.listen(WINR.registerPushToken);
+FirebaseMessaging.instance.onTokenRefresh.listen(Avafli.registerPushToken);
 ```
 
 ### 3. Upload FCM Service Account Key
 
-Upload your FCM service account key via the [WINR Dashboard](https://winrmedia.com/sdk/dashboard) to enable push notifications.
+Upload your FCM service account key via the [Avafli Dashboard](https://winrmedia.com/sdk/dashboard) to enable push notifications.
 
 ### 4. Enable Push Reminders
 
-Set `enablePushReminders: true` in `WINROptions` during configuration, then call
-`WINR.registerForPushNotifications()` after `configure()`. It is a no-op when
+Set `enablePushReminders: true` in `AvafliOptions` during configuration, then call
+`Avafli.registerForPushNotifications()` after `configure()`. It is a no-op when
 `enablePushReminders` is false.
 
 ```dart
-await WINR.registerForPushNotifications();
+await Avafli.registerForPushNotifications();
 ```
 
 ## Customization
 
-The V2 experience is hardcoded to the WINR design; publishers customize exactly three things through the [WINR Dashboard](https://winrmedia.com/sdk/dashboard):
+The V2 experience is hardcoded to the Avafli design; publishers customize exactly three things through the [Avafli Dashboard](https://winrmedia.com/sdk/dashboard):
 
 - **Logo** — Shown in the drawer header
 - **Prize image** — Art for the dashboard prize card
@@ -274,7 +299,7 @@ Changes apply instantly across all app installations without requiring an app up
 
 ## Analytics
 
-Forward WINR events to your existing analytics stack:
+Forward Avafli events to your existing analytics stack:
 
 ```dart
 class MyAnalyticsAdapter implements AnalyticsAdapter {
@@ -286,9 +311,9 @@ class MyAnalyticsAdapter implements AnalyticsAdapter {
 }
 
 // Pass during configuration
-await WINR.configure(WINRConfiguration(
+await Avafli.configure(AvafliConfiguration(
   // ... other config
-  options: WINROptions(
+  options: AvafliOptions(
     analyticsAdapter: MyAnalyticsAdapter(),
   ),
 ));
@@ -296,16 +321,16 @@ await WINR.configure(WINRConfiguration(
 
 **Events emitted by the SDK:**
 - `winr_sdk_configured` — SDK configured successfully
-- `winr_experience_presented` — User opened the WINR experience
+- `winr_experience_presented` — User opened the Avafli experience
 - `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`.
-- `winr_experience_dismissed` — User closed the WINR experience without a new claim
+- `winr_experience_dismissed` — User closed the Avafli experience without a new claim
 
 ## GDPR / CCPA
 
 Handle erasure requests with `optOut()`:
 
 ```dart
-await WINR.optOut();
+await Avafli.optOut();
 ```
 
 This is the complete Right-to-be-Forgotten path. It removes the person's personal
@@ -328,21 +353,21 @@ section runs the same erasure as `optOut()`.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `WINR.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
-| `WINR.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open (required) |
-| `WINR.holdAutoOpen()` | `void` | Pause the once-a-day auto-open during a boot flow that clears the nav stack |
-| `WINR.releaseAutoOpen()` | `Future<void>` | Release a `holdAutoOpen()` and open immediately if the day is due |
-| `WINR.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
+| `Avafli.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
+| `Avafli.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open (required) |
+| `Avafli.holdAutoOpen()` | `void` | Pause the once-a-day auto-open during a boot flow that clears the nav stack |
+| `Avafli.releaseAutoOpen()` | `Future<void>` | Release a `holdAutoOpen()` and open immediately if the day is due |
+| `Avafli.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
 
 ### Push Notifications
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `WINR.registerForPushNotifications()` | `Future<void>` | Enable streak reminders; no-op when `enablePushReminders` is false |
-| `WINR.registerPushToken(token)` | `Future<void>` | Forward an FCM token to WINR (one-line `onTokenRefresh` listener) |
-| `WINRPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to WINR |
+| `Avafli.registerForPushNotifications()` | `Future<void>` | Enable streak reminders; no-op when `enablePushReminders` is false |
+| `Avafli.registerPushToken(token)` | `Future<void>` | Forward an FCM token to Avafli (one-line `onTokenRefresh` listener) |
+| `AvafliPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to Avafli |
 
-For detailed API documentation, see the [WINR Docs](https://winrmedia.com/sdk/flutter).
+For detailed API documentation, see the [Avafli Docs](https://winrmedia.com/sdk/flutter).
 
 ## Links
 

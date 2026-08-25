@@ -1,4 +1,4 @@
-import '../winr_error.dart';
+import '../avafli_error.dart';
 import 'giveaway.dart';
 import 'streak_state.dart';
 
@@ -10,7 +10,7 @@ abstract class StreakEngineProtocol {
   /// Calculates the next streak state based on current state and claim date.
   ///
   /// Returns an error if the user is ineligible to claim today.
-  Result<StreakState, WINRError> nextState(
+  Result<StreakState, AvafliError> nextState(
       StreakState? currentState, DateTime claimDate);
 
   /// Gets base entries for a given day in the streak.
@@ -37,7 +37,7 @@ class StreakEngine implements StreakEngineProtocol {
   static const List<int> defaultStreakLadder = [10, 30, 60, 130, 240, 300, 500];
 
   @override
-  Result<StreakState, WINRError> nextState(
+  Result<StreakState, AvafliError> nextState(
       StreakState? currentState, DateTime claimDate) {
     // Convert claim date to UTC for consistent calculations
     final utcDate = DateTime.utc(
@@ -64,7 +64,7 @@ class StreakEngine implements StreakEngineProtocol {
 
     // Check if already claimed today
     if (utcDate.isAtSameMomentAs(lastClaimed)) {
-      return Result.error(WINRError.ineligibleToday);
+      return Result.error(AvafliError.ineligibleToday);
     }
 
     final daysDifference = utcDate.difference(lastClaimed).inDays;
@@ -122,7 +122,7 @@ class StreakEngine implements StreakEngineProtocol {
 
   // MARK: - Private Helper Methods
 
-  Result<StreakState, WINRError> _createInitialState(DateTime utcDate,
+  Result<StreakState, AvafliError> _createInitialState(DateTime utcDate,
       [int totalEntries = 0]) {
     final weekStart = _getSundayOfWeek(utcDate);
     final monthFirst = _getFirstOfMonth(utcDate);

@@ -2,22 +2,22 @@
 // (MESSAGE TOAST / WINNER, Modal Property 1=Winner). Shown when the giveaway
 // payload carries a latestWinner.
 //
-// Mirrors the iOS SDK's WINRV2Winner.swift.
+// Mirrors the iOS SDK's AvafliV2Winner.swift.
 
 import 'package:flutter/material.dart';
 
 import '../../domain/giveaway.dart';
-import 'winr_v2_effects.dart';
-import 'winr_v2_theme.dart';
+import 'avafli_v2_effects.dart';
+import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Banner (below the header, above the prize card)
 // ---------------------------------------------------------------------------
 
-class WINRV2WinnerBanner extends StatelessWidget {
+class AvafliV2WinnerBanner extends StatelessWidget {
   final VoidCallback onTap;
 
-  const WINRV2WinnerBanner({super.key, required this.onTap});
+  const AvafliV2WinnerBanner({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class WINRV2WinnerBanner extends StatelessWidget {
       child: Container(
         height: 70,
         width: double.infinity,
-        color: WINRV2Colors.deepCharcoal,
+        color: AvafliV2Colors.deepCharcoal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         child: Row(
           children: [
@@ -39,8 +39,8 @@ class WINRV2WinnerBanner extends StatelessWidget {
                 height: 54,
                 child: ClipRect(
                   child: Image.asset(
-                    WINRV2Assets.trophy,
-                    package: WINRV2Assets.package,
+                    AvafliV2Assets.trophy,
+                    package: AvafliV2Assets.package,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -53,7 +53,7 @@ class WINRV2WinnerBanner extends StatelessWidget {
                 children: [
                   Text(
                     'WE HAVE A WINNER!',
-                    style: WINRV2Font.inter(
+                    style: AvafliV2Font.inter(
                       17,
                       weight: FontWeight.w800,
                       letterSpacing: -0.85,
@@ -62,7 +62,7 @@ class WINRV2WinnerBanner extends StatelessWidget {
                   ),
                   Text(
                     'Tap to see latest winners.',
-                    style: WINRV2Font.inter(
+                    style: AvafliV2Font.inter(
                       12,
                       letterSpacing: -0.6,
                       height: 1.1,
@@ -76,7 +76,7 @@ class WINRV2WinnerBanner extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: const BoxDecoration(
-                color: WINRV2Colors.gunmetal,
+                color: AvafliV2Colors.gunmetal,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.add, size: 18, color: Colors.white),
@@ -92,12 +92,12 @@ class WINRV2WinnerBanner extends StatelessWidget {
 // Winners dialog
 // ---------------------------------------------------------------------------
 
-class WINRV2WinnerModal extends StatefulWidget {
+class AvafliV2WinnerModal extends StatefulWidget {
   final Color accent;
   final GiveawayWinner winner;
   final VoidCallback onDismiss;
 
-  const WINRV2WinnerModal({
+  const AvafliV2WinnerModal({
     super.key,
     required this.accent,
     required this.winner,
@@ -105,10 +105,10 @@ class WINRV2WinnerModal extends StatefulWidget {
   });
 
   @override
-  State<WINRV2WinnerModal> createState() => _WINRV2WinnerModalState();
+  State<AvafliV2WinnerModal> createState() => _AvafliV2WinnerModalState();
 }
 
-class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
+class _AvafliV2WinnerModalState extends State<AvafliV2WinnerModal> {
   bool _appeared = false;
 
   @override
@@ -163,12 +163,12 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                 // confetti drift).
                 Positioned.fill(
                   child: ColoredBox(
-                    color: WINRV2Colors.deepCharcoal,
+                    color: AvafliV2Colors.deepCharcoal,
                     child: Opacity(
                       opacity: 0.9,
                       child: Image.asset(
-                        WINRV2Assets.winnerModalBg,
-                        package: WINRV2Assets.package,
+                        AvafliV2Assets.winnerModalBg,
+                        package: AvafliV2Assets.package,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -186,8 +186,8 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                   ),
                 ),
                 const Positioned.fill(
-                  child: WINRV2Confetti(
-                    style: WINRV2ConfettiStyle.gold,
+                  child: AvafliV2Confetti(
+                    style: AvafliV2ConfettiStyle.gold,
                     count: 26,
                     speed: 0.7,
                   ),
@@ -216,7 +216,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  color: WINRV2Colors.gunmetal,
+                  color: AvafliV2Colors.gunmetal,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
@@ -242,8 +242,8 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                   child: Transform.rotate(
                     angle: -5.96 * 3.1415926535 / 180,
                     child: Image.asset(
-                      WINRV2Assets.trophy,
-                      package: WINRV2Assets.package,
+                      AvafliV2Assets.trophy,
+                      package: AvafliV2Assets.package,
                       width: 114,
                       height: 153,
                       fit: BoxFit.contain,
@@ -256,7 +256,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                   children: [
                     Text(
                       'WE HAVE A',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         23,
                         weight: FontWeight.w700,
                         letterSpacing: -1.15,
@@ -268,7 +268,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                       child: Text(
                         'WINNER!',
                         maxLines: 1,
-                        style: WINRV2Font.inter(
+                        style: AvafliV2Font.inter(
                           44,
                           weight: FontWeight.w900,
                           color: accent,
@@ -282,7 +282,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                       child: Text(
                         'Congratulations to our latest big winner!',
                         textAlign: TextAlign.center,
-                        style: WINRV2Font.inter(
+                        style: AvafliV2Font.inter(
                           15,
                           letterSpacing: -0.75,
                           height: 1.2,
@@ -297,7 +297,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
           const SizedBox(height: 7),
           Text(
             'LATEST WINNER:',
-            style: WINRV2Font.inter(19, weight: FontWeight.w700),
+            style: AvafliV2Font.inter(19, weight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           _winnerPill(),
@@ -306,13 +306,13 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
             Text(
               'This prize awarded on ${winner.awardedAtDisplay}',
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(16, height: 1.2),
+              style: AvafliV2Font.inter(16, height: 1.2),
             ),
           const SizedBox(height: 3),
           Text(
             'All new prize available now! Keep going!',
             textAlign: TextAlign.center,
-            style: WINRV2Font.inter(16, weight: FontWeight.w700, height: 1.2),
+            style: AvafliV2Font.inter(16, weight: FontWeight.w700, height: 1.2),
           ),
         ],
       ),
@@ -324,7 +324,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
       height: 72,
       padding: const EdgeInsets.only(left: 13, right: 20),
       decoration: BoxDecoration(
-        color: WINRV2Colors.gunmetal,
+        color: AvafliV2Colors.gunmetal,
         borderRadius: BorderRadius.circular(36),
         border: Border.all(color: accent, width: 2),
       ),
@@ -342,7 +342,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                   winner.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WINRV2Font.inter(
+                  style: AvafliV2Font.inter(
                     20,
                     weight: FontWeight.w700,
                     height: 1.15,
@@ -353,7 +353,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
                     winner.location!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WINRV2Font.inter(20, height: 1.15),
+                    style: AvafliV2Font.inter(20, height: 1.15),
                   ),
               ],
             ),
@@ -393,7 +393,7 @@ class _WINRV2WinnerModalState extends State<WINRV2WinnerModal> {
       alignment: Alignment.center,
       child: Text(
         winner.name.isEmpty ? '' : winner.name.substring(0, 1),
-        style: WINRV2Font.inter(24, weight: FontWeight.w700),
+        style: AvafliV2Font.inter(24, weight: FontWeight.w700),
       ),
     );
   }

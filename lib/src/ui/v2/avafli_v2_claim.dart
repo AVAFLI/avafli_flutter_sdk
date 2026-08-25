@@ -3,7 +3,7 @@
 // share/celebrate → confirmation with the OFFICIAL WINNER card.
 // Shown when the giveaway payload carries prizeClaim.status == "pending".
 //
-// Mirrors the iOS SDK's WINRV2Claim.swift + WINRV2ClaimSteps/.
+// Mirrors the iOS SDK's AvafliV2Claim.swift + AvafliV2ClaimSteps/.
 //
 // 2.9 reorder (14 Aug team decision): the "PLEASE SHARE A LITTLE" step now
 // comes AFTER submit — the claim is banked first, then the person is invited
@@ -33,11 +33,11 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../network/places_autocomplete.dart';
-import 'winr_v2_components.dart';
-import 'winr_v2_effects.dart';
-import 'winr_v2_strings.dart';
-import 'winr_v2_svg_icon.dart';
-import 'winr_v2_theme.dart';
+import 'avafli_v2_components.dart';
+import 'avafli_v2_effects.dart';
+import 'avafli_v2_strings.dart';
+import 'avafli_v2_svg_icon.dart';
+import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Form model + validation
@@ -45,8 +45,8 @@ import 'winr_v2_theme.dart';
 
 /// The claim form's field values. Kept as a plain value type so validation is
 /// unit-testable without any widget machinery (mirrors iOS
-/// `WINRPrizeClaimForm`).
-class WINRPrizeClaimForm {
+/// `AvafliPrizeClaimForm`).
+class AvafliPrizeClaimForm {
   String firstName;
   String lastName;
   String phone;
@@ -75,7 +75,7 @@ class WINRPrizeClaimForm {
   /// actual choice is sent as `promoConsentGranted` on the claim payload.
   bool promoConsentGranted;
 
-  WINRPrizeClaimForm({
+  AvafliPrizeClaimForm({
     this.firstName = '',
     this.lastName = '',
     this.phone = '',
@@ -271,9 +271,9 @@ class WINRPrizeClaimForm {
 // Date helper
 // ---------------------------------------------------------------------------
 
-/// Mirrors iOS `WINRClaimDates`.
-class WINRClaimDates {
-  WINRClaimDates._();
+/// Mirrors iOS `AvafliClaimDates`.
+class AvafliClaimDates {
+  AvafliClaimDates._();
 
   static const List<String> _months = [
     'JANUARY',
@@ -310,11 +310,11 @@ class WINRClaimDates {
 // ---------------------------------------------------------------------------
 
 /// Claim-flow header: publisher logo centered, X close only (no "?").
-class _WINRClaimHeader extends StatelessWidget {
+class _AvafliClaimHeader extends StatelessWidget {
   final String? logoUrl;
   final VoidCallback onClose;
 
-  const _WINRClaimHeader({required this.logoUrl, required this.onClose});
+  const _AvafliClaimHeader({required this.logoUrl, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -338,7 +338,7 @@ class _WINRClaimHeader extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  color: WINRV2Colors.deepCharcoal,
+                  color: AvafliV2Colors.deepCharcoal,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
@@ -361,20 +361,21 @@ class _WINRClaimHeader extends StatelessWidget {
             progress == null ? child : const SizedBox.shrink(),
       );
     }
-    return Text('WINR', style: WINRV2Font.inter(28, weight: FontWeight.w900));
+    return Text('AVAFLI',
+        style: AvafliV2Font.inter(28, weight: FontWeight.w900));
   }
 }
 
 /// Dark info card with a leading icon (shield/mail) — splash + confirmation.
 /// Defaults to the translucent white-8% fill; the confirmation screen passes
 /// a solid gunmetal [fill] + subtle [borderColor] per Joe's 2.9.3 frame.
-class _WINRClaimInfoCard extends StatelessWidget {
+class _AvafliClaimInfoCard extends StatelessWidget {
   final Widget icon;
   final Widget content;
   final Color fill;
   final Color? borderColor;
 
-  const _WINRClaimInfoCard({
+  const _AvafliClaimInfoCard({
     required this.icon,
     required this.content,
     this.fill = const Color(0x14FFFFFF), // white 8%
@@ -409,14 +410,14 @@ class _WINRClaimInfoCard extends StatelessWidget {
 // Winner splash ("CONGRATULATIONS!")
 // ---------------------------------------------------------------------------
 
-class WINRV2WinnerSplashView extends StatefulWidget {
+class AvafliV2WinnerSplashView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final String prizeHeadline;
   final VoidCallback onContinue;
   final VoidCallback onClose;
 
-  const WINRV2WinnerSplashView({
+  const AvafliV2WinnerSplashView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -426,14 +427,15 @@ class WINRV2WinnerSplashView extends StatefulWidget {
   });
 
   @override
-  State<WINRV2WinnerSplashView> createState() => _WINRV2WinnerSplashViewState();
+  State<AvafliV2WinnerSplashView> createState() =>
+      _AvafliV2WinnerSplashViewState();
 }
 
-class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
+class _AvafliV2WinnerSplashViewState extends State<AvafliV2WinnerSplashView> {
   /// One-shot celebration (2.9.3, Joe's frame): the confetti-burst GIF
   /// explodes once over the trophy art the moment the splash appears — the
   /// exact machinery the Day-2+ streak tile uses at its reveal beat — then
-  /// removes itself via [WINRV2GifView.onFinished]. A gold drifting
+  /// removes itself via [AvafliV2GifView.onFinished]. A gold drifting
   /// confetti field keeps sparkling over the art beneath it (see
   /// [_trophyArt]). Purely decorative: wrapped in [IgnorePointer] so it
   /// never blocks CONTINUE or the close X.
@@ -448,7 +450,7 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.deepCharcoal,
+      color: AvafliV2Colors.deepCharcoal,
       child: Stack(
         children: [
           Positioned.fill(child: _content()),
@@ -460,8 +462,8 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
               right: 0,
               height: 340,
               child: IgnorePointer(
-                child: WINRV2GifView(
-                  WINRV2Assets.confettiBurst,
+                child: AvafliV2GifView(
+                  AvafliV2Assets.confettiBurst,
                   onFinished: () {
                     if (mounted) setState(() => _bursting = false);
                   },
@@ -478,7 +480,7 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
       child: Column(
         children: [
           const SizedBox(height: 18),
-          _WINRClaimHeader(logoUrl: logoUrl, onClose: onClose),
+          _AvafliClaimHeader(logoUrl: logoUrl, onClose: onClose),
           const SizedBox(height: 4),
           _trophyArt(),
           const SizedBox(height: 2),
@@ -489,7 +491,7 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
               child: Text(
                 'CONGRATULATIONS!',
                 maxLines: 1,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   34,
                   weight: FontWeight.w900,
                   letterSpacing: -1.0,
@@ -500,7 +502,7 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
           ),
           Text(
             'YOU’RE OUR LATEST WINNER!',
-            style: WINRV2Font.inter(
+            style: AvafliV2Font.inter(
               17,
               weight: FontWeight.w900,
               color: accent,
@@ -508,7 +510,7 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
             ),
           ),
           const SizedBox(height: 18),
-          Text('You’ve won:', style: WINRV2Font.inter(14)),
+          Text('You’ve won:', style: AvafliV2Font.inter(14)),
           const SizedBox(height: 8),
           // Full-width white strip with the prize-derived headline
           // (same derivation as the Day-1 capture strip).
@@ -522,10 +524,10 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
                 prizeHeadline,
                 maxLines: 2,
                 textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   28,
                   weight: FontWeight.w900,
-                  color: WINRV2Colors.gunmetal,
+                  color: AvafliV2Colors.gunmetal,
                   letterSpacing: -0.8,
                   height: 1.1,
                 ),
@@ -538,22 +540,22 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
             child: Text(
               'To process your prize, we just need a few details.',
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(15),
+              style: AvafliV2Font.inter(15),
             ),
           ),
           const SizedBox(height: 14),
-          _WINRClaimInfoCard(
+          _AvafliClaimInfoCard(
             icon: Icon(Icons.shield_outlined, size: 26, color: accent),
             content: Text(
               'Your information is securely collected and only used to '
               'verify your prize and announce you as our winner.',
-              style: WINRV2Font.inter(13, height: 1.25),
+              style: AvafliV2Font.inter(13, height: 1.25),
             ),
           ),
           const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: WINRV2PillButton(
+            child: AvafliV2PillButton(
               accent: accent,
               title: 'CONTINUE',
               onTap: onContinue,
@@ -579,16 +581,16 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
               height: 260,
               child: ClipRect(
                 child: Image.asset(
-                  WINRV2Assets.winnerModalBg,
-                  package: WINRV2Assets.package,
+                  AvafliV2Assets.winnerModalBg,
+                  package: AvafliV2Assets.package,
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
           Image.asset(
-            WINRV2Assets.trophy,
-            package: WINRV2Assets.package,
+            AvafliV2Assets.trophy,
+            package: AvafliV2Assets.package,
             height: 230,
             fit: BoxFit.contain,
           ),
@@ -596,8 +598,8 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
           // and the claim confirmation use).
           const Positioned.fill(
             child: IgnorePointer(
-              child: WINRV2Confetti(
-                style: WINRV2ConfettiStyle.gold,
+              child: AvafliV2Confetti(
+                style: AvafliV2ConfettiStyle.gold,
                 count: 26,
                 speed: 0.7,
               ),
@@ -612,17 +614,17 @@ class _WINRV2WinnerSplashViewState extends State<WINRV2WinnerSplashView> {
 // ---------------------------------------------------------------------------
 // Stepped claim form (Joe's Figma flow, 2.9) — 2 steps + review on Flutter
 // ---------------------------------------------------------------------------
-// Ported from iOS WINRV2ClaimSteps/: a persistent gold-sparkle backdrop +
+// Ported from iOS AvafliV2ClaimSteps/: a persistent gold-sparkle backdrop +
 // header + animated step indicator, with the form steps and the review
 // screen sliding horizontally beneath them (push left on advance, push right
 // on back). Flutter SKIPS the photo step (no image-picker dependency — see
 // the note at the top of this file), and 2.9 moved the share step AFTER
-// submit ([WINRV2ClaimShareView]), so the numbered steps are: about you →
+// submit ([AvafliV2ClaimShareView]), so the numbered steps are: about you →
 // address, then review + SUBMIT.
 
 /// Field styling from the claim-step frames: #212832 fill, #3D424B border, r10.
-class _WINRStepTheme {
-  _WINRStepTheme._();
+class _AvafliStepTheme {
+  _AvafliStepTheme._();
 
   static const Color fieldFill = Color(0xFF212832);
   static const Color fieldBorder = Color(0xFF3D424B);
@@ -641,22 +643,22 @@ const int _kClaimStepCount = 2;
 /// 1..2 are the numbered steps; 3 is the review screen (no indicator).
 const int _kClaimReviewStep = 3;
 
-class WINRV2ClaimStepsFlow extends StatefulWidget {
+class AvafliV2ClaimStepsFlow extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
-  /// Publisher display name from the server-fed `WinrSdkConfig.appName`
+  /// Publisher display name from the server-fed `AvafliSdkConfig.appName`
   /// (the same source the share line uses). Present → the likeness consent
   /// names the publisher; null/blank → generic wording. See
   /// [likenessConsentLabel].
   final String? appName;
 
-  /// Backend-masked winning email ("d********r@winr.example.com"); null for
+  /// Backend-masked winning email ("d********r@avafli.example.com"); null for
   /// older backends → generic locked copy.
   final String? maskedEmail;
 
   /// Host-app-provided identity prefill (first/last name, phone).
-  final WINRPrizeClaimForm initialForm;
+  final AvafliPrizeClaimForm initialForm;
 
   /// Google Places (New) API key from `sdkConfig.placesApiKey`. Non-empty →
   /// the Street Address field offers address autocomplete; null/empty → the
@@ -665,7 +667,7 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
 
   /// Test seam: an injected Places client (wins over [placesApiKey]).
   @visibleForTesting
-  final WINRPlacesClient? placesClient;
+  final AvafliPlacesClient? placesClient;
 
   final bool isSubmitting;
 
@@ -673,10 +675,10 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
   /// ("Not the winner"/"Already submitted" instead fall back to the
   /// dashboard silently).
   final String? submitError;
-  final ValueChanged<WINRPrizeClaimForm> onSubmit;
+  final ValueChanged<AvafliPrizeClaimForm> onSubmit;
   final VoidCallback onClose;
 
-  const WINRV2ClaimStepsFlow({
+  const AvafliV2ClaimStepsFlow({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -708,10 +710,10 @@ class WINRV2ClaimStepsFlow extends StatefulWidget {
   }
 
   @override
-  State<WINRV2ClaimStepsFlow> createState() => _WINRV2ClaimStepsFlowState();
+  State<AvafliV2ClaimStepsFlow> createState() => _AvafliV2ClaimStepsFlowState();
 }
 
-class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
+class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
   late final TextEditingController _phone;
@@ -734,8 +736,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   /// Street-field address autocomplete. Null when no `placesApiKey` was
   /// configured (and no test client injected) — the field is then a plain
   /// text input.
-  WINRAddressAutocomplete? _places;
-  WINRPlacesClient? _placesClient;
+  AvafliAddressAutocomplete? _places;
+  AvafliPlacesClient? _placesClient;
 
   /// Whether this state built [_placesClient] itself (and must dispose it);
   /// an injected test client belongs to the test.
@@ -770,11 +772,11 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     final placesKey = widget.placesApiKey?.trim();
     final client = injectedClient ??
         ((placesKey != null && placesKey.isNotEmpty)
-            ? WINRPlacesClient(apiKey: placesKey)
+            ? AvafliPlacesClient(apiKey: placesKey)
             : null);
     _placesClient = client;
     _ownsPlacesClient = injectedClient == null && client != null;
-    _places = client == null ? null : WINRAddressAutocomplete(client: client);
+    _places = client == null ? null : AvafliAddressAutocomplete(client: client);
   }
 
   @override
@@ -795,7 +797,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     super.dispose();
   }
 
-  WINRPrizeClaimForm get _form => WINRPrizeClaimForm(
+  AvafliPrizeClaimForm get _form => AvafliPrizeClaimForm(
         firstName: _firstName.text,
         lastName: _lastName.text,
         phone: _phone.text,
@@ -821,7 +823,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   /// A tapped street suggestion: resolve it to a full address and fill the
   /// four address fields (all stay hand-editable). Resolution failure →
   /// nothing changes — the person keeps typing (silent degradation).
-  Future<void> _selectPlaceSuggestion(WINRPlaceSuggestion suggestion) async {
+  Future<void> _selectPlaceSuggestion(AvafliPlaceSuggestion suggestion) async {
     final places = _places;
     if (places == null) return;
     final address = await places.select(suggestion);
@@ -842,7 +844,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   static String? _statePickerValue(String raw) {
     final code = raw.trim();
     if (code.isEmpty) return null;
-    return WINRPrizeClaimForm.usStateNamesByCode[code.toUpperCase()] ?? code;
+    return AvafliPrizeClaimForm.usStateNamesByCode[code.toUpperCase()] ?? code;
   }
 
   @override
@@ -850,7 +852,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: WINRV2Colors.deepCharcoal),
+        const ColoredBox(color: AvafliV2Colors.deepCharcoal),
         // Gold-sparkle full-bleed backdrop fading into the dark body, per
         // the frames (406px, transparent → deepCharcoal).
         Align(
@@ -862,8 +864,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
               fit: StackFit.expand,
               children: [
                 Image.asset(
-                  WINRV2Assets.winnerModalBg,
-                  package: WINRV2Assets.package,
+                  AvafliV2Assets.winnerModalBg,
+                  package: AvafliV2Assets.package,
                   fit: BoxFit.cover,
                 ),
                 const DecoratedBox(
@@ -952,7 +954,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  color: WINRV2Colors.deepCharcoal,
+                  color: AvafliV2Colors.deepCharcoal,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
@@ -975,7 +977,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
             progress == null ? child : const SizedBox.shrink(),
       );
     }
-    return Text('WINR', style: WINRV2Font.inter(28, weight: FontWeight.w900));
+    return Text('AVAFLI',
+        style: AvafliV2Font.inter(28, weight: FontWeight.w900));
   }
 
   /// "STEP N OF 3" + the row of dots connected by accent lines: filled with
@@ -988,7 +991,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
         children: [
           Text(
             'STEP $current OF $_kClaimStepCount',
-            style: WINRV2Font.inter(
+            style: AvafliV2Font.inter(
               17,
               weight: FontWeight.w600,
               letterSpacing: -0.85,
@@ -1088,7 +1091,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 27,
                 weight: FontWeight.w900,
                 letterSpacing: -0.81,
@@ -1100,7 +1103,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   18,
                   weight: FontWeight.w500,
                   letterSpacing: -0.54,
@@ -1112,7 +1115,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
             const SizedBox(height: 21),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: WINRV2PillButton(
+              child: AvafliV2PillButton(
                 accent: widget.accent,
                 title: ctaTitle,
                 isLoading: ctaLoading,
@@ -1135,7 +1138,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   String? _nameError(TextEditingController controller, String message) {
     final text = controller.text;
     if (text.trim().isEmpty) return null;
-    return WINRPrizeClaimForm.isValidName(text) ? null : message;
+    return AvafliPrizeClaimForm.isValidName(text) ? null : message;
   }
 
   /// Inline error for the OPTIONAL phone: blank is fine; anything typed
@@ -1143,8 +1146,8 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   String? get _phoneError {
     final text = _phone.text;
     if (text.trim().isEmpty) return null;
-    return WINRPrizeClaimForm.normalizePhone(text) == null
-        ? WINRV2Strings.invalidPhone
+    return AvafliPrizeClaimForm.normalizePhone(text) == null
+        ? AvafliV2Strings.invalidPhone
         : null;
   }
 
@@ -1161,28 +1164,29 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _WINRStepField(
+              _AvafliStepField(
                 label: 'First Name',
                 controller: _firstName,
                 errorText:
-                    _nameError(_firstName, WINRV2Strings.invalidFirstName),
+                    _nameError(_firstName, AvafliV2Strings.invalidFirstName),
               ),
               const SizedBox(height: 21),
-              _WINRStepField(
+              _AvafliStepField(
                 label: 'Last Name (we will only show your last initial)',
                 controller: _lastName,
-                errorText: _nameError(_lastName, WINRV2Strings.invalidLastName),
+                errorText:
+                    _nameError(_lastName, AvafliV2Strings.invalidLastName),
               ),
               const SizedBox(height: 21),
               // The winning email lives server-side (the SDK never stores
               // the raw address) and the claim is keyed to the account —
               // shown locked, masked by the backend for recognition.
-              _WINRStepLockedField(
+              _AvafliStepLockedField(
                 label: 'Winning Email Address (cannot be changed)',
                 value: widget.maskedEmail ?? 'On file with your winning entry',
               ),
               const SizedBox(height: 21),
-              _WINRStepField(
+              _AvafliStepField(
                 label: 'Phone Number (optional)',
                 controller: _phone,
                 keyboardType: TextInputType.phone,
@@ -1208,19 +1212,19 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _WINRStreetAddressField(
+              _AvafliStreetAddressField(
                 controller: _street,
                 places: _places,
                 onSuggestionTap: (suggestion) =>
                     unawaited(_selectPlaceSuggestion(suggestion)),
               ),
               const SizedBox(height: 21),
-              _WINRStepField(
+              _AvafliStepField(
                 label: 'Apartment, Suite, etc. (optional)',
                 controller: _apt,
               ),
               const SizedBox(height: 21),
-              _WINRStepField(label: 'City', controller: _city),
+              _AvafliStepField(label: 'City', controller: _city),
               const SizedBox(height: 21),
               // State + Zip row. The zip column used to be a fixed 101px —
               // with the field's 25px side padding that left ~50px for five
@@ -1235,7 +1239,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
                   const SizedBox(width: 13),
                   Expanded(
                     flex: 9,
-                    child: _WINRStepField(
+                    child: _AvafliStepField(
                       label: 'Zip Code',
                       controller: _zip,
                       keyboardType: TextInputType.number,
@@ -1251,7 +1255,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
               const SizedBox(height: 21),
               // US-only sweepstakes — the country row renders like the
               // frame's dropdown but is fixed.
-              const _WINRStepLockedField(
+              const _AvafliStepLockedField(
                 label: 'Country',
                 value: 'United States',
                 dimmed: false,
@@ -1269,24 +1273,24 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _WINRStepFieldLabel('State'),
+        const _AvafliStepFieldLabel('State'),
         const SizedBox(height: 6),
         PopupMenuButton<String>(
           initialValue: _state.isEmpty ? null : _state,
-          color: WINRV2Colors.deepCharcoal,
+          color: AvafliV2Colors.deepCharcoal,
           constraints: const BoxConstraints(maxHeight: 400),
           onSelected: (value) => setState(() => _state = value),
           itemBuilder: (context) => [
-            for (final state in WINRPrizeClaimForm.usStates)
+            for (final state in AvafliPrizeClaimForm.usStates)
               PopupMenuItem<String>(
                 value: state,
-                child: Text(state, style: WINRV2Font.inter(15)),
+                child: Text(state, style: AvafliV2Font.inter(15)),
               ),
           ],
           child: Container(
             height: 59,
             padding: const EdgeInsets.symmetric(horizontal: 25),
-            decoration: _WINRStepTheme.fieldDecoration,
+            decoration: _AvafliStepTheme.fieldDecoration,
             child: Row(
               children: [
                 Expanded(
@@ -1296,7 +1300,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
                     child: Text(
                       _state.isEmpty ? 'Select' : _state,
                       maxLines: 1,
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         20,
                         color: _state.isEmpty
                             ? const Color(0x4DFFFFFF) // white 30%
@@ -1334,7 +1338,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
           decoration: BoxDecoration(
-            color: WINRV2Colors.gunmetal,
+            color: AvafliV2Colors.gunmetal,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -1344,7 +1348,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
               Expanded(
                 child: Text(
                   'Your information is secure and encrypted.',
-                  style: WINRV2Font.inter(14),
+                  style: AvafliV2Font.inter(14),
                 ),
               ),
             ],
@@ -1365,7 +1369,7 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
             child: Text(
               widget.submitError!,
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 13,
                 weight: FontWeight.w600,
                 color: const Color(0xFFFF7366),
@@ -1383,13 +1387,13 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
   /// were removed from this screen entirely; the screen keeps just this
   /// checkbox, SUBMIT, and the secure-note.
   Widget _consentSection() {
-    return _WINRClaimConsentRow(
+    return _AvafliClaimConsentRow(
       key: const ValueKey('consent-likeness'),
       accent: widget.accent,
       isOn: _promoConsent,
       onToggle: () => setState(() => _promoConsent = !_promoConsent),
       label: TextSpan(
-        text: WINRV2ClaimStepsFlow.likenessConsentLabel(widget.appName),
+        text: AvafliV2ClaimStepsFlow.likenessConsentLabel(widget.appName),
       ),
     );
   }
@@ -1397,13 +1401,13 @@ class _WINRV2ClaimStepsFlowState extends State<WINRV2ClaimStepsFlow> {
 
 /// A single consent checkbox row (accent square check + wrapping label).
 /// Tapping anywhere on the row toggles.
-class _WINRClaimConsentRow extends StatelessWidget {
+class _AvafliClaimConsentRow extends StatelessWidget {
   final Color accent;
   final bool isOn;
   final VoidCallback onToggle;
   final TextSpan label;
 
-  const _WINRClaimConsentRow({
+  const _AvafliClaimConsentRow({
     super.key,
     required this.accent,
     required this.isOn,
@@ -1441,7 +1445,7 @@ class _WINRClaimConsentRow extends StatelessWidget {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  style: WINRV2Font.inter(16, height: 1.3),
+                  style: AvafliV2Font.inter(16, height: 1.3),
                   children: [label],
                 ),
               ),
@@ -1454,10 +1458,10 @@ class _WINRClaimConsentRow extends StatelessWidget {
 }
 
 /// The 12px field label above the box.
-class _WINRStepFieldLabel extends StatelessWidget {
+class _AvafliStepFieldLabel extends StatelessWidget {
   final String text;
 
-  const _WINRStepFieldLabel(this.text);
+  const _AvafliStepFieldLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -1467,7 +1471,7 @@ class _WINRStepFieldLabel extends StatelessWidget {
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: WINRV2Font.inter(12),
+        style: AvafliV2Font.inter(12),
       ),
     );
   }
@@ -1478,9 +1482,9 @@ class _WINRStepFieldLabel extends StatelessWidget {
 /// [errorText] renders inline under the box in the shared error red.
 ///
 /// Stateful (2.9): each field owns a [FocusNode] wrapped in
-/// [WINRV2EnsureVisible], so focusing any field scrolls it — label, box, and
+/// [AvafliV2EnsureVisible], so focusing any field scrolls it — label, box, and
 /// error — clear of the software keyboard even on small screens.
-class _WINRStepField extends StatefulWidget {
+class _AvafliStepField extends StatefulWidget {
   final String label;
   final TextEditingController controller;
   final TextInputType keyboardType;
@@ -1496,7 +1500,7 @@ class _WINRStepField extends StatefulWidget {
   /// zip field) pass less so the value never clips.
   final double horizontalPadding;
 
-  const _WINRStepField({
+  const _AvafliStepField({
     required this.label,
     required this.controller,
     this.keyboardType = TextInputType.text,
@@ -1507,10 +1511,10 @@ class _WINRStepField extends StatefulWidget {
   });
 
   @override
-  State<_WINRStepField> createState() => _WINRStepFieldState();
+  State<_AvafliStepField> createState() => _AvafliStepFieldState();
 }
 
-class _WINRStepFieldState extends State<_WINRStepField> {
+class _AvafliStepFieldState extends State<_AvafliStepField> {
   final FocusNode _focus = FocusNode();
 
   @override
@@ -1521,17 +1525,17 @@ class _WINRStepFieldState extends State<_WINRStepField> {
 
   @override
   Widget build(BuildContext context) {
-    return WINRV2EnsureVisible(
+    return AvafliV2EnsureVisible(
       focusNode: _focus,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _WINRStepFieldLabel(widget.label),
+          _AvafliStepFieldLabel(widget.label),
           const SizedBox(height: 6),
           Container(
             height: 59,
             padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
-            decoration: _WINRStepTheme.fieldDecoration,
+            decoration: _AvafliStepTheme.fieldDecoration,
             alignment: Alignment.centerLeft,
             child: TextField(
               controller: widget.controller,
@@ -1541,7 +1545,7 @@ class _WINRStepFieldState extends State<_WINRStepField> {
               onChanged: widget.onChanged,
               autocorrect: false,
               enableSuggestions: false,
-              style: WINRV2Font.inter(20),
+              style: AvafliV2Font.inter(20),
               cursorColor: Colors.white,
               decoration: const InputDecoration(
                 isCollapsed: true,
@@ -1555,7 +1559,7 @@ class _WINRStepFieldState extends State<_WINRStepField> {
               padding: const EdgeInsets.only(left: 8),
               child: Text(
                 widget.errorText!,
-                style: WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
+                style: AvafliV2Font.inter(13, color: AvafliV2Colors.errorRed),
               ),
             ),
           ],
@@ -1566,23 +1570,23 @@ class _WINRStepFieldState extends State<_WINRStepField> {
 }
 
 /// The Street Address field. Without a Places setup ([places] == null) it is
-/// exactly the plain [_WINRStepField] it always was. With one, typing
-/// (debounced, min 3 chars — see [WINRAddressAutocomplete]) surfaces up to
+/// exactly the plain [_AvafliStepField] it always was. With one, typing
+/// (debounced, min 3 chars — see [AvafliAddressAutocomplete]) surfaces up to
 /// five address suggestions in a dropdown card directly beneath the box,
 /// styled like the other step fields. Tap → [onSuggestionTap] (the flow
 /// resolves and fills the address); tap outside or the system back → the
 /// list dismisses and typing continues untouched.
 ///
 /// Keyboard safety: the card renders inline in the step's scrollable (which
-/// already carries IME-aware bottom padding), and [_WINRAddressSuggestionsCard]
+/// already carries IME-aware bottom padding), and [_AvafliAddressSuggestionsCard]
 /// ensures itself visible when it appears — suggestions are never stranded
 /// under the keyboard.
-class _WINRStreetAddressField extends StatelessWidget {
+class _AvafliStreetAddressField extends StatelessWidget {
   final TextEditingController controller;
-  final WINRAddressAutocomplete? places;
-  final ValueChanged<WINRPlaceSuggestion> onSuggestionTap;
+  final AvafliAddressAutocomplete? places;
+  final ValueChanged<AvafliPlaceSuggestion> onSuggestionTap;
 
-  const _WINRStreetAddressField({
+  const _AvafliStreetAddressField({
     required this.controller,
     required this.places,
     required this.onSuggestionTap,
@@ -1591,7 +1595,7 @@ class _WINRStreetAddressField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final places = this.places;
-    final field = _WINRStepField(
+    final field = _AvafliStepField(
       label: 'Street Address',
       controller: controller,
       onChanged: places?.onQueryChanged,
@@ -1615,7 +1619,7 @@ class _WINRStreetAddressField extends StatelessWidget {
               children: [
                 field,
                 if (suggestions.isNotEmpty)
-                  _WINRAddressSuggestionsCard(
+                  _AvafliAddressSuggestionsCard(
                     suggestions: suggestions,
                     onSuggestionTap: onSuggestionTap,
                   ),
@@ -1631,27 +1635,27 @@ class _WINRStreetAddressField extends StatelessWidget {
 /// The dropdown card of street suggestions: field-styled dark card, one row
 /// per suggestion, hairline dividers, and the required "powered by Google"
 /// attribution row (mandatory when Places data is shown without a map).
-class _WINRAddressSuggestionsCard extends StatefulWidget {
-  final List<WINRPlaceSuggestion> suggestions;
-  final ValueChanged<WINRPlaceSuggestion> onSuggestionTap;
+class _AvafliAddressSuggestionsCard extends StatefulWidget {
+  final List<AvafliPlaceSuggestion> suggestions;
+  final ValueChanged<AvafliPlaceSuggestion> onSuggestionTap;
 
-  const _WINRAddressSuggestionsCard({
+  const _AvafliAddressSuggestionsCard({
     required this.suggestions,
     required this.onSuggestionTap,
   });
 
   @override
-  State<_WINRAddressSuggestionsCard> createState() =>
-      _WINRAddressSuggestionsCardState();
+  State<_AvafliAddressSuggestionsCard> createState() =>
+      _AvafliAddressSuggestionsCardState();
 }
 
-class _WINRAddressSuggestionsCardState
-    extends State<_WINRAddressSuggestionsCard> {
+class _AvafliAddressSuggestionsCardState
+    extends State<_AvafliAddressSuggestionsCard> {
   @override
   void initState() {
     super.initState();
     // The card just appeared under the (focused, keyboard-up) street field —
-    // scroll it clear of the keyboard. Composes with WINRV2EnsureVisible's
+    // scroll it clear of the keyboard. Composes with AvafliV2EnsureVisible's
     // field centering: last write wins, and this one shows field + list.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -1668,7 +1672,7 @@ class _WINRAddressSuggestionsCardState
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 6),
-      decoration: _WINRStepTheme.fieldDecoration,
+      decoration: _AvafliStepTheme.fieldDecoration,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1687,12 +1691,12 @@ class _WINRAddressSuggestionsCardState
                     suggestion.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: WINRV2Font.inter(15, height: 1.25),
+                    style: AvafliV2Font.inter(15, height: 1.25),
                   ),
                 ),
               ),
             ),
-            Container(height: 1, color: _WINRStepTheme.fieldBorder),
+            Container(height: 1, color: _AvafliStepTheme.fieldBorder),
           ],
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
@@ -1700,7 +1704,7 @@ class _WINRAddressSuggestionsCardState
               alignment: Alignment.centerRight,
               child: Text(
                 'powered by Google',
-                style: WINRV2Font.inter(11, color: const Color(0x80FFFFFF)),
+                style: AvafliV2Font.inter(11, color: const Color(0x80FFFFFF)),
               ),
             ),
           ),
@@ -1712,13 +1716,13 @@ class _WINRAddressSuggestionsCardState
 
 /// A locked (non-editable) field — the winning email and Country rows. Shows
 /// dimmed text; [showsChevron] mimics the Country dropdown from the frame.
-class _WINRStepLockedField extends StatelessWidget {
+class _AvafliStepLockedField extends StatelessWidget {
   final String label;
   final String value;
   final bool dimmed;
   final bool showsChevron;
 
-  const _WINRStepLockedField({
+  const _AvafliStepLockedField({
     required this.label,
     required this.value,
     this.dimmed = true,
@@ -1730,12 +1734,12 @@ class _WINRStepLockedField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _WINRStepFieldLabel(label),
+        _AvafliStepFieldLabel(label),
         const SizedBox(height: 6),
         Container(
           height: 59,
           padding: const EdgeInsets.symmetric(horizontal: 25),
-          decoration: _WINRStepTheme.fieldDecoration,
+          decoration: _AvafliStepTheme.fieldDecoration,
           child: Row(
             children: [
               Expanded(
@@ -1745,7 +1749,7 @@ class _WINRStepLockedField extends StatelessWidget {
                   child: Text(
                     value,
                     maxLines: 1,
-                    style: WINRV2Font.inter(
+                    style: AvafliV2Font.inter(
                       20,
                       color: dimmed
                           ? const Color(0x4DFFFFFF) // white 30%
@@ -1769,13 +1773,13 @@ class _WINRStepLockedField extends StatelessWidget {
 }
 
 // ── Social glyphs (share step) ──
-// The official WINR brand set for the "Share on Social Media:" row
+// The official Avafli brand set for the "Share on Social Media:" row
 // (Instagram / Facebook / X / Snapchat / TikTok): white fill glyphs authored
-// in Figma as 48×48 SVG paths, rendered in-code via [WINRSvgIconPainter] so
+// in Figma as 48×48 SVG paths, rendered in-code via [AvafliSvgIconPainter] so
 // the SDK ships no asset bundle. Path data is verbatim from the brand SVGs —
 // treat it as the source of truth and don't hand-edit.
 
-enum _WINRSocialGlyphKind {
+enum _AvafliSocialGlyphKind {
   instagram(
     'Instagram',
     [
@@ -1935,7 +1939,7 @@ enum _WINRSocialGlyphKind {
     ],
   );
 
-  const _WINRSocialGlyphKind(this.displayName, this.pathData);
+  const _AvafliSocialGlyphKind(this.displayName, this.pathData);
 
   final String displayName;
 
@@ -1943,15 +1947,16 @@ enum _WINRSocialGlyphKind {
   final List<String> pathData;
 }
 
-class _WINRSocialGlyph extends StatelessWidget {
-  final _WINRSocialGlyphKind kind;
+class _AvafliSocialGlyph extends StatelessWidget {
+  final _AvafliSocialGlyphKind kind;
 
-  const _WINRSocialGlyph({required this.kind});
+  const _AvafliSocialGlyph({required this.kind});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: WINRSvgIconPainter(pathData: kind.pathData, color: Colors.white),
+      painter:
+          AvafliSvgIconPainter(pathData: kind.pathData, color: Colors.white),
     );
   }
 }
@@ -1977,7 +1982,7 @@ class _WINRSocialGlyph extends StatelessWidget {
 /// - Instagram / Snapchat / TikTok: no text-prefill APIs and no share-sheet
 ///   plugin in this package → copy the line + "Copied — paste it in your
 ///   post".
-class WINRV2ClaimShareView extends StatefulWidget {
+class AvafliV2ClaimShareView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
 
@@ -2000,7 +2005,7 @@ class WINRV2ClaimShareView extends StatefulWidget {
   /// renders but the text goes nowhere (previews/tests).
   final ValueChanged<String>? onStory;
 
-  const WINRV2ClaimShareView({
+  const AvafliV2ClaimShareView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -2021,7 +2026,7 @@ class WINRV2ClaimShareView extends StatefulWidget {
         : 'I just won $prizeHeadline in $app!';
   }
 
-  /// Appends `utm_source={network}&utm_medium=winr_share` to the publisher's
+  /// Appends `utm_source={network}&utm_medium=avafli_share` to the publisher's
   /// [shareUrl] via [Uri] (correct whether or not the URL already has a query
   /// string). A URL already carrying a `utm_source` param is returned
   /// untouched — the publisher's own tagging wins. Unparseable URLs pass
@@ -2038,15 +2043,15 @@ class WINRV2ClaimShareView extends StatefulWidget {
     return uri.replace(queryParameters: {
       ...uri.queryParametersAll,
       'utm_source': network,
-      'utm_medium': 'winr_share',
+      'utm_medium': 'avafli_share',
     }).toString();
   }
 
   @override
-  State<WINRV2ClaimShareView> createState() => _WINRV2ClaimShareViewState();
+  State<AvafliV2ClaimShareView> createState() => _AvafliV2ClaimShareViewState();
 }
 
-class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
+class _AvafliV2ClaimShareViewState extends State<AvafliV2ClaimShareView> {
   static const String _storyPlaceholder =
       'Please share anything. What you’re going to do with the prize, why '
       'you love our app, your favorite food, etc.';
@@ -2089,26 +2094,26 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
   }
 
   String get _shareLine =>
-      WINRV2ClaimShareView.shareLine(widget.prizeHeadline, widget.appName);
+      AvafliV2ClaimShareView.shareLine(widget.prizeHeadline, widget.appName);
 
   /// Share payload: the line plus [url] (the UTM-tagged share URL) when
   /// configured.
   String _shareText(String? url) =>
       (url == null || url.isEmpty) ? _shareLine : '$_shareLine $url';
 
-  void _shareTo(_WINRSocialGlyphKind kind) {
+  void _shareTo(_AvafliSocialGlyphKind kind) {
     // UTM-tag the publisher link with the tapped network (the enum names are
     // exactly the utm_source values) so publishers can attribute installs per
     // network — clipboard fallbacks included.
     final taggedUrl =
-        WINRV2ClaimShareView.taggedShareUrl(widget.shareUrl, kind.name);
+        AvafliV2ClaimShareView.taggedShareUrl(widget.shareUrl, kind.name);
     switch (kind) {
-      case _WINRSocialGlyphKind.x:
+      case _AvafliSocialGlyphKind.x:
         // Tweet intent: prefilled text (+ shareUrl appended).
         final uri = Uri.parse('https://twitter.com/intent/tweet')
             .replace(queryParameters: {'text': _shareText(taggedUrl)});
         launchUrl(uri, mode: LaunchMode.externalApplication);
-      case _WINRSocialGlyphKind.facebook:
+      case _AvafliSocialGlyphKind.facebook:
         if (taggedUrl != null && taggedUrl.isNotEmpty) {
           final uri = Uri.parse('https://www.facebook.com/sharer/sharer.php')
               .replace(queryParameters: {'u': taggedUrl});
@@ -2116,9 +2121,9 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
         } else {
           _copyToClipboard(_shareText(taggedUrl));
         }
-      case _WINRSocialGlyphKind.instagram:
-      case _WINRSocialGlyphKind.snapchat:
-      case _WINRSocialGlyphKind.tiktok:
+      case _AvafliSocialGlyphKind.instagram:
+      case _AvafliSocialGlyphKind.snapchat:
+      case _AvafliSocialGlyphKind.tiktok:
         _copyToClipboard(_shareText(taggedUrl));
     }
   }
@@ -2136,21 +2141,21 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.deepCharcoal,
+      color: AvafliV2Colors.deepCharcoal,
       child: SingleChildScrollView(
         padding:
             EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: Column(
           children: [
             const SizedBox(height: 18),
-            _WINRClaimHeader(logoUrl: widget.logoUrl, onClose: _handleClose),
+            _AvafliClaimHeader(logoUrl: widget.logoUrl, onClose: _handleClose),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Text(
                 'PLEASE SHARE A LITTLE',
                 textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   27,
                   weight: FontWeight.w900,
                   letterSpacing: -0.81,
@@ -2165,7 +2170,7 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
                 'Your claim is in! Sharing your win helps us show real '
                 'people like you win.',
                 textAlign: TextAlign.center,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   18,
                   weight: FontWeight.w500,
                   letterSpacing: -0.54,
@@ -2179,27 +2184,27 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
             // never with the (already submitted) claim payload.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: WINRV2EnsureVisible(
+              child: AvafliV2EnsureVisible(
                 focusNode: _storyFocus,
                 child: Container(
                   height: 150,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: _WINRStepTheme.fieldDecoration,
+                  decoration: _AvafliStepTheme.fieldDecoration,
                   child: TextField(
                     controller: _story,
                     focusNode: _storyFocus,
                     maxLines: null,
                     expands: true,
                     textAlignVertical: TextAlignVertical.top,
-                    style: WINRV2Font.inter(17, height: 1.25),
+                    style: AvafliV2Font.inter(17, height: 1.25),
                     cursorColor: Colors.white,
                     decoration: InputDecoration(
                       isCollapsed: true,
                       border: InputBorder.none,
                       hintText: _storyPlaceholder,
-                      hintStyle:
-                          WINRV2Font.inter(17, color: const Color(0x99FFFFFF)),
+                      hintStyle: AvafliV2Font.inter(17,
+                          color: const Color(0x99FFFFFF)),
                     ),
                   ),
                 ),
@@ -2214,18 +2219,18 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
                 width: double.infinity,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: _WINRStepTheme.fieldDecoration,
+                decoration: _AvafliStepTheme.fieldDecoration,
                 child: Text(
                   _shareLine,
                   textAlign: TextAlign.center,
-                  style: WINRV2Font.inter(16, height: 1.3),
+                  style: AvafliV2Font.inter(16, height: 1.3),
                 ),
               ),
             ),
             const SizedBox(height: 30),
             Text(
               'Share on Social Media:',
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 18,
                 weight: FontWeight.w500,
                 letterSpacing: -0.54,
@@ -2235,8 +2240,8 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (final kind in _WINRSocialGlyphKind.values) ...[
-                  if (kind != _WINRSocialGlyphKind.values.first)
+                for (final kind in _AvafliSocialGlyphKind.values) ...[
+                  if (kind != _AvafliSocialGlyphKind.values.first)
                     const SizedBox(width: 26),
                   Semantics(
                     label: 'Share on ${kind.displayName}',
@@ -2247,7 +2252,7 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
                       child: SizedBox(
                         width: 48,
                         height: 48,
-                        child: _WINRSocialGlyph(kind: kind),
+                        child: _AvafliSocialGlyph(kind: kind),
                       ),
                     ),
                   ),
@@ -2262,8 +2267,9 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    WINRV2Strings.shareCopied,
-                    style: WINRV2Font.inter(12, color: const Color(0xB3FFFFFF)),
+                    AvafliV2Strings.shareCopied,
+                    style:
+                        AvafliV2Font.inter(12, color: const Color(0xB3FFFFFF)),
                   ),
                 ),
               ),
@@ -2271,7 +2277,7 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
             const SizedBox(height: 21),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: WINRV2PillButton(
+              child: AvafliV2PillButton(
                 accent: widget.accent,
                 title: 'CONTINUE',
                 onTap: _handleDone,
@@ -2289,15 +2295,15 @@ class _WINRV2ClaimShareViewState extends State<WINRV2ClaimShareView> {
 // Confirmation ("YOUR PRIZE CLAIM HAS BEEN SUBMITTED")
 // ---------------------------------------------------------------------------
 
-class WINRV2ClaimConfirmationView extends StatefulWidget {
+class AvafliV2ClaimConfirmationView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
-  final WINRPrizeClaimForm? form;
+  final AvafliPrizeClaimForm? form;
   final String claimNumber;
   final String submittedAt;
   final VoidCallback onDone;
 
-  const WINRV2ClaimConfirmationView({
+  const AvafliV2ClaimConfirmationView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -2308,23 +2314,23 @@ class WINRV2ClaimConfirmationView extends StatefulWidget {
   });
 
   @override
-  State<WINRV2ClaimConfirmationView> createState() =>
-      _WINRV2ClaimConfirmationViewState();
+  State<AvafliV2ClaimConfirmationView> createState() =>
+      _AvafliV2ClaimConfirmationViewState();
 }
 
-class _WINRV2ClaimConfirmationViewState
-    extends State<WINRV2ClaimConfirmationView> {
+class _AvafliV2ClaimConfirmationViewState
+    extends State<AvafliV2ClaimConfirmationView> {
   /// One-shot celebration (2.9.3, Joe's frame): the confetti-burst GIF
   /// explodes once over the top of the screen the moment the confirmation
   /// appears — the same machinery as the winner splash — then removes
-  /// itself via [WINRV2GifView.onFinished]. A gold drifting confetti field
+  /// itself via [AvafliV2GifView.onFinished]. A gold drifting confetti field
   /// keeps sparkling beneath it. Both are purely decorative and wrapped in
   /// [IgnorePointer], so they can never block RETURN TO APP or the close X.
   bool _bursting = true;
 
   Color get accent => widget.accent;
   String? get logoUrl => widget.logoUrl;
-  WINRPrizeClaimForm? get form => widget.form;
+  AvafliPrizeClaimForm? get form => widget.form;
   String get claimNumber => widget.claimNumber;
   String get submittedAt => widget.submittedAt;
   VoidCallback get onDone => widget.onDone;
@@ -2338,7 +2344,7 @@ class _WINRV2ClaimConfirmationViewState
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.deepCharcoal,
+      color: AvafliV2Colors.deepCharcoal,
       child: Stack(
         children: [
           // Gold confetti drift across the upper half (Joe's sparkle field),
@@ -2349,8 +2355,8 @@ class _WINRV2ClaimConfirmationViewState
             right: 0,
             height: 360,
             child: IgnorePointer(
-              child: WINRV2Confetti(
-                style: WINRV2ConfettiStyle.gold,
+              child: AvafliV2Confetti(
+                style: AvafliV2ConfettiStyle.gold,
                 count: 26,
                 speed: 0.7,
               ),
@@ -2365,8 +2371,8 @@ class _WINRV2ClaimConfirmationViewState
               right: 0,
               height: 320,
               child: IgnorePointer(
-                child: WINRV2GifView(
-                  WINRV2Assets.confettiBurst,
+                child: AvafliV2GifView(
+                  AvafliV2Assets.confettiBurst,
                   onFinished: () {
                     if (mounted) setState(() => _bursting = false);
                   },
@@ -2383,14 +2389,14 @@ class _WINRV2ClaimConfirmationViewState
       child: Column(
         children: [
           const SizedBox(height: 18),
-          _WINRClaimHeader(logoUrl: logoUrl, onClose: onDone),
+          _AvafliClaimHeader(logoUrl: logoUrl, onClose: onDone),
           const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
             child: Text(
               'YOUR PRIZE CLAIM HAS BEEN SUBMITTED',
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 26,
                 weight: FontWeight.w900,
                 letterSpacing: -0.7,
@@ -2405,7 +2411,7 @@ class _WINRV2ClaimConfirmationViewState
               'Our team is reviewing your information. You’ll receive a '
               'confirmation email shortly.',
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 15,
                 color: const Color(0xD9FFFFFF),
                 height: 1.25,
@@ -2413,11 +2419,11 @@ class _WINRV2ClaimConfirmationViewState
             ),
           ),
           const SizedBox(height: 22),
-          _WINRClaimInfoCard(
+          _AvafliClaimInfoCard(
             // Joe's frame: solid dark gunmetal card with a subtle border;
             // the envelope sits in a circle stroked in the publisher's
             // PRIMARY accent (never a hardcoded blue).
-            fill: WINRV2Colors.gunmetal,
+            fill: AvafliV2Colors.gunmetal,
             borderColor: const Color(0x1FFFFFFF),
             icon: Container(
               width: 46,
@@ -2435,12 +2441,12 @@ class _WINRV2ClaimConfirmationViewState
               children: [
                 Text(
                   'Expect to receive your prize within',
-                  style: WINRV2Font.inter(14),
+                  style: AvafliV2Font.inter(14),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   '3-5 Business Days',
-                  style: WINRV2Font.inter(
+                  style: AvafliV2Font.inter(
                     18,
                     weight: FontWeight.w900,
                     color: accent,
@@ -2457,7 +2463,7 @@ class _WINRV2ClaimConfirmationViewState
           const SizedBox(height: 30),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: WINRV2PillButton(
+            child: AvafliV2PillButton(
               accent: accent,
               title: 'RETURN TO APP',
               onTap: onDone,
@@ -2499,7 +2505,7 @@ class _WINRV2ClaimConfirmationViewState
                     // publisher's PRIMARY accent (previously fixed gold).
                     Text(
                       'OFFICIAL',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         16,
                         weight: FontWeight.w900,
                         color: accent,
@@ -2508,7 +2514,7 @@ class _WINRV2ClaimConfirmationViewState
                     ),
                     Text(
                       'WINNER',
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         16,
                         weight: FontWeight.w900,
                         color: accent,
@@ -2542,14 +2548,14 @@ class _WINRV2ClaimConfirmationViewState
               if (city.isNotEmpty)
                 Text(
                   '$city, $state',
-                  style: WINRV2Font.inter(14, color: const Color(0xFF737373)),
+                  style: AvafliV2Font.inter(14, color: const Color(0xFF737373)),
                 ),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: Text(
-                  '${WINRClaimDates.monthYearDisplay(submittedAt)} • $claimNumber',
-                  style: WINRV2Font.inter(
+                  '${AvafliClaimDates.monthYearDisplay(submittedAt)} • $claimNumber',
+                  style: AvafliV2Font.inter(
                     11,
                     weight: FontWeight.w700,
                     color: _goldText,
@@ -2567,8 +2573,8 @@ class _WINRV2ClaimConfirmationViewState
           right: 0,
           child: Center(
             child: Image.asset(
-              WINRV2Assets.trophy,
-              package: WINRV2Assets.package,
+              AvafliV2Assets.trophy,
+              package: AvafliV2Assets.package,
               height: 54,
               fit: BoxFit.contain,
             ),

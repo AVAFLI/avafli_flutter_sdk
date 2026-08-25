@@ -25,6 +25,10 @@ class SecureStorage implements Storage {
       aOptions: const AndroidOptions(),
       iOptions: IOSOptions(
         groupId: groupId,
+        // Deliberately still the pre-rebrand account name: tokens written by
+        // winr_flutter_sdk 2.x live under this keychain service, and changing
+        // it would orphan them (logging every upgraded user out and resetting
+        // their streak cache). Do not "fix" this to avafli_sdk.
         accountName: accountName ?? 'winr_flutter_sdk',
       ),
     );

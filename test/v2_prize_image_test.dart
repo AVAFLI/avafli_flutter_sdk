@@ -16,9 +16,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_effects.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
 
 const String _prizeUrl = 'https://cdn.example.com/prize.png';
 const String _pendingUrl = 'https://cdn.example.com/pending-prize.png';
@@ -38,12 +38,12 @@ class _HangingHttpClient implements HttpClient {
 Widget _card({String? prizeImageUrl}) => MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Material(
-        color: WINRV2Colors.gunmetal,
+        color: AvafliV2Colors.gunmetal,
         child: Center(
           child: SizedBox(
             width: 390,
-            child: WINRV2PrizeCard(
-              accent: WINRV2Accent(null).color,
+            child: AvafliV2PrizeCard(
+              accent: AvafliV2Accent(null).color,
               streakDay: 3,
               totalEntries: 100,
               prizeImageUrl: prizeImageUrl,
@@ -62,7 +62,7 @@ Iterable<ImageProvider> _providers(WidgetTester tester) =>
 /// Real Inter faces — the test-default font is much wider and overflows the
 /// card's stats strip.
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -76,22 +76,22 @@ Future<void> _loadRealFonts() async {
 void main() {
   setUpAll(_loadRealFonts);
   setUp(() {
-    WINRV2ImageWarmer.resetForTesting();
+    AvafliV2ImageWarmer.resetForTesting();
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
   });
 
   group('image warmer', () {
     test('warms a URL once and ignores empty ones', () {
-      WINRV2ImageWarmer.prewarm(null);
-      WINRV2ImageWarmer.prewarm('');
-      expect(WINRV2ImageWarmer.isWarmed(''), isFalse);
+      AvafliV2ImageWarmer.prewarm(null);
+      AvafliV2ImageWarmer.prewarm('');
+      expect(AvafliV2ImageWarmer.isWarmed(''), isFalse);
 
-      WINRV2ImageWarmer.prewarm(_prizeUrl);
-      expect(WINRV2ImageWarmer.isWarmed(_prizeUrl), isTrue);
+      AvafliV2ImageWarmer.prewarm(_prizeUrl);
+      expect(AvafliV2ImageWarmer.isWarmed(_prizeUrl), isTrue);
       // Idempotent: a repeated giveaway refresh must not re-download.
-      WINRV2ImageWarmer.prewarm(_prizeUrl);
-      expect(WINRV2ImageWarmer.isWarmed(_prizeUrl), isTrue);
+      AvafliV2ImageWarmer.prewarm(_prizeUrl);
+      expect(AvafliV2ImageWarmer.isWarmed(_prizeUrl), isTrue);
     });
 
     test('warms the same provider Image.network resolves to', () {
@@ -113,18 +113,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     // The remote image is mounted and still pending…
-    expect(find.byType(WINRV2RemoteImage), findsOneWidget);
+    expect(find.byType(AvafliV2RemoteImage), findsOneWidget);
     // …behind the card's own dark charcoal, at zero opacity (the ~200ms
     // fade begins only once the first frame decodes).
     final placeholder = tester.widget<ColoredBox>(find.descendant(
-      of: find.byType(WINRV2RemoteImage),
+      of: find.byType(AvafliV2RemoteImage),
       matching: find.byType(ColoredBox),
     ));
-    expect(placeholder.color, WINRV2Colors.deepCharcoal);
+    expect(placeholder.color, AvafliV2Colors.deepCharcoal);
     expect(
       tester
           .widget<AnimatedOpacity>(find.descendant(
-            of: find.byType(WINRV2RemoteImage),
+            of: find.byType(AvafliV2RemoteImage),
             matching: find.byType(AnimatedOpacity),
           ))
           .opacity,
@@ -133,11 +133,11 @@ void main() {
     expect(
       tester
           .widget<AnimatedOpacity>(find.descendant(
-            of: find.byType(WINRV2RemoteImage),
+            of: find.byType(AvafliV2RemoteImage),
             matching: find.byType(AnimatedOpacity),
           ))
           .duration,
-      winrV2ImageFadeDuration,
+      avafliV2ImageFadeDuration,
     );
 
     // And the rest of the card is already there — the headline never waits
@@ -160,7 +160,7 @@ void main() {
     final assets = _providers(tester).whereType<AssetImage>();
     expect(assets, isNotEmpty,
         reason: 'a failed prize image must fall back to the bundled hero');
-    expect(assets.first.assetName, contains(WINRV2Assets.cashHero));
+    expect(assets.first.assetName, contains(AvafliV2Assets.cashHero));
   });
 
   testWidgets('no prize image configured renders the bundled cash hero',
@@ -168,8 +168,8 @@ void main() {
     await tester.pumpWidget(_card());
     await tester.pump();
 
-    expect(find.byType(WINRV2RemoteImage), findsNothing);
+    expect(find.byType(AvafliV2RemoteImage), findsNothing);
     final assets = _providers(tester).whereType<AssetImage>();
-    expect(assets.single.assetName, contains(WINRV2Assets.cashHero));
+    expect(assets.single.assetName, contains(AvafliV2Assets.cashHero));
   });
 }

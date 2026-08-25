@@ -14,26 +14,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:winr_flutter_sdk/src/network/api_request.dart';
-import 'package:winr_flutter_sdk/src/network/network_client.dart';
-import 'package:winr_flutter_sdk/src/network/winr_api.dart';
-import 'package:winr_flutter_sdk/src/storage/preferences_storage.dart';
-import 'package:winr_flutter_sdk/src/storage/secure_storage.dart';
-import 'package:winr_flutter_sdk/src/storage/storage.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_claim.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_strings.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/src/network/api_request.dart';
+import 'package:avafli_sdk/src/network/network_client.dart';
+import 'package:avafli_sdk/src/network/avafli_api.dart';
+import 'package:avafli_sdk/src/storage/preferences_storage.dart';
+import 'package:avafli_sdk/src/storage/secure_storage.dart';
+import 'package:avafli_sdk/src/storage/storage.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_claim.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_experience.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_screens.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_strings.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
 
 /// A scriptable backend: each request kind delegates to a closure that
-/// returns a response — or throws the WINRException under test.
+/// returns a response — or throws the AvafliException under test.
 class _FakeNetworkClient implements NetworkClient {
   Object Function()? onGetActiveGiveaway;
   Object Function()? onClaim;
@@ -57,11 +57,11 @@ class _FakeNetworkClient implements NetworkClient {
       submitEmailCalls++;
       return _run(onSubmitEmail);
     }
-    throw const WINRException(WINRError.networkError);
+    throw const AvafliException(AvafliError.networkError);
   }
 
   T _run<T>(Object Function()? handler) {
-    if (handler == null) throw const WINRException(WINRError.networkError);
+    if (handler == null) throw const AvafliException(AvafliError.networkError);
     return handler() as T;
   }
 
@@ -128,11 +128,11 @@ Widget _experience({
 }) {
   return MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: WINRV2Experience(
-      configuration: const WINRConfiguration(
+    home: AvafliV2Experience(
+      configuration: const AvafliConfiguration(
         apiKey: 'winr_test_key',
         bundleId: 'com.example.test',
-        user: WINRUser(id: 'user-1', firstName: 'Test', lastName: 'User'),
+        user: AvafliUser(id: 'user-1', firstName: 'Test', lastName: 'User'),
       ),
       networkClient: client,
       secureStorage: _RegisteredSecureStorage(),
@@ -145,7 +145,7 @@ Widget _experience({
 /// Real bundled faces so the screens measure like production (the
 /// test-default Ahem font is far wider and would overflow rows).
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -194,51 +194,51 @@ void main() {
 
   group('name validation (Master Field List rule)', () {
     test('accepts letters, spaces, apostrophes, hyphens, periods', () {
-      expect(WINRPrizeClaimForm.isValidName('Catherine'), isTrue);
-      expect(WINRPrizeClaimForm.isValidName("O'Brien"), isTrue);
-      expect(WINRPrizeClaimForm.isValidName('Mary-Jane'), isTrue);
-      expect(WINRPrizeClaimForm.isValidName('J. R.'), isTrue);
-      expect(WINRPrizeClaimForm.isValidName('  Sam  '), isTrue); // trimmed
+      expect(AvafliPrizeClaimForm.isValidName('Catherine'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName("O'Brien"), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('Mary-Jane'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('J. R.'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('  Sam  '), isTrue); // trimmed
       // Unicode letters are letters.
-      expect(WINRPrizeClaimForm.isValidName('José'), isTrue);
-      expect(WINRPrizeClaimForm.isValidName('Zoë'), isTrue);
-      expect(WINRPrizeClaimForm.isValidName('François'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('José'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('Zoë'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidName('François'), isTrue);
     });
 
     test('rejects digits, symbols, emptiness, and over-length', () {
-      expect(WINRPrizeClaimForm.isValidName(''), isFalse);
-      expect(WINRPrizeClaimForm.isValidName('   '), isFalse);
-      expect(WINRPrizeClaimForm.isValidName('Sam1'), isFalse);
-      expect(WINRPrizeClaimForm.isValidName('a@b'), isFalse);
-      expect(WINRPrizeClaimForm.isValidName('.'), isFalse); // no letter
-      expect(WINRPrizeClaimForm.isValidName('a' * 50), isTrue); // max 50
-      expect(WINRPrizeClaimForm.isValidName('a' * 51), isFalse);
+      expect(AvafliPrizeClaimForm.isValidName(''), isFalse);
+      expect(AvafliPrizeClaimForm.isValidName('   '), isFalse);
+      expect(AvafliPrizeClaimForm.isValidName('Sam1'), isFalse);
+      expect(AvafliPrizeClaimForm.isValidName('a@b'), isFalse);
+      expect(AvafliPrizeClaimForm.isValidName('.'), isFalse); // no letter
+      expect(AvafliPrizeClaimForm.isValidName('a' * 50), isTrue); // max 50
+      expect(AvafliPrizeClaimForm.isValidName('a' * 51), isFalse);
     });
   });
 
   group('optional phone validation', () {
     test('normalizes to 10 digits, allowing a leading country 1', () {
-      expect(WINRPrizeClaimForm.normalizePhone('5551234567'), '5551234567');
+      expect(AvafliPrizeClaimForm.normalizePhone('5551234567'), '5551234567');
       expect(
-        WINRPrizeClaimForm.normalizePhone('(555) 123-4567'),
+        AvafliPrizeClaimForm.normalizePhone('(555) 123-4567'),
         '5551234567',
       );
       expect(
-        WINRPrizeClaimForm.normalizePhone('+1 555 123 4567'),
+        AvafliPrizeClaimForm.normalizePhone('+1 555 123 4567'),
         '5551234567',
       );
-      expect(WINRPrizeClaimForm.normalizePhone('15551234567'), '5551234567');
-      expect(WINRPrizeClaimForm.normalizePhone('555123'), isNull);
-      expect(WINRPrizeClaimForm.normalizePhone('25551234567'), isNull);
-      expect(WINRPrizeClaimForm.normalizePhone('555123456789'), isNull);
+      expect(AvafliPrizeClaimForm.normalizePhone('15551234567'), '5551234567');
+      expect(AvafliPrizeClaimForm.normalizePhone('555123'), isNull);
+      expect(AvafliPrizeClaimForm.normalizePhone('25551234567'), isNull);
+      expect(AvafliPrizeClaimForm.normalizePhone('555123456789'), isNull);
     });
 
     test('blank stays allowed; junk blocks step 1', () {
-      expect(WINRPrizeClaimForm.isValidOptionalPhone(''), isTrue);
-      expect(WINRPrizeClaimForm.isValidOptionalPhone('   '), isTrue);
-      expect(WINRPrizeClaimForm.isValidOptionalPhone('555'), isFalse);
+      expect(AvafliPrizeClaimForm.isValidOptionalPhone(''), isTrue);
+      expect(AvafliPrizeClaimForm.isValidOptionalPhone('   '), isTrue);
+      expect(AvafliPrizeClaimForm.isValidOptionalPhone('555'), isFalse);
 
-      final form = WINRPrizeClaimForm(firstName: 'Sam', lastName: 'Winner');
+      final form = AvafliPrizeClaimForm(firstName: 'Sam', lastName: 'Winner');
       expect(form.isStep1Valid, isTrue);
       form.phone = '555';
       expect(form.isStep1Valid, isFalse);
@@ -248,11 +248,12 @@ void main() {
 
     test('names gate step 1 with the new rule', () {
       expect(
-        WINRPrizeClaimForm(firstName: 'Sam1', lastName: 'Winner').isStep1Valid,
+        AvafliPrizeClaimForm(firstName: 'Sam1', lastName: 'Winner')
+            .isStep1Valid,
         isFalse,
       );
       expect(
-        WINRPrizeClaimForm(firstName: 'Sam', lastName: 'W!').isStep1Valid,
+        AvafliPrizeClaimForm(firstName: 'Sam', lastName: 'W!').isStep1Valid,
         isFalse,
       );
     });
@@ -267,8 +268,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Material(
-          child: WINRV2CaptureView(
-            accent: WINRV2Accent(null).color,
+          child: AvafliV2CaptureView(
+            accent: AvafliV2Accent(null).color,
             logoUrl: null,
             rulesUrl: null,
             giveaway: _giveaway(),
@@ -291,17 +292,17 @@ void main() {
       // Typing an invalid value never flashes red mid-keystroke.
       await tester.enterText(find.byType(TextField), 'not-an-email');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidEmail), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidEmail), findsNothing);
 
       // Focus lost with an invalid non-empty value → the error appears.
       tester.binding.focusManager.primaryFocus?.unfocus();
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidEmail), findsOneWidget);
+      expect(find.text(AvafliV2Strings.invalidEmail), findsOneWidget);
 
       // Fixing the address clears it immediately.
       await tester.enterText(find.byType(TextField), 'winner@example.com');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidEmail), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidEmail), findsNothing);
     });
 
     testWidgets('a keyboard submit attempt also surfaces the error',
@@ -310,24 +311,26 @@ void main() {
       await tester.enterText(find.byType(TextField), 'still@wrong');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidEmail), findsOneWidget);
+      expect(find.text(AvafliV2Strings.invalidEmail), findsOneWidget);
     });
 
     testWidgets('an empty field dims the CTA but never scolds', (tester) async {
       await pumpCapture(tester);
       tester.binding.focusManager.primaryFocus?.unfocus();
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidEmail), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidEmail), findsNothing);
       expect(
-        tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled,
+        tester
+            .widget<AvafliV2PillButton>(find.byType(AvafliV2PillButton))
+            .enabled,
         isFalse,
       );
     });
 
     testWidgets('a submit failure renders inline under the field',
         (tester) async {
-      await pumpCapture(tester, submitError: WINRV2Strings.emailSubmitFailed);
-      expect(find.text(WINRV2Strings.emailSubmitFailed), findsOneWidget);
+      await pumpCapture(tester, submitError: AvafliV2Strings.emailSubmitFailed);
+      expect(find.text(AvafliV2Strings.emailSubmitFailed), findsOneWidget);
     });
   });
 
@@ -340,11 +343,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Material(
-          child: WINRV2ClaimStepsFlow(
-            accent: WINRV2Accent(null).color,
+          child: AvafliV2ClaimStepsFlow(
+            accent: AvafliV2Accent(null).color,
             logoUrl: null,
-            maskedEmail: 'c******a@winr.example.com',
-            initialForm: WINRPrizeClaimForm(),
+            maskedEmail: 'c******a@avafli.example.com',
+            initialForm: AvafliPrizeClaimForm(),
             isSubmitting: false,
             submitError: null,
             onSubmit: (_) {},
@@ -355,8 +358,9 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    bool continueEnabled(WidgetTester tester) =>
-        tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled;
+    bool continueEnabled(WidgetTester tester) => tester
+        .widget<AvafliV2PillButton>(find.byType(AvafliV2PillButton))
+        .enabled;
 
     testWidgets('invalid names show the mandated errors and block CONTINUE',
         (tester) async {
@@ -365,20 +369,20 @@ void main() {
 
       await tester.enterText(fields.at(0), 'Sam4');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidFirstName), findsOneWidget);
+      expect(find.text(AvafliV2Strings.invalidFirstName), findsOneWidget);
       expect(continueEnabled(tester), isFalse);
 
       await tester.enterText(fields.at(1), 'W!nner');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidLastName), findsOneWidget);
+      expect(find.text(AvafliV2Strings.invalidLastName), findsOneWidget);
 
       // Fixing both clears the errors and (with a blank phone) enables
       // CONTINUE.
       await tester.enterText(fields.at(0), 'Sam');
       await tester.enterText(fields.at(1), "O'Winner");
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidFirstName), findsNothing);
-      expect(find.text(WINRV2Strings.invalidLastName), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidFirstName), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidLastName), findsNothing);
       expect(continueEnabled(tester), isTrue);
     });
 
@@ -394,17 +398,17 @@ void main() {
 
       await tester.enterText(fields.at(2), '555');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidPhone), findsOneWidget);
+      expect(find.text(AvafliV2Strings.invalidPhone), findsOneWidget);
       expect(continueEnabled(tester), isFalse);
 
       await tester.enterText(fields.at(2), '(555) 123-4567');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidPhone), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidPhone), findsNothing);
       expect(continueEnabled(tester), isTrue);
 
       await tester.enterText(fields.at(2), '');
       await tester.pump();
-      expect(find.text(WINRV2Strings.invalidPhone), findsNothing);
+      expect(find.text(AvafliV2Strings.invalidPhone), findsNothing);
       expect(continueEnabled(tester), isTrue);
     });
   });
@@ -420,23 +424,23 @@ void main() {
       ..onGetActiveGiveaway =
           (() => _statusResponse(emailConsentStatus: false, streakDay: 1))
       ..onSubmitEmail =
-          (() => throw const WINRException(WINRError.networkError));
+          (() => throw const AvafliException(AvafliError.networkError));
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
-    expect(find.byType(WINRV2CaptureView), findsOneWidget);
+    expect(find.byType(AvafliV2CaptureView), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'winner@example.com');
     await tester.tap(find.text('I confirm I am 18 years of age or older'));
     await tester.pump();
-    await tester.ensureVisible(find.byType(WINRV2PillButton));
+    await tester.ensureVisible(find.byType(AvafliV2PillButton));
     await tester.pump();
-    await tester.tap(find.byType(WINRV2PillButton));
+    await tester.tap(find.byType(AvafliV2PillButton));
     await _settle(tester);
 
     // Still on capture, honest inline error, nothing persisted.
-    expect(find.byType(WINRV2CaptureView), findsOneWidget);
-    expect(find.text(WINRV2Strings.emailSubmitFailed), findsOneWidget);
+    expect(find.byType(AvafliV2CaptureView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.emailSubmitFailed), findsOneWidget);
     expect(await prefs.getBool(StorageKeys.emailConfirmed), isNot(isTrue));
     expect(client.submitEmailCalls, 1);
 
@@ -448,11 +452,11 @@ void main() {
           (() => _statusResponse(streakDay: 1, totalEntries: 0))
       ..onClaim =
           (() => _claimResponse(entries: 10, streakDay: 1, totalEntries: 10));
-    await tester.tap(find.byType(WINRV2PillButton));
+    await tester.tap(find.byType(AvafliV2PillButton));
     await _settle(tester);
 
-    expect(find.byType(WINRV2DashboardView), findsOneWidget);
-    expect(find.text(WINRV2Strings.emailSubmitFailed), findsNothing);
+    expect(find.byType(AvafliV2DashboardView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.emailSubmitFailed), findsNothing);
     expect(await prefs.getBool(StorageKeys.emailConfirmed), isTrue);
 
     await tester.pump(const Duration(seconds: 2));
@@ -468,18 +472,18 @@ void main() {
     await seedConsentedDay2();
     final client = _FakeNetworkClient()
       ..onGetActiveGiveaway = (() => _statusResponse())
-      ..onClaim = (() => throw const WINRException(WINRError.networkError));
+      ..onClaim = (() => throw const AvafliException(AvafliError.networkError));
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
 
-    expect(find.byType(WINRV2DashboardView), findsOneWidget);
-    expect(find.text(WINRV2Strings.entryNotRecorded), findsOneWidget);
-    expect(find.text(WINRV2Strings.tryAgain), findsOneWidget);
+    expect(find.byType(AvafliV2DashboardView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.entryNotRecorded), findsOneWidget);
+    expect(find.text(AvafliV2Strings.tryAgain), findsOneWidget);
     // No fabricated success: the dashboard is in the unclaimed state.
     expect(
       tester
-          .widget<WINRV2DashboardView>(find.byType(WINRV2DashboardView))
+          .widget<AvafliV2DashboardView>(find.byType(AvafliV2DashboardView))
           .claimedToday,
       isFalse,
     );
@@ -487,14 +491,14 @@ void main() {
 
     // TRY AGAIN with the backend healthy → claim lands, notice retires.
     client.onClaim = (() => _claimResponse());
-    await tester.tap(find.text(WINRV2Strings.tryAgain));
+    await tester.tap(find.text(AvafliV2Strings.tryAgain));
     await _settle(tester);
 
     expect(client.claimCalls, 2);
-    expect(find.text(WINRV2Strings.entryNotRecorded), findsNothing);
+    expect(find.text(AvafliV2Strings.entryNotRecorded), findsNothing);
     expect(
       tester
-          .widget<WINRV2DashboardView>(find.byType(WINRV2DashboardView))
+          .widget<AvafliV2DashboardView>(find.byType(AvafliV2DashboardView))
           .claimedToday,
       isTrue,
     );
@@ -511,7 +515,8 @@ void main() {
       'transient duplicate-entry notice', (tester) async {
     await seedConsentedDay2();
     final client = _FakeNetworkClient()
-      ..onClaim = (() => throw const WINRException(WINRError.ineligibleToday));
+      ..onClaim =
+          (() => throw const AvafliException(AvafliError.ineligibleToday));
     // First status says unclaimed (stale); the re-sync load says claimed.
     client.onGetActiveGiveaway =
         () => _statusResponse(claimedToday: client.getCalls > 1);
@@ -519,15 +524,15 @@ void main() {
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
 
-    expect(find.byType(WINRV2DashboardView), findsOneWidget);
-    expect(find.text(WINRV2Strings.alreadyEnteredToday), findsOneWidget);
+    expect(find.byType(AvafliV2DashboardView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.alreadyEnteredToday), findsOneWidget);
     // No retry affordance on a duplicate — tomorrow is the retry.
-    expect(find.text(WINRV2Strings.tryAgain), findsNothing);
+    expect(find.text(AvafliV2Strings.tryAgain), findsNothing);
 
     // Transient: the notice clears itself.
     await tester.pump(const Duration(seconds: 7));
     await tester.pump();
-    expect(find.text(WINRV2Strings.alreadyEnteredToday), findsNothing);
+    expect(find.text(AvafliV2Strings.alreadyEnteredToday), findsNothing);
 
     await tester.pump(const Duration(seconds: 2));
   });
@@ -541,14 +546,14 @@ void main() {
       'generic empty state', (tester) async {
     final client = _FakeNetworkClient()
       ..onGetActiveGiveaway =
-          (() => throw const WINRException(WINRError.geographyNotAllowed));
+          (() => throw const AvafliException(AvafliError.geographyNotAllowed));
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
 
-    expect(find.byType(WINRV2GeoBlockedView), findsOneWidget);
-    expect(find.text(WINRV2Strings.geoBlockedHeadline), findsOneWidget);
-    expect(find.text(WINRV2Strings.geoBlockedBody), findsOneWidget);
+    expect(find.byType(AvafliV2GeoBlockedView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.geoBlockedHeadline), findsOneWidget);
+    expect(find.text(AvafliV2Strings.geoBlockedBody), findsOneWidget);
     expect(find.text('Nothing to see here yet'), findsNothing);
   });
 
@@ -558,24 +563,24 @@ void main() {
     await seedConsentedDay2();
     final client = _FakeNetworkClient()
       ..onGetActiveGiveaway =
-          (() => throw const WINRException(WINRError.authenticationFailed));
+          (() => throw const AvafliException(AvafliError.authenticationFailed));
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
 
-    expect(find.byType(WINRV2SessionExpiredView), findsOneWidget);
-    expect(find.text(WINRV2Strings.sessionExpired), findsOneWidget);
-    expect(find.text(WINRV2Strings.retry), findsOneWidget);
+    expect(find.byType(AvafliV2SessionExpiredView), findsOneWidget);
+    expect(find.text(AvafliV2Strings.sessionExpired), findsOneWidget);
+    expect(find.text(AvafliV2Strings.retry), findsOneWidget);
 
     // RETRY with a recovered session → normal dashboard.
     client
       ..onGetActiveGiveaway = (() => _statusResponse())
       ..onClaim = (() => _claimResponse());
-    await tester.tap(find.text(WINRV2Strings.retry));
+    await tester.tap(find.text(AvafliV2Strings.retry));
     await _settle(tester);
 
-    expect(find.byType(WINRV2SessionExpiredView), findsNothing);
-    expect(find.byType(WINRV2DashboardView), findsOneWidget);
+    expect(find.byType(AvafliV2SessionExpiredView), findsNothing);
+    expect(find.byType(AvafliV2DashboardView), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
   });
@@ -584,13 +589,13 @@ void main() {
       'other load errors keep the quiet empty state — raw backend '
       'text never renders', (tester) async {
     final client = _FakeNetworkClient()
-      ..onGetActiveGiveaway = (() => throw const WINRException(
-          WINRError.unknown, 'INTERNAL: stack trace soup from the backend'));
+      ..onGetActiveGiveaway = (() => throw const AvafliException(
+          AvafliError.unknown, 'INTERNAL: stack trace soup from the backend'));
 
     await tester.pumpWidget(_experience(client: client, prefs: prefs));
     await _settle(tester);
 
-    expect(find.byType(WINRV2EmptyStateView), findsOneWidget);
+    expect(find.byType(AvafliV2EmptyStateView), findsOneWidget);
     expect(
       find.textContaining('INTERNAL', findRichText: true),
       findsNothing,

@@ -3,22 +3,22 @@
 // customize ONLY: logo, prize image, primary color. Everything else is
 // hardcoded to the design or derived from the prize.
 //
-// Mirrors the iOS SDK's WINRV2Screens.swift.
+// Mirrors the iOS SDK's AvafliV2Screens.swift.
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/giveaway.dart';
-import 'winr_v2_components.dart';
-import 'winr_v2_legal.dart';
-import 'winr_v2_strings.dart';
-import 'winr_v2_theme.dart';
-import 'winr_v2_winner.dart';
+import 'avafli_v2_components.dart';
+import 'avafli_v2_legal.dart';
+import 'avafli_v2_strings.dart';
+import 'avafli_v2_theme.dart';
+import 'avafli_v2_winner.dart';
 
 /// Email shape check shared by the capture CTA gate and the inline error, so
 /// the two can never disagree (an enabled CTA under a visible error, or vice
 /// versa). Deliberately a SHAPE check only — the server revalidates.
-bool winrV2IsValidEmail(String raw) {
+bool avafliV2IsValidEmail(String raw) {
   final e = raw.trim();
   return e.length <= 254 && RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
 }
@@ -37,14 +37,14 @@ bool winrV2IsValidEmail(String raw) {
 /// reads as the content arriving, at identical latency. The warm path never
 /// gets here at all: a cached giveaway + streak paints the real dashboard
 /// immediately (see `_hydrateFromCache`).
-class WINRV2LoadingView extends StatefulWidget {
-  const WINRV2LoadingView({super.key});
+class AvafliV2LoadingView extends StatefulWidget {
+  const AvafliV2LoadingView({super.key});
 
   @override
-  State<WINRV2LoadingView> createState() => _WINRV2LoadingViewState();
+  State<AvafliV2LoadingView> createState() => _AvafliV2LoadingViewState();
 }
 
-class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
+class _AvafliV2LoadingViewState extends State<AvafliV2LoadingView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
@@ -60,7 +60,7 @@ class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.gunmetal,
+      color: AvafliV2Colors.gunmetal,
       child: FadeTransition(
         // A single shared pulse keeps every block in phase, so it reads as one
         // surface breathing rather than a field of blinking rectangles.
@@ -74,7 +74,7 @@ class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
           child: Column(
             children: [
               const SizedBox(height: 15),
-              const WINRV2TabGrabber(),
+              const AvafliV2TabGrabber(),
               const SizedBox(height: 15),
               // Header: "?" circle • logo • "X" circle.
               Padding(
@@ -137,11 +137,11 @@ class _WINRV2LoadingViewState extends State<WINRV2LoadingView>
 }
 
 /// Nothing to pitch (or opted out / errored) — quiet empty state.
-class WINRV2EmptyStateView extends StatelessWidget {
+class AvafliV2EmptyStateView extends StatelessWidget {
   final Color accent;
   final VoidCallback onClose;
 
-  const WINRV2EmptyStateView({
+  const AvafliV2EmptyStateView({
     super.key,
     required this.accent,
     required this.onClose,
@@ -155,17 +155,17 @@ class WINRV2EmptyStateView extends StatelessWidget {
         children: [
           Text(
             'Nothing to see here yet',
-            style: WINRV2Font.inter(20, weight: FontWeight.w700),
+            style: AvafliV2Font.inter(20, weight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
           Text(
             'Check back soon for your next chance to win!',
-            style: WINRV2Font.inter(14, color: WINRV2Colors.textTertiary),
+            style: AvafliV2Font.inter(14, color: AvafliV2Colors.textTertiary),
           ),
           const SizedBox(height: 24),
           SizedBox(
             width: 220,
-            child: WINRV2PillButton(
+            child: AvafliV2PillButton(
               accent: accent,
               title: 'CLOSE',
               onTap: onClose,
@@ -177,14 +177,14 @@ class WINRV2EmptyStateView extends StatelessWidget {
   }
 }
 
-/// Geo-blocked (`WINRError.geographyNotAllowed`) — a DEDICATED state, not the
+/// Geo-blocked (`AvafliError.geographyNotAllowed`) — a DEDICATED state, not the
 /// generic empty state: the person needs to know WHY there's nothing here
 /// (US-only sweepstakes) and that it isn't an outage on our side.
-class WINRV2GeoBlockedView extends StatelessWidget {
+class AvafliV2GeoBlockedView extends StatelessWidget {
   final Color accent;
   final VoidCallback onClose;
 
-  const WINRV2GeoBlockedView({
+  const AvafliV2GeoBlockedView({
     super.key,
     required this.accent,
     required this.onClose,
@@ -199,24 +199,24 @@ class WINRV2GeoBlockedView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              WINRV2Strings.geoBlockedHeadline,
+              AvafliV2Strings.geoBlockedHeadline,
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(20, weight: FontWeight.w700),
+              style: AvafliV2Font.inter(20, weight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             Text(
-              WINRV2Strings.geoBlockedBody,
+              AvafliV2Strings.geoBlockedBody,
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 14,
-                color: WINRV2Colors.textTertiary,
+                color: AvafliV2Colors.textTertiary,
                 height: 1.35,
               ),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: 220,
-              child: WINRV2PillButton(
+              child: AvafliV2PillButton(
                 accent: accent,
                 title: 'CLOSE',
                 onTap: onClose,
@@ -232,12 +232,12 @@ class WINRV2GeoBlockedView extends StatelessWidget {
 /// Session expired — token refresh AND re-registration both failed. Unlike
 /// every other error (which keeps the quiet empty state), this one is
 /// actionable: RETRY re-registers the device and reloads.
-class WINRV2SessionExpiredView extends StatelessWidget {
+class AvafliV2SessionExpiredView extends StatelessWidget {
   final Color accent;
   final VoidCallback onRetry;
   final VoidCallback onClose;
 
-  const WINRV2SessionExpiredView({
+  const AvafliV2SessionExpiredView({
     super.key,
     required this.accent,
     required this.onRetry,
@@ -253,16 +253,17 @@ class WINRV2SessionExpiredView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              WINRV2Strings.sessionExpired,
+              AvafliV2Strings.sessionExpired,
               textAlign: TextAlign.center,
-              style: WINRV2Font.inter(16, weight: FontWeight.w600, height: 1.3),
+              style:
+                  AvafliV2Font.inter(16, weight: FontWeight.w600, height: 1.3),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: 220,
-              child: WINRV2PillButton(
+              child: AvafliV2PillButton(
                 accent: accent,
-                title: WINRV2Strings.retry,
+                title: AvafliV2Strings.retry,
                 onTap: onRetry,
               ),
             ),
@@ -272,10 +273,10 @@ class WINRV2SessionExpiredView extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Text(
                 'CLOSE',
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   14,
                   weight: FontWeight.w700,
-                  color: WINRV2Colors.textTertiary,
+                  color: AvafliV2Colors.textTertiary,
                 ),
               ),
             ),
@@ -289,12 +290,12 @@ class WINRV2SessionExpiredView extends StatelessWidget {
 /// Non-blocking dashboard notice (duplicate same-day entry, failed
 /// auto-claim). Sits above the prize card in the info-card styling; an
 /// optional TRY AGAIN affordance re-attempts the claim.
-class WINRV2DashboardNotice extends StatelessWidget {
+class AvafliV2DashboardNotice extends StatelessWidget {
   final Color accent;
   final String notice;
   final VoidCallback? onRetry;
 
-  const WINRV2DashboardNotice({
+  const AvafliV2DashboardNotice({
     super.key,
     required this.accent,
     required this.notice,
@@ -313,7 +314,7 @@ class WINRV2DashboardNotice extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(notice, style: WINRV2Font.inter(13, height: 1.35)),
+          Text(notice, style: AvafliV2Font.inter(13, height: 1.35)),
           if (onRetry != null) ...[
             const SizedBox(height: 8),
             Semantics(
@@ -322,8 +323,8 @@ class WINRV2DashboardNotice extends StatelessWidget {
                 onTap: onRetry,
                 behavior: HitTestBehavior.opaque,
                 child: Text(
-                  WINRV2Strings.tryAgain,
-                  style: WINRV2Font.inter(
+                  AvafliV2Strings.tryAgain,
+                  style: AvafliV2Font.inter(
                     13,
                     weight: FontWeight.w700,
                     color: accent,
@@ -344,7 +345,7 @@ class WINRV2DashboardNotice extends StatelessWidget {
 
 /// Capture-screen submit: the typed email plus BOTH checkbox states, which
 /// the experience forwards verbatim to `submitEmail`.
-typedef WINRV2CaptureSubmit = void Function(
+typedef AvafliV2CaptureSubmit = void Function(
   String email, {
   required bool ageConfirmed,
   required bool marketingConsent,
@@ -358,32 +359,32 @@ typedef WINRV2CaptureSubmit = void Function(
 /// publisher-named string ("I agree to receive marketing emails from
 /// {PublisherName}"). This generic literal is the offline/no-config
 /// fallback — the SDK never interpolates a publisher name itself.
-const String winrV2DefaultMarketingConsentText =
+const String avafliV2DefaultMarketingConsentText =
     'I agree to receive marketing emails from this app';
 
 /// SDK default for the AGE-GATE line, used only when the server sends no
 /// `ageGateText` AND no configured minimum age reaches this widget. The
 /// canonical fallback is BUILT from the publisher's minimum age
-/// ([WinrSdkConfig.resolvedAgeGateText]); this literal is the last-resort
+/// ([AvafliSdkConfig.resolvedAgeGateText]); this literal is the last-resort
 /// offline default (minimum age 18).
-const String winrV2DefaultAgeGateText =
+const String avafliV2DefaultAgeGateText =
     'I confirm I am 18 years of age or older';
 
-class WINRV2CaptureView extends StatefulWidget {
+class AvafliV2CaptureView extends StatefulWidget {
   final Color accent;
   final String? logoUrl;
   final String? rulesUrl;
   final Giveaway? giveaway;
   final bool isSubmitting;
-  final WINRV2CaptureSubmit onSubmit;
+  final AvafliV2CaptureSubmit onSubmit;
   final VoidCallback onInfo;
   final VoidCallback onClose;
 
-  /// Server-supplied consent copy; null → [winrV2DefaultMarketingConsentText].
+  /// Server-supplied consent copy; null → [avafliV2DefaultMarketingConsentText].
   final String? marketingConsentText;
 
   /// Fully-resolved AGE-GATE label (server text, else a sentence built from
-  /// the publisher's minimum age); null → [winrV2DefaultAgeGateText]. Passed
+  /// the publisher's minimum age); null → [avafliV2DefaultAgeGateText]. Passed
   /// pre-resolved so this widget never hardcodes a minimum age.
   final String? ageGateText;
 
@@ -392,7 +393,7 @@ class WINRV2CaptureView extends StatefulWidget {
   /// styling as validation; the user stays here and can try again.
   final String? submitError;
 
-  const WINRV2CaptureView({
+  const AvafliV2CaptureView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -408,15 +409,15 @@ class WINRV2CaptureView extends StatefulWidget {
     this.submitError,
   });
 
-  /// Partner-authenticated email (WINRUser.email). Well-formed → rendered
+  /// Partner-authenticated email (AvafliUser.email). Well-formed → rendered
   /// pre-filled and READ-ONLY; malformed or null → the editable field.
   final String? prefilledEmail;
 
   @override
-  State<WINRV2CaptureView> createState() => _WINRV2CaptureViewState();
+  State<AvafliV2CaptureView> createState() => _AvafliV2CaptureViewState();
 }
 
-class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
+class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
   final TextEditingController _email = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
 
@@ -439,8 +440,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   /// Tap recognizers for the Official Rules / Privacy Policy spans inside the
   /// legal sentence — the sentence IS the legal entry point here (the separate
   /// links row was removed from this screen; other screens keep theirs).
-  /// Rules opens [WINRV2CaptureView.rulesUrl]; the policy span opens the real
-  /// policy at [winrV2PrivacyPolicyUrl] — both in the in-app legal webview
+  /// Rules opens [AvafliV2CaptureView.rulesUrl]; the policy span opens the real
+  /// policy at [avafliV2PrivacyPolicyUrl] — both in the in-app legal webview
   /// (2.9.4), no longer the external browser.
   late final TapGestureRecognizer _rulesTap;
   late final TapGestureRecognizer _privacyTap;
@@ -462,7 +463,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   }
 
   bool get _canSubmit =>
-      _isAdult && (_lockedEmail != null || winrV2IsValidEmail(_email.text));
+      _isAdult && (_lockedEmail != null || avafliV2IsValidEmail(_email.text));
 
   /// Validation error visible? Only for the editable field, only once
   /// touched, and only for a non-empty invalid value (an empty field dims
@@ -471,19 +472,19 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
       _lockedEmail == null &&
       _emailTouched &&
       _email.text.trim().isNotEmpty &&
-      !winrV2IsValidEmail(_email.text);
+      !avafliV2IsValidEmail(_email.text);
 
   @override
   void initState() {
     super.initState();
     _rulesTap = TapGestureRecognizer()..onTap = _openRules;
     _privacyTap = TapGestureRecognizer()
-      ..onTap = () => winrV2OpenPrivacyPolicy(context);
+      ..onTap = () => avafliV2OpenPrivacyPolicy(context);
     _email.addListener(() => setState(() {}));
     _emailFocus.addListener(() {
       if (!_emailFocus.hasFocus &&
           _email.text.trim().isNotEmpty &&
-          !winrV2IsValidEmail(_email.text)) {
+          !avafliV2IsValidEmail(_email.text)) {
         setState(() => _emailTouched = true);
       }
     });
@@ -499,8 +500,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   }
 
   /// Opens the publisher's rules URL in the in-app legal webview, exactly as
-  /// the WINRV2LegalLinks rows on the other screens do.
-  void _openRules() => winrV2OpenOfficialRules(context, widget.rulesUrl);
+  /// the AvafliV2LegalLinks rows on the other screens do.
+  void _openRules() => avafliV2OpenOfficialRules(context, widget.rulesUrl);
 
   @override
   Widget build(BuildContext context) {
@@ -509,8 +510,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
       children: [
         // 2.9: the accent-blue radial glow is gone — the capture screen sits
         // on the SAME flat dark surface as the streak dashboard drawer
-        // (WINRV2Colors.gunmetal), so Day 1 and Day 2+ read as one product.
-        const ColoredBox(color: WINRV2Colors.gunmetal),
+        // (AvafliV2Colors.gunmetal), so Day 1 and Day 2+ read as one product.
+        const ColoredBox(color: AvafliV2Colors.gunmetal),
         // LayoutBuilder + minHeight + IntrinsicHeight let the Spacer below the
         // CTA push the legal block to the drawer's bottom edge on tall
         // screens, while short screens / a raised keyboard degrade to plain
@@ -529,7 +530,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 child: Column(
                   children: [
                     const SizedBox(height: 18),
-                    WINRV2Header(
+                    AvafliV2Header(
                       logoUrl: widget.logoUrl,
                       onInfo: widget.onInfo,
                       onClose: widget.onClose,
@@ -556,7 +557,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                                 ],
                               ),
                               maxLines: 1,
-                              style: WINRV2Font.inter(
+                              style: AvafliV2Font.inter(
                                 40,
                                 weight: FontWeight.w900,
                                 letterSpacing: -1.2,
@@ -568,7 +569,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                           Text(
                             'VISIT DAILY.  EARN ENTRIES.  WIN BIG!',
                             style:
-                                WINRV2Font.inter(15, weight: FontWeight.w700),
+                                AvafliV2Font.inter(15, weight: FontWeight.w700),
                           ),
                         ],
                       ),
@@ -582,7 +583,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                         children: [
                           // Focusing the email field scrolls it (and the CTA
                           // below) clear of the software keyboard.
-                          WINRV2EnsureVisible(
+                          AvafliV2EnsureVisible(
                             focusNode: _emailFocus,
                             child: _emailField(),
                           ),
@@ -597,11 +598,11 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                                   // Validation wins: a malformed address must be
                                   // fixed before a transport retry means anything.
                                   _showsEmailError
-                                      ? WINRV2Strings.invalidEmail
+                                      ? AvafliV2Strings.invalidEmail
                                       : widget.submitError!,
-                                  style: WINRV2Font.inter(
+                                  style: AvafliV2Font.inter(
                                     13,
-                                    color: WINRV2Colors.errorRed,
+                                    color: AvafliV2Colors.errorRed,
                                   ),
                                 ),
                               ),
@@ -612,7 +613,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                           const SizedBox(height: 10),
                           _marketingConsentCheckbox(),
                           const SizedBox(height: 14),
-                          WINRV2PillButton(
+                          AvafliV2PillButton(
                             accent: widget.accent,
                             title: 'CLAIM MY $_day1Entries ENTRIES',
                             isLoading: widget.isSubmitting,
@@ -639,9 +640,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                       padding: const EdgeInsets.symmetric(horizontal: 30),
                       child: Text.rich(
                         TextSpan(
-                          style: WINRV2Font.inter(
+                          style: AvafliV2Font.inter(
                             12,
-                            color: WINRV2Colors.textTertiary,
+                            color: AvafliV2Colors.textTertiary,
                           ),
                           children: [
                             const TextSpan(
@@ -654,7 +655,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 decoration: TextDecoration.underline,
-                                decorationColor: WINRV2Colors.textTertiary,
+                                decorationColor: AvafliV2Colors.textTertiary,
                               ),
                               recognizer: _rulesTap,
                             ),
@@ -664,7 +665,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 decoration: TextDecoration.underline,
-                                decorationColor: WINRV2Colors.textTertiary,
+                                decorationColor: AvafliV2Colors.textTertiary,
                               ),
                               recognizer: _privacyTap,
                             ),
@@ -675,9 +676,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Powered by © WINR Media',
-                      style: WINRV2Font.inter(12,
-                          color: WINRV2Colors.textTertiary),
+                      'Powered by © Avafli',
+                      style: AvafliV2Font.inter(12,
+                          color: AvafliV2Colors.textTertiary),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -696,8 +697,8 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
   Widget _prizeStrip() {
     final description = widget.giveaway?.prizeDescription ?? '';
     final value = (widget.giveaway?.prizeValue ?? 0).toInt();
-    final isCash = winrV2IsCashPrize(description);
-    final article = winrV2Article(description);
+    final isCash = avafliV2IsCashPrize(description);
+    final article = avafliV2Article(description);
 
     return Container(
       width: double.infinity,
@@ -710,12 +711,12 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                '\$${winrV2FormatInt(value)}.00 CASH PRIZE',
+                '\$${avafliV2FormatInt(value)}.00 CASH PRIZE',
                 maxLines: 1,
-                style: WINRV2Font.inter(
+                style: AvafliV2Font.inter(
                   24,
                   weight: FontWeight.w900,
-                  color: WINRV2Colors.gunmetal,
+                  color: AvafliV2Colors.gunmetal,
                   letterSpacing: -0.7,
                   height: 1.1,
                 ),
@@ -729,20 +730,20 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 child: Text(
                   'Win $article $description',
                   maxLines: 1,
-                  style: WINRV2Font.inter(
+                  style: AvafliV2Font.inter(
                     23,
                     weight: FontWeight.w900,
-                    color: WINRV2Colors.gunmetal,
+                    color: AvafliV2Colors.gunmetal,
                     letterSpacing: -0.7,
                     height: 1.1,
                   ),
                 ),
               ),
             ),
-            if (winrV2ShowsValueLine(description, value))
+            if (avafliV2ShowsValueLine(description, value))
               Text(
-                '\$${winrV2FormatInt(value)}.00 Value!',
-                style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
+                '\$${avafliV2FormatInt(value)}.00 Value!',
+                style: AvafliV2Font.inter(16, color: AvafliV2Colors.gunmetal),
               ),
           ],
         ],
@@ -764,7 +765,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
           Icon(
             Icons.mail_outline,
             size: 22,
-            color: WINRV2Colors.gunmetal.withValues(alpha: 0.6),
+            color: AvafliV2Colors.gunmetal.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 10),
           if (_lockedEmail != null) ...[
@@ -776,7 +777,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 _lockedEmail!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
+                style: AvafliV2Font.inter(16, color: AvafliV2Colors.gunmetal),
               ),
             ),
             Semantics(
@@ -784,7 +785,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
               child: Icon(
                 Icons.lock,
                 size: 14,
-                color: WINRV2Colors.gunmetal.withValues(alpha: 0.45),
+                color: AvafliV2Colors.gunmetal.withValues(alpha: 0.45),
               ),
             ),
           ] else
@@ -798,15 +799,15 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
                 // A keyboard "done" is a submit attempt — the error may show
                 // even though the dimmed CTA swallowed the tap.
                 onSubmitted: (_) => setState(() => _emailTouched = true),
-                style: WINRV2Font.inter(16, color: WINRV2Colors.gunmetal),
-                cursorColor: WINRV2Colors.gunmetal,
+                style: AvafliV2Font.inter(16, color: AvafliV2Colors.gunmetal),
+                cursorColor: AvafliV2Colors.gunmetal,
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   hintText: 'Enter your email address',
-                  hintStyle: WINRV2Font.inter(
+                  hintStyle: AvafliV2Font.inter(
                     16,
-                    color: WINRV2Colors.gunmetal.withValues(alpha: 0.5),
+                    color: AvafliV2Colors.gunmetal.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -820,7 +821,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         checked: _isAdult,
         label: widget.ageGateText?.isNotEmpty == true
             ? widget.ageGateText!
-            : winrV2DefaultAgeGateText,
+            : avafliV2DefaultAgeGateText,
         onTap: () => setState(() => _isAdult = !_isAdult),
       );
 
@@ -830,7 +831,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
         checked: _marketingConsent,
         label: widget.marketingConsentText?.isNotEmpty == true
             ? widget.marketingConsentText!
-            : winrV2DefaultMarketingConsentText,
+            : avafliV2DefaultMarketingConsentText,
         onTap: () => setState(() => _marketingConsent = !_marketingConsent),
       );
 
@@ -846,8 +847,9 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
     required VoidCallback onTap,
   }) {
     final accent = widget.accent;
-    final checkColor =
-        accent.computeLuminance() > 0.5 ? WINRV2Colors.gunmetal : Colors.white;
+    final checkColor = accent.computeLuminance() > 0.5
+        ? AvafliV2Colors.gunmetal
+        : Colors.white;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -872,7 +874,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(label, style: WINRV2Font.inter(14)),
+            child: Text(label, style: AvafliV2Font.inter(14)),
           ),
         ],
       ),
@@ -884,7 +886,7 @@ class _WINRV2CaptureViewState extends State<WINRV2CaptureView> {
 // Return-user dashboard (Day 2+ drawer)
 // ---------------------------------------------------------------------------
 
-class WINRV2DashboardView extends StatelessWidget {
+class AvafliV2DashboardView extends StatelessWidget {
   final Color accent;
   final String? logoUrl;
   final String? rulesUrl;
@@ -917,7 +919,7 @@ class WINRV2DashboardView extends StatelessWidget {
   final bool unverified;
   final VoidCallback? onVerifyTap;
 
-  const WINRV2DashboardView({
+  const AvafliV2DashboardView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -947,7 +949,7 @@ class WINRV2DashboardView extends StatelessWidget {
   bool get _preReveal =>
       !revealed && (pendingClaimEntries != null || !claimedToday);
 
-  int _ladderValue(int day) => WINRV2Ladder.entries(
+  int _ladderValue(int day) => AvafliV2Ladder.entries(
         day: day,
         ladder: ladder,
         milestones: giveaway?.milestones,
@@ -955,8 +957,8 @@ class WINRV2DashboardView extends StatelessWidget {
 
   int get _nextEntries => _ladderValue(streakDay + 1);
 
-  List<WINRV2RailEntry> get _railEntries {
-    final entries = <WINRV2RailEntry>[];
+  List<AvafliV2RailEntry> get _railEntries {
+    final entries = <AvafliV2RailEntry>[];
     final maxDay = streakDay + 2 > 31 ? streakDay + 2 : 31;
     final milestoneDays = <int, int>{
       for (final m in giveaway?.milestones ?? const <MilestoneConfig>[])
@@ -964,11 +966,13 @@ class WINRV2DashboardView extends StatelessWidget {
     };
     for (var day = 1; day <= maxDay; day++) {
       final state = day < streakDay
-          ? WINRV2TileState.completed
+          ? AvafliV2TileState.completed
           : (day == streakDay
-              ? (_preReveal ? WINRV2TileState.ready : WINRV2TileState.active)
-              : WINRV2TileState.locked);
-      entries.add(WINRV2RailEntry.day(
+              ? (_preReveal
+                  ? AvafliV2TileState.ready
+                  : AvafliV2TileState.active)
+              : AvafliV2TileState.locked);
+      entries.add(AvafliV2RailEntry.day(
         id: 'day-$day',
         day: day,
         entries: _ladderValue(day),
@@ -992,7 +996,7 @@ class WINRV2DashboardView extends StatelessWidget {
         final footnote = day == streakDay
             ? 'STARTING TOMORROW'
             : 'STARTING AT ${_visitMode ? 'VISIT' : 'DAY'} ${day + 1}';
-        entries.add(WINRV2RailEntry.powerUp(
+        entries.add(AvafliV2RailEntry.powerUp(
           id: 'power-$day',
           label: label,
           bonus: bonus,
@@ -1006,13 +1010,13 @@ class WINRV2DashboardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.gunmetal,
+      color: AvafliV2Colors.gunmetal,
       child: Column(
         children: [
           const SizedBox(height: 15),
-          const WINRV2TabGrabber(),
+          const AvafliV2TabGrabber(),
           const SizedBox(height: 15),
-          WINRV2Header(logoUrl: logoUrl, onInfo: onInfo, onClose: onClose),
+          AvafliV2Header(logoUrl: logoUrl, onInfo: onInfo, onClose: onClose),
           const SizedBox(height: 15),
           Expanded(
             child: SingleChildScrollView(
@@ -1025,7 +1029,7 @@ class WINRV2DashboardView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(
                           left: 22, right: 22, bottom: 15),
-                      child: WINRV2VerifyEmailChip(
+                      child: AvafliV2VerifyEmailChip(
                         accent: accent,
                         onTap: onVerifyTap!,
                       ),
@@ -1033,13 +1037,13 @@ class WINRV2DashboardView extends StatelessWidget {
                   if (giveaway?.latestWinner != null && onWinnerTap != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 15),
-                      child: WINRV2WinnerBanner(onTap: onWinnerTap!),
+                      child: AvafliV2WinnerBanner(onTap: onWinnerTap!),
                     ),
                   if (notice != null)
                     Padding(
                       padding: const EdgeInsets.only(
                           left: 22, right: 22, bottom: 15),
-                      child: WINRV2DashboardNotice(
+                      child: AvafliV2DashboardNotice(
                         accent: accent,
                         notice: notice!,
                         onRetry: onNoticeRetry,
@@ -1047,7 +1051,7 @@ class WINRV2DashboardView extends StatelessWidget {
                     ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: WINRV2PrizeCard(
+                    child: AvafliV2PrizeCard(
                       accent: accent,
                       // Pre-reveal the streak label still reads yesterday's
                       // day; the auto-reveal advances it to today.
@@ -1062,14 +1066,14 @@ class WINRV2DashboardView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  WINRV2StreakRail(
+                  AvafliV2StreakRail(
                     accent: accent,
                     entries: _railEntries,
                     activeID: 'day-$streakDay',
                     visitMode: _visitMode,
                   ),
                   const SizedBox(height: 15),
-                  WINRV2ComeBackBar(
+                  AvafliV2ComeBackBar(
                     accent: accent,
                     nextEntries: _nextEntries,
                     visitMode: _visitMode,
@@ -1087,14 +1091,14 @@ class WINRV2DashboardView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 30),
                     // Always GOT IT (Slice prototype) — the celebration
                     // plays on its own; the pill only ever closes.
-                    child: WINRV2PillButton(
+                    child: AvafliV2PillButton(
                       accent: accent,
                       title: 'GOT IT',
                       onTap: onClose,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  WINRV2LegalLinks(rulesUrl: rulesUrl),
+                  AvafliV2LegalLinks(rulesUrl: rulesUrl),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -1110,7 +1114,7 @@ class WINRV2DashboardView extends StatelessWidget {
 // How it works
 // ---------------------------------------------------------------------------
 
-class WINRV2HowItWorksView extends StatelessWidget {
+class AvafliV2HowItWorksView extends StatelessWidget {
   final Color accent;
   final String? logoUrl;
   final int day1Entries;
@@ -1118,7 +1122,7 @@ class WINRV2HowItWorksView extends StatelessWidget {
   final VoidCallback onDone;
   final VoidCallback onClose;
 
-  const WINRV2HowItWorksView({
+  const AvafliV2HowItWorksView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -1131,12 +1135,12 @@ class WINRV2HowItWorksView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: WINRV2Colors.panel,
+      color: AvafliV2Colors.panel,
       child: Column(
         children: [
           const SizedBox(height: 18),
           // The back ARROW replaces the "?" in the header.
-          WINRV2Header(
+          AvafliV2Header(
             logoUrl: logoUrl,
             showsBack: true,
             onBack: onDone,
@@ -1151,10 +1155,10 @@ class WINRV2HowItWorksView extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               'HOW IT WORKS',
-              style: WINRV2Font.inter(
+              style: AvafliV2Font.inter(
                 26,
                 weight: FontWeight.w900,
-                color: WINRV2Colors.gunmetal,
+                color: AvafliV2Colors.gunmetal,
                 letterSpacing: -0.78,
               ),
             ),
@@ -1209,7 +1213,7 @@ class WINRV2HowItWorksView extends StatelessWidget {
                           ? 'Every visit counts - your streak never resets.'
                           : 'Don’t miss a day - your streak resets if you do.',
                       textAlign: TextAlign.center,
-                      style: WINRV2Font.inter(
+                      style: AvafliV2Font.inter(
                         20,
                         weight: FontWeight.w700,
                         letterSpacing: -0.6,
@@ -1219,7 +1223,7 @@ class WINRV2HowItWorksView extends StatelessWidget {
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: WINRV2PillButton(
+                    child: AvafliV2PillButton(
                       accent: accent,
                       title: 'GOT IT - START MY STREAK',
                       onTap: onDone,
@@ -1229,7 +1233,7 @@ class WINRV2HowItWorksView extends StatelessWidget {
                   // the legal-links rows and the capture screen's inline
                   // Privacy Policy links keep the delete path findable
                   // (the delete section lives inside the privacy page,
-                  // behind winr://delete).
+                  // behind avafli://delete).
                   const SizedBox(height: 24),
                 ],
               ),
@@ -1246,15 +1250,17 @@ class WINRV2HowItWorksView extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$number.', style: WINRV2Font.inter(18, weight: FontWeight.w900)),
+        Text('$number.',
+            style: AvafliV2Font.inter(18, weight: FontWeight.w900)),
         const SizedBox(width: 9),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: WINRV2Font.inter(18, weight: FontWeight.w900)),
+              Text(title,
+                  style: AvafliV2Font.inter(18, weight: FontWeight.w900)),
               const SizedBox(height: 2),
-              Text(body, style: WINRV2Font.inter(16, height: 1.25)),
+              Text(body, style: AvafliV2Font.inter(16, height: 1.25)),
             ],
           ),
         ),
@@ -1265,8 +1271,8 @@ class WINRV2HowItWorksView extends StatelessWidget {
 
 /// Verification code entry — shown when the typed email matches an EXISTING
 /// account and the OTP gate is on. One numeric field, auto-submits at 6 digits.
-class WINRV2CodeEntryView extends StatefulWidget {
-  const WINRV2CodeEntryView({
+class AvafliV2CodeEntryView extends StatefulWidget {
+  const AvafliV2CodeEntryView({
     super.key,
     required this.accent,
     required this.logoUrl,
@@ -1310,10 +1316,10 @@ class WINRV2CodeEntryView extends StatefulWidget {
   final VoidCallback? onBack;
 
   @override
-  State<WINRV2CodeEntryView> createState() => _WINRV2CodeEntryViewState();
+  State<AvafliV2CodeEntryView> createState() => _AvafliV2CodeEntryViewState();
 }
 
-class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
+class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
   final TextEditingController _code = TextEditingController();
   final FocusNode _codeFocus = FocusNode();
 
@@ -1330,11 +1336,11 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
       // 2.9.3 (Ryan): the code-entry screen sits on the SAME flat gunmetal
       // drawer surface as capture and the dashboard — no glow, no
       // off-drawer charcoal — so adoption/verify reads as the same product.
-      color: WINRV2Colors.gunmetal,
+      color: AvafliV2Colors.gunmetal,
       child: SafeArea(
         child: Column(
           children: [
-            WINRV2Header(
+            AvafliV2Header(
               logoUrl: widget.logoUrl,
               showsBack: widget.showsBack,
               onBack: widget.onBack ?? widget.onInfo,
@@ -1356,21 +1362,21 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                     Text(
                       widget.title ?? 'CHECK YOUR EMAIL',
                       textAlign: TextAlign.center,
-                      style: WINRV2Font.inter(28,
+                      style: AvafliV2Font.inter(28,
                           weight: FontWeight.w900, color: Colors.white),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       widget.subtitle ??
-                          'This email is already part of a WINR streak. Enter '
+                          'This email is already part of a Avafli streak. Enter '
                               'the 6-digit code we sent to ${widget.email} to '
                               'pick it up on this device.',
                       textAlign: TextAlign.center,
-                      style: WINRV2Font.inter(14,
+                      style: AvafliV2Font.inter(14,
                           color: Colors.white.withValues(alpha: 0.75)),
                     ),
                     const SizedBox(height: 22),
-                    WINRV2EnsureVisible(
+                    AvafliV2EnsureVisible(
                       focusNode: _codeFocus,
                       child: Container(
                         height: 54,
@@ -1386,9 +1392,9 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                           maxLength: 6,
                           autofillHints: const [AutofillHints.oneTimeCode],
                           textAlign: TextAlign.center,
-                          style: WINRV2Font.inter(22,
+                          style: AvafliV2Font.inter(22,
                               weight: FontWeight.w700,
-                              color: WINRV2Colors.gunmetal),
+                              color: AvafliV2Colors.gunmetal),
                           decoration: InputDecoration(
                             isCollapsed: true,
                             filled: false,
@@ -1397,8 +1403,8 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                             focusedBorder: InputBorder.none,
                             counterText: '',
                             hintText: '••••••',
-                            hintStyle: WINRV2Font.inter(22,
-                                color: WINRV2Colors.gunmetal
+                            hintStyle: AvafliV2Font.inter(22,
+                                color: AvafliV2Colors.gunmetal
                                     .withValues(alpha: 0.4)),
                           ),
                           onChanged: (v) {
@@ -1416,12 +1422,12 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                       Text(
                         widget.errorText!,
                         textAlign: TextAlign.center,
-                        style:
-                            WINRV2Font.inter(13, color: WINRV2Colors.errorRed),
+                        style: AvafliV2Font.inter(13,
+                            color: AvafliV2Colors.errorRed),
                       ),
                     ],
                     const SizedBox(height: 16),
-                    WINRV2PillButton(
+                    AvafliV2PillButton(
                       accent: widget.accent,
                       title: 'VERIFY',
                       isLoading: widget.isVerifying,
@@ -1439,12 +1445,12 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
                       child: Text.rich(TextSpan(children: [
                         TextSpan(
                           text: "Didn't get it? ",
-                          style: WINRV2Font.inter(14,
+                          style: AvafliV2Font.inter(14,
                               color: Colors.white.withValues(alpha: 0.65)),
                         ),
                         TextSpan(
                           text: 'Send a new code',
-                          style: WINRV2Font.inter(14,
+                          style: AvafliV2Font.inter(14,
                                   weight: FontWeight.w700,
                                   color: const Color(0xFF7FB0FF))
                               .copyWith(
@@ -1459,7 +1465,7 @@ class _WINRV2CodeEntryViewState extends State<WINRV2CodeEntryView> {
             ),
             // Same legal footer as the capture screen — one consent flow, one
             // footer; without it the sheet trails off into a void.
-            WINRV2LegalLinks(rulesUrl: widget.rulesUrl, showPoweredBy: true),
+            AvafliV2LegalLinks(rulesUrl: widget.rulesUrl, showPoweredBy: true),
             const SizedBox(height: 24),
           ],
         ),

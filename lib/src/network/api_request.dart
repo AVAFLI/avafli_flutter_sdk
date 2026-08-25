@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 /// Base class for all API requests.
 ///
-/// Defines the structure for requests to the WINR backend and handles
+/// Defines the structure for requests to the Avafli backend and handles
 /// response parsing with proper error handling.
 abstract class ApiRequest<T> {
   /// HTTP method for this request

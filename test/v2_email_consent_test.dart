@@ -11,11 +11,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/network/winr_api.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/src/network/avafli_api.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_screens.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 const String _ageLabel = 'I confirm I am 18 years of age or older';
 
@@ -37,7 +37,7 @@ Giveaway _giveaway() {
 /// Real bundled faces so the capture screen measures like production (the
 /// test-default Ahem font is far wider and would overflow the checkbox rows).
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -50,7 +50,7 @@ Future<void> _loadRealFonts() async {
   }
   await inter.load();
 
-  final oswald = FontLoader('packages/winr_flutter_sdk/Oswald');
+  final oswald = FontLoader('packages/avafli_sdk/Oswald');
   for (final file in [
     'oswald-v57-latin-500.ttf',
     'oswald-v57-latin-700.ttf',
@@ -76,8 +76,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Material(
-          child: WINRV2CaptureView(
-            accent: WINRV2Accent(null).color,
+          child: AvafliV2CaptureView(
+            accent: AvafliV2Accent(null).color,
             logoUrl: null,
             rulesUrl: null,
             giveaway: _giveaway(),
@@ -99,8 +99,9 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    bool ctaEnabled(WidgetTester tester) =>
-        tester.widget<WINRV2PillButton>(find.byType(WINRV2PillButton)).enabled;
+    bool ctaEnabled(WidgetTester tester) => tester
+        .widget<AvafliV2PillButton>(find.byType(AvafliV2PillButton))
+        .enabled;
 
     testWidgets(
         'BOTH checkboxes start unchecked — consent is an affirmative act',
@@ -111,7 +112,7 @@ void main() {
       await pumpCapture(tester);
 
       expect(find.text(_ageLabel), findsOneWidget);
-      expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
+      expect(find.text(avafliV2DefaultMarketingConsentText), findsOneWidget);
 
       // No ticked glyphs anywhere (2.9.3: the boxes are drawn accent-tinted
       // containers — a check icon appears only once a box is ticked).
@@ -142,13 +143,13 @@ void main() {
       expect(ctaEnabled(tester), isTrue);
 
       // Checking it: CTA unchanged.
-      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
+      await tester.tap(find.text(avafliV2DefaultMarketingConsentText));
       await tester.pump();
       expect(find.byIcon(Icons.check), findsNWidgets(2));
       expect(ctaEnabled(tester), isTrue);
 
       // Unchecking it again: CTA still unchanged.
-      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
+      await tester.tap(find.text(avafliV2DefaultMarketingConsentText));
       await tester.pump();
       expect(find.byIcon(Icons.check), findsOneWidget); // the age box
       expect(ctaEnabled(tester), isTrue);
@@ -162,14 +163,14 @@ void main() {
       await tester.pump();
 
       // Default path: consent left UNTOUCHED — silence is not consent.
-      await tester.tap(find.byType(WINRV2PillButton));
+      await tester.tap(find.byType(AvafliV2PillButton));
       await tester.pump();
       expect(submitted, ['winner@example.com', true, false]);
 
       // Affirmative path: user ticks the box, submit carries true.
-      await tester.tap(find.text(winrV2DefaultMarketingConsentText));
+      await tester.tap(find.text(avafliV2DefaultMarketingConsentText));
       await tester.pump();
-      await tester.tap(find.byType(WINRV2PillButton));
+      await tester.tap(find.byType(AvafliV2PillButton));
       await tester.pump();
       expect(submitted, ['winner@example.com', true, true]);
     });
@@ -182,7 +183,7 @@ void main() {
       await pumpCapture(tester, marketingConsentText: serverCopy);
 
       expect(find.text(serverCopy), findsOneWidget);
-      expect(find.text(winrV2DefaultMarketingConsentText), findsNothing);
+      expect(find.text(avafliV2DefaultMarketingConsentText), findsNothing);
     });
 
     testWidgets('partner email renders READ-ONLY and submits normalized',
@@ -198,7 +199,7 @@ void main() {
       // The locked address satisfies the email half of the CTA gate.
       await tester.tap(find.text(_ageLabel));
       await tester.pump();
-      await tester.tap(find.byType(WINRV2PillButton));
+      await tester.tap(find.byType(AvafliV2PillButton));
       await tester.pump();
       expect(submitted, ['ada@example.com', true, false]);
     });
@@ -217,8 +218,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Material(
-          child: WINRV2CaptureView(
-            accent: WINRV2Accent(null).color,
+          child: AvafliV2CaptureView(
+            accent: AvafliV2Accent(null).color,
             logoUrl: null,
             rulesUrl: 'https://example.com/rules',
             giveaway: _giveaway(),
@@ -243,7 +244,7 @@ void main() {
 
       // The old "OFFICIAL RULES • PRIVACY POLICY" row is gone from THIS
       // screen only (dashboard/how-it-works keep theirs).
-      expect(find.byType(WINRV2LegalLinks), findsNothing);
+      expect(find.byType(AvafliV2LegalLinks), findsNothing);
       expect(find.text('OFFICIAL RULES'), findsNothing);
       expect(find.text('PRIVACY POLICY'), findsNothing);
 
@@ -264,7 +265,7 @@ void main() {
       }
 
       // Branding line survives the row's removal.
-      expect(find.text('Powered by © WINR Media'), findsOneWidget);
+      expect(find.text('Powered by © Avafli'), findsOneWidget);
     });
   });
 
@@ -308,7 +309,7 @@ void main() {
 
   group('sdkConfig marketing-consent copy', () {
     test('nested emailCapture copy wins over the flat legacy field', () {
-      final config = WinrSdkConfig.fromJson({
+      final config = AvafliSdkConfig.fromJson({
         'copy': {
           'emailCapture': {'emailConsentText': 'Nested wins'},
           'emailConsentText': 'Flat loses',
@@ -319,7 +320,7 @@ void main() {
     });
 
     test('falls back to the flat legacy field', () {
-      final config = WinrSdkConfig.fromJson({
+      final config = AvafliSdkConfig.fromJson({
         'copy': {'emailConsentText': 'Flat fallback'},
       });
 
@@ -327,9 +328,9 @@ void main() {
     });
 
     test('resolves to null when the server says nothing usable', () {
-      expect(WinrSdkConfig.fromJson({}).copy, isNull);
+      expect(AvafliSdkConfig.fromJson({}).copy, isNull);
       expect(
-        WinrSdkConfig.fromJson({
+        AvafliSdkConfig.fromJson({
           'copy': {
             'emailCapture': {'emailConsentText': ''},
             'emailConsentText': '',

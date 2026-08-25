@@ -1,8 +1,8 @@
 // Motion for the V2 experience: Joe's ACTUAL Figma animation files (bundled
-// GIFs, played via [WINRV2GifView]) for the Day 2+ reveal beat, plus natively
+// GIFs, played via [AvafliV2GifView]) for the Day 2+ reveal beat, plus natively
 // drawn confetti/checkmark/glow used by the modals and toast bar.
 //
-// Mirrors the iOS SDK's WINRV2Effects.swift — the confetti particle math is a
+// Mirrors the iOS SDK's AvafliV2Effects.swift — the confetti particle math is a
 // 1:1 port so both platforms animate identically.
 
 import 'dart:math' as math;
@@ -12,7 +12,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import 'winr_v2_theme.dart';
+import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Confetti
@@ -21,26 +21,26 @@ import 'winr_v2_theme.dart';
 /// Confetti palette styles: [celebration] is the multicolor sprinkle from the
 /// claim/celebration modals and streak tiles; [gold] is the winner-modal gold
 /// sparkle.
-enum WINRV2ConfettiStyle { celebration, gold }
+enum AvafliV2ConfettiStyle { celebration, gold }
 
-/// A looping confetti field (1:1 port of iOS `WINRV2ConfettiView`).
-class WINRV2Confetti extends StatefulWidget {
-  final WINRV2ConfettiStyle style;
+/// A looping confetti field (1:1 port of iOS `AvafliV2ConfettiView`).
+class AvafliV2Confetti extends StatefulWidget {
+  final AvafliV2ConfettiStyle style;
   final int count;
   final double speed;
 
-  const WINRV2Confetti({
+  const AvafliV2Confetti({
     super.key,
-    this.style = WINRV2ConfettiStyle.celebration,
+    this.style = AvafliV2ConfettiStyle.celebration,
     this.count = 42,
     this.speed = 1,
   });
 
   @override
-  State<WINRV2Confetti> createState() => _WINRV2ConfettiState();
+  State<AvafliV2Confetti> createState() => _AvafliV2ConfettiState();
 }
 
-class _WINRV2ConfettiState extends State<WINRV2Confetti>
+class _AvafliV2ConfettiState extends State<AvafliV2Confetti>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
 
@@ -83,7 +83,7 @@ class _WINRV2ConfettiState extends State<WINRV2Confetti>
 
 class _ConfettiPainter extends CustomPainter {
   final double t;
-  final WINRV2ConfettiStyle style;
+  final AvafliV2ConfettiStyle style;
   final int count;
 
   _ConfettiPainter({required this.t, required this.style, required this.count});
@@ -105,7 +105,7 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final palette = style == WINRV2ConfettiStyle.celebration
+    final palette = style == AvafliV2ConfettiStyle.celebration
         ? _celebrationPalette
         : _goldPalette;
     final paint = Paint()..style = PaintingStyle.fill;
@@ -124,7 +124,7 @@ class _ConfettiPainter extends CustomPainter {
       final rotation = t * 2.1 + seed;
       final w = 4.0 + _fract(seed * 0.833) * 4.0;
       final h = w * (0.55 + _fract(seed * 0.377) * 0.5);
-      final alpha = style == WINRV2ConfettiStyle.gold
+      final alpha = style == AvafliV2ConfettiStyle.gold
           ? 0.55 + _fract(seed * 0.51) * 0.45
           : 0.9;
 
@@ -158,26 +158,26 @@ class _ConfettiPainter extends CustomPainter {
 // ---------------------------------------------------------------------------
 
 /// The white circle-check from the modals: the circle sweeps in, then the
-/// check strokes on (1:1 port of iOS `WINRV2AnimatedCheckmark`).
+/// check strokes on (1:1 port of iOS `AvafliV2AnimatedCheckmark`).
 ///
 /// Set [animated] to false to render the fully-drawn glyph (used for the
 /// completed streak-tile icon).
-class WINRV2AnimatedCheckmark extends StatefulWidget {
+class AvafliV2AnimatedCheckmark extends StatefulWidget {
   final double lineWidth;
   final bool animated;
 
-  const WINRV2AnimatedCheckmark({
+  const AvafliV2AnimatedCheckmark({
     super.key,
     this.lineWidth = 7,
     this.animated = true,
   });
 
   @override
-  State<WINRV2AnimatedCheckmark> createState() =>
-      _WINRV2AnimatedCheckmarkState();
+  State<AvafliV2AnimatedCheckmark> createState() =>
+      _AvafliV2AnimatedCheckmarkState();
 }
 
-class _WINRV2AnimatedCheckmarkState extends State<WINRV2AnimatedCheckmark>
+class _AvafliV2AnimatedCheckmarkState extends State<AvafliV2AnimatedCheckmark>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _circle;
@@ -295,7 +295,7 @@ class _CheckmarkPainter extends CustomPainter {
 /// ahead of the drawer opening, so the prize card paints its art on its FIRST
 /// frame instead of popping in a beat after everything else.
 ///
-/// This is the remote-image sibling of [WINRV2GifAsset.prewarm] (and mirrors
+/// This is the remote-image sibling of [AvafliV2GifAsset.prewarm] (and mirrors
 /// what the iOS SDK does for its GIF prewarm): the SDK learns `prizeImageUrl`
 /// at registration / giveaway refresh, long before the experience is
 /// presented, which is exactly the moment to pay the download.
@@ -305,8 +305,8 @@ class _CheckmarkPainter extends CustomPainter {
 /// directly. The provider is `NetworkImage(url)`, the same cache key
 /// `Image.network(url)` resolves to, so the widget hits the cache
 /// synchronously.
-class WINRV2ImageWarmer {
-  WINRV2ImageWarmer._();
+class AvafliV2ImageWarmer {
+  AvafliV2ImageWarmer._();
 
   /// URLs already warmed (or in flight) — a repeated refresh is a no-op.
   static final Set<String> _warmed = <String>{};
@@ -344,14 +344,14 @@ class WINRV2ImageWarmer {
 
 /// Fade-in duration for a remote image that wasn't already decoded — short
 /// enough to feel instant, long enough to avoid a hard pop.
-const Duration winrV2ImageFadeDuration = Duration(milliseconds: 200);
+const Duration avafliV2ImageFadeDuration = Duration(milliseconds: 200);
 
 /// [Image.network] with the SDK's standard arrival behaviour: a dark
 /// placeholder (never a white/blank flash), a ~200ms fade-in when the bytes
 /// arrive late, NO fade at all when the warmer already decoded it (the common
 /// case — it paints with the rest of the card), and a caller-supplied
 /// fallback on error.
-class WINRV2RemoteImage extends StatelessWidget {
+class AvafliV2RemoteImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
 
@@ -361,7 +361,7 @@ class WINRV2RemoteImage extends StatelessWidget {
   /// Shown when the URL fails to load.
   final WidgetBuilder fallbackBuilder;
 
-  const WINRV2RemoteImage({
+  const AvafliV2RemoteImage({
     super.key,
     required this.url,
     required this.fit,
@@ -385,7 +385,7 @@ class WINRV2RemoteImage extends StatelessWidget {
             ColoredBox(color: placeholderColor),
             AnimatedOpacity(
               opacity: frame == null ? 0 : 1,
-              duration: winrV2ImageFadeDuration,
+              duration: avafliV2ImageFadeDuration,
               curve: Curves.easeOut,
               child: child,
             ),
@@ -401,18 +401,18 @@ class WINRV2RemoteImage extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// A decoded GIF: frames plus the per-frame start times from the file's own
-/// delay table (port of iOS `WINRV2GifAsset`, built on Flutter's multi-frame
+/// delay table (port of iOS `AvafliV2GifAsset`, built on Flutter's multi-frame
 /// `ui.Codec`). Decoding takes long enough to miss a beat, so decoded assets
 /// are cached in memory (keyed by asset name) and prewarmed at drawer-open,
 /// BEFORE the reveal beat needs them.
-class WINRV2GifAsset {
+class AvafliV2GifAsset {
   final List<ui.Image> frames;
 
   /// Cumulative start time (seconds) of each frame.
   final List<double> starts;
   final double duration;
 
-  WINRV2GifAsset._(this.frames, this.starts, this.duration);
+  AvafliV2GifAsset._(this.frames, this.starts, this.duration);
 
   /// Frame for [time] seconds into playback. Past the end: the LAST frame
   /// (one-shot playback stops there) unless [loops].
@@ -429,12 +429,12 @@ class WINRV2GifAsset {
 
   // Cache ---------------------------------------------------------------
 
-  static final Map<String, Future<WINRV2GifAsset>> _loads = {};
-  static final Map<String, WINRV2GifAsset> _cache = {};
+  static final Map<String, Future<AvafliV2GifAsset>> _loads = {};
+  static final Map<String, AvafliV2GifAsset> _cache = {};
 
   /// Synchronous cache hit — non-null once a [load]/[prewarm] has finished,
   /// so a reveal-beat mount can paint frame 0 on its very first build.
-  static WINRV2GifAsset? cached(String name) => _cache[name];
+  static AvafliV2GifAsset? cached(String name) => _cache[name];
 
   /// Decode into the cache ahead of time so a later mount plays instantly.
   static void prewarm(String name) {
@@ -443,7 +443,7 @@ class WINRV2GifAsset {
   }
 
   /// Cached load; kicks off (or joins) the decode on a miss.
-  static Future<WINRV2GifAsset> load(String name) {
+  static Future<AvafliV2GifAsset> load(String name) {
     return _loads.putIfAbsent(name, () async {
       try {
         final asset = await _decode(name);
@@ -456,11 +456,11 @@ class WINRV2GifAsset {
     });
   }
 
-  static Future<WINRV2GifAsset> _decode(String name) async {
+  static Future<AvafliV2GifAsset> _decode(String name) async {
     ByteData data;
     try {
       // Host apps see this package's assets under the packages/ prefix…
-      data = await rootBundle.load('packages/${WINRV2Assets.package}/$name');
+      data = await rootBundle.load('packages/${AvafliV2Assets.package}/$name');
     } catch (_) {
       // …while the SDK's own tests/tooling see the raw key.
       data = await rootBundle.load(name);
@@ -485,23 +485,23 @@ class WINRV2GifAsset {
     }
     codec.dispose();
     if (frames.isEmpty) {
-      throw StateError('WINRV2GifAsset: $name decoded no frames');
+      throw StateError('AvafliV2GifAsset: $name decoded no frames');
     }
-    return WINRV2GifAsset._(frames, starts, t);
+    return AvafliV2GifAsset._(frames, starts, t);
   }
 }
 
 /// Plays a bundled GIF ONCE, starting exactly when the widget mounts,
-/// honoring the file's own per-frame delays (port of iOS `WINRV2GifView`).
+/// honoring the file's own per-frame delays (port of iOS `AvafliV2GifView`).
 /// When the last frame's delay elapses the ticker stops there and
 /// [onFinished] fires — the host removes the widget. [loops] opts into
 /// continuous looping instead.
-class WINRV2GifView extends StatefulWidget {
+class AvafliV2GifView extends StatefulWidget {
   final String name;
   final bool loops;
   final VoidCallback? onFinished;
 
-  const WINRV2GifView(
+  const AvafliV2GifView(
     this.name, {
     super.key,
     this.loops = false,
@@ -509,13 +509,13 @@ class WINRV2GifView extends StatefulWidget {
   });
 
   @override
-  State<WINRV2GifView> createState() => _WINRV2GifViewState();
+  State<AvafliV2GifView> createState() => _AvafliV2GifViewState();
 }
 
-class _WINRV2GifViewState extends State<WINRV2GifView>
+class _AvafliV2GifViewState extends State<AvafliV2GifView>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
-  WINRV2GifAsset? _asset;
+  AvafliV2GifAsset? _asset;
   double _elapsed = 0;
   bool _finished = false;
 
@@ -526,11 +526,11 @@ class _WINRV2GifViewState extends State<WINRV2GifView>
     // are still decoding (prewarming makes that a non-event) — a slow decode
     // skips ahead to the right frame rather than stretching the beat.
     _ticker = createTicker(_tick)..start();
-    final hit = WINRV2GifAsset.cached(widget.name);
+    final hit = AvafliV2GifAsset.cached(widget.name);
     if (hit != null) {
       _asset = hit;
     } else {
-      WINRV2GifAsset.load(widget.name).then((asset) {
+      AvafliV2GifAsset.load(widget.name).then((asset) {
         if (!mounted || _asset != null || _finished) return;
         setState(() => _asset = asset);
       }, onError: (Object _, StackTrace __) {
@@ -583,14 +583,14 @@ class _WINRV2GifViewState extends State<WINRV2GifView>
 // ---------------------------------------------------------------------------
 
 /// The active-tile treatment: the accent glow breathes (port of iOS
-/// `WINRV2PulseGlow`, shadow radius 7→14 / opacity 0.55→0.95, 1.1s
+/// `AvafliV2PulseGlow`, shadow radius 7→14 / opacity 0.55→0.95, 1.1s
 /// autoreversing).
-class WINRV2PulseGlow extends StatefulWidget {
+class AvafliV2PulseGlow extends StatefulWidget {
   final Color accent;
   final BorderRadius borderRadius;
   final Widget child;
 
-  const WINRV2PulseGlow({
+  const AvafliV2PulseGlow({
     super.key,
     required this.accent,
     required this.child,
@@ -598,10 +598,10 @@ class WINRV2PulseGlow extends StatefulWidget {
   });
 
   @override
-  State<WINRV2PulseGlow> createState() => _WINRV2PulseGlowState();
+  State<AvafliV2PulseGlow> createState() => _AvafliV2PulseGlowState();
 }
 
-class _WINRV2PulseGlowState extends State<WINRV2PulseGlow>
+class _AvafliV2PulseGlowState extends State<AvafliV2PulseGlow>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 

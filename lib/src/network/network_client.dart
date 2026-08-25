@@ -7,11 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
 import '../services/logger.dart';
-import '../winr_error.dart';
+import '../avafli_error.dart';
 import 'api_request.dart';
 import 'gts_roots.dart';
 
-/// HTTP client for making authenticated requests to the WINR backend.
+/// HTTP client for making authenticated requests to the Avafli backend.
 ///
 /// Handles authentication, token refresh, certificate pinning, retry logic,
 /// and error handling for all API communications.
@@ -114,19 +114,19 @@ class NetworkClientImpl implements NetworkClient {
       try {
         final response = await _performRequest(request);
         return request.parseResponse(response);
-      } on WINRException catch (e) {
+      } on AvafliException catch (e) {
         // Don't retry on certain errors
-        if (e.error == WINRError.invalidApiKey ||
-            e.error == WINRError.underage ||
-            e.error == WINRError.ineligibleToday ||
-            e.error == WINRError.serviceUnavailable) {
+        if (e.error == AvafliError.invalidApiKey ||
+            e.error == AvafliError.underage ||
+            e.error == AvafliError.ineligibleToday ||
+            e.error == AvafliError.serviceUnavailable) {
           rethrow;
         }
 
         // Handle 401 with token refresh — but NOT for requests that don't
         // require auth (e.g. refreshToken, registerDevice) to avoid infinite
         // recursive loops where refresh→401→refresh→401→...
-        if (e.error == WINRError.authenticationFailed &&
+        if (e.error == AvafliError.authenticationFailed &&
             _refreshHandler != null &&
             request.requiresAuth) {
           Logger.instance
@@ -141,7 +141,7 @@ class NetworkClientImpl implements NetworkClient {
         }
 
         // Retry on network errors
-        if (e.error == WINRError.networkError && attempt < maxRetries - 1) {
+        if (e.error == AvafliError.networkError && attempt < maxRetries - 1) {
           attempt++;
           await Future.delayed(
               Duration(seconds: attempt * 2)); // Exponential backoff
@@ -151,14 +151,14 @@ class NetworkClientImpl implements NetworkClient {
         rethrow;
       } catch (e) {
         if (attempt >= maxRetries - 1) {
-          throw const WINRException(WINRError.networkError);
+          throw const AvafliException(AvafliError.networkError);
         }
         attempt++;
         await Future.delayed(Duration(seconds: attempt * 2));
       }
     }
 
-    throw const WINRException(WINRError.networkError);
+    throw const AvafliException(AvafliError.networkError);
   }
 
   /// Performs the actual HTTP request.
@@ -170,7 +170,7 @@ class NetworkClientImpl implements NetworkClient {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'X-API-Key': apiKey,
-      'User-Agent': 'WINR-Flutter-SDK/v1.0.0',
+      'User-Agent': 'Avafli-Flutter-SDK/v3.0.0',
     };
 
     // Add auth token if available and the request requires it
@@ -206,7 +206,7 @@ class NetworkClientImpl implements NetworkClient {
               await client.delete(url, headers: headers).timeout(timeout);
           break;
         default:
-          throw const WINRException(WINRError.unknown);
+          throw const AvafliException(AvafliError.unknown);
       }
 
       Logger.instance
@@ -219,13 +219,13 @@ class NetworkClientImpl implements NetworkClient {
 
       return response;
     } on SocketException {
-      throw const WINRException(WINRError.networkError);
+      throw const AvafliException(AvafliError.networkError);
     } on HttpException {
-      throw const WINRException(WINRError.networkError);
+      throw const AvafliException(AvafliError.networkError);
     } catch (e) {
-      if (e is WINRException) rethrow;
+      if (e is AvafliException) rethrow;
       Logger.instance.error('Network request failed', e);
-      throw const WINRException(WINRError.networkError);
+      throw const AvafliException(AvafliError.networkError);
     }
     // Note: the pinned client is reused across requests and closed via
     // [dispose]; we intentionally do not close it per-request here.
@@ -269,21 +269,21 @@ class NetworkClientImpl implements NetworkClient {
         // problem. Map the known cases, otherwise surface the backend's text.
         if (lower?.contains('underage') == true ||
             lower?.contains('13 or older') == true) {
-          throw const WINRException(WINRError.underage);
+          throw const AvafliException(AvafliError.underage);
         }
         if (lower?.contains('email') == true &&
             (lower!.contains('confirm') ||
                 lower.contains('required') ||
                 lower.contains('consent'))) {
-          throw WINRException(WINRError.emailRequired, errorMessage);
+          throw AvafliException(AvafliError.emailRequired, errorMessage);
         }
         if (lower?.contains('valid email') == true ||
             lower?.contains('invalid email') == true) {
-          throw const WINRException(WINRError.invalidEmail);
+          throw const AvafliException(AvafliError.invalidEmail);
         }
-        throw WINRException(WINRError.unknown, errorMessage);
+        throw AvafliException(AvafliError.unknown, errorMessage);
       case 401:
-        throw const WINRException(WINRError.authenticationFailed);
+        throw const AvafliException(AvafliError.authenticationFailed);
       case 403:
         // A suspended/revoked publisher surfaces as a `permission-denied`
         // (403) callable error whose message mentions "suspended" or
@@ -291,15 +291,15 @@ class NetworkClientImpl implements NetworkClient {
         // account suspended"). Map it to serviceUnavailable so the SDK can
         // degrade gracefully instead of looking like an auth failure.
         if (_isSuspendedError(errorMessage)) {
-          throw const WINRException(WINRError.serviceUnavailable);
+          throw const AvafliException(AvafliError.serviceUnavailable);
         }
         if (lower?.contains('geograph') == true ||
             lower?.contains('location') == true) {
-          throw const WINRException(WINRError.geographyNotAllowed);
+          throw const AvafliException(AvafliError.geographyNotAllowed);
         }
         if (lower?.contains('already claimed') == true ||
             lower?.contains('already entered') == true) {
-          throw const WINRException(WINRError.ineligibleToday);
+          throw const AvafliException(AvafliError.ineligibleToday);
         }
         // Prize-claim rejection ("Not the winner") is a real permission-denied
         // from the backend, not a stale token — mapping it to
@@ -307,25 +307,25 @@ class NetworkClientImpl implements NetworkClient {
         // eventually swallow the message into a generic networkError. Surface
         // it as-is so the winner flow can fall back to the dashboard.
         if (lower?.contains('not the winner') == true) {
-          throw WINRException(WINRError.unknown, errorMessage);
+          throw AvafliException(AvafliError.unknown, errorMessage);
         }
-        throw WINRException(WINRError.authenticationFailed, errorMessage);
+        throw AvafliException(AvafliError.authenticationFailed, errorMessage);
       case 404:
-        throw const WINRException(WINRError.giveawayNotAvailable);
+        throw const AvafliException(AvafliError.giveawayNotAvailable);
       case 409:
         // already-exists — the daily entry was already claimed.
-        throw WINRException(WINRError.ineligibleToday, errorMessage);
+        throw AvafliException(AvafliError.ineligibleToday, errorMessage);
       case 429:
-        throw const WINRException(WINRError.networkError); // Rate limited
+        throw const AvafliException(AvafliError.networkError); // Rate limited
       case 500:
       case 502:
       case 503:
       case 504:
-        throw WINRException(WINRError.serverError, errorMessage);
+        throw AvafliException(AvafliError.serverError, errorMessage);
       default:
         Logger.instance
             .error('Unexpected HTTP status: $statusCode — $errorMessage');
-        throw WINRException(WINRError.unknown, errorMessage);
+        throw AvafliException(AvafliError.unknown, errorMessage);
     }
   }
 
@@ -349,7 +349,7 @@ class NetworkClientImpl implements NetworkClient {
 /// We pin on the **Subject Public Key Info (SPKI)** SHA-256 — `base64(sha256(DER
 /// SPKI))` — rather than on the whole certificate, so the pins survive leaf
 /// rotation. The pinned keys are **Google Trust Services CA** keys because the
-/// WINR backend is hosted on `*.cloudfunctions.net`, whose leaf certs are all
+/// Avafli backend is hosted on `*.cloudfunctions.net`, whose leaf certs are all
 /// issued under the GTS hierarchy and rotate frequently. Pinning the long-lived
 /// GTS CA SPKIs gives MITM protection that does not break on routine leaf
 /// renewal.

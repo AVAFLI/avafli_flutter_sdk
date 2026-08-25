@@ -1,31 +1,31 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 void main() {
-  group('WINRError.serviceUnavailable', () {
+  group('AvafliError.serviceUnavailable', () {
     test('exists and has a publisher-facing message', () {
-      const error = WINRError.serviceUnavailable;
+      const error = AvafliError.serviceUnavailable;
       expect(error.message, isNotEmpty);
       expect(error.toString(), contains('serviceUnavailable'));
     });
 
-    test('can be wrapped and caught as a WINRException', () {
-      WINRError? caught;
+    test('can be wrapped and caught as a AvafliException', () {
+      AvafliError? caught;
       try {
-        throw const WINRException(WINRError.serviceUnavailable);
-      } on WINRException catch (e) {
+        throw const AvafliException(AvafliError.serviceUnavailable);
+      } on AvafliException catch (e) {
         caught = e.error;
       }
-      expect(caught, WINRError.serviceUnavailable);
+      expect(caught, AvafliError.serviceUnavailable);
     });
   });
 
-  group('WINR.isAvailable', () {
-    tearDown(WINR.resetForTesting);
+  group('Avafli.isAvailable', () {
+    tearDown(Avafli.resetForTesting);
 
     test('is false before configuration', () {
-      WINR.resetForTesting();
-      expect(WINR.isAvailable, isFalse);
+      Avafli.resetForTesting();
+      expect(Avafli.isAvailable, isFalse);
     });
   });
 }

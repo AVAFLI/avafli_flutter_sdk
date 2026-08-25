@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:winr_flutter_sdk/src/network/places_autocomplete.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_claim.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
+import 'package:avafli_sdk/src/network/places_autocomplete.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_claim.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
 
 // ── Fixtures ──
 
@@ -68,8 +68,8 @@ class _FakePlaces {
   List<http.Request> get detailsRequests =>
       requests.where((r) => r.url.path.contains('/v1/places/')).toList();
 
-  WINRPlacesClient client({String apiKey = 'AIza-test-key'}) {
-    return WINRPlacesClient(
+  AvafliPlacesClient client({String apiKey = 'AIza-test-key'}) {
+    return AvafliPlacesClient(
       apiKey: apiKey,
       httpClient: MockClient((request) async {
         requests.add(request);
@@ -94,13 +94,13 @@ Widget _host(Widget child) {
   );
 }
 
-Widget stepsFlow({WINRPlacesClient? placesClient, String? placesApiKey}) {
-  return _host(WINRV2ClaimStepsFlow(
-    accent: WINRV2Accent(null).color,
+Widget stepsFlow({AvafliPlacesClient? placesClient, String? placesApiKey}) {
+  return _host(AvafliV2ClaimStepsFlow(
+    accent: AvafliV2Accent(null).color,
     logoUrl: null,
-    maskedEmail: 'c******a@winr.example.com',
+    maskedEmail: 'c******a@avafli.example.com',
     initialForm:
-        WINRPrizeClaimForm(firstName: 'Catherine', lastName: 'Cinosta'),
+        AvafliPrizeClaimForm(firstName: 'Catherine', lastName: 'Cinosta'),
     placesApiKey: placesApiKey,
     placesClient: placesClient,
     isSubmitting: false,
@@ -121,9 +121,9 @@ Future<void> gotoAddressStep(WidgetTester tester) async {
 }
 
 void main() {
-  group('WINRPlaceAddress.fromComponents', () {
+  group('AvafliPlaceAddress.fromComponents', () {
     test('maps street/city/state/zip from a full component set', () {
-      final address = WINRPlaceAddress.fromComponents(googleplexComponents());
+      final address = AvafliPlaceAddress.fromComponents(googleplexComponents());
       expect(address.street, '1600 Amphitheatre Parkway');
       expect(address.city, 'Mountain View');
       // administrative_area_level_1 maps from shortText per the spec.
@@ -132,34 +132,35 @@ void main() {
     });
 
     test('missing zip maps to an empty string (hand-typed later)', () {
-      final address =
-          WINRPlaceAddress.fromComponents(googleplexComponents(withZip: false));
+      final address = AvafliPlaceAddress.fromComponents(
+          googleplexComponents(withZip: false));
       expect(address.street, '1600 Amphitheatre Parkway');
       expect(address.zip, '');
     });
 
     test('city falls back to sublocality, then postal_town', () {
-      final viaSublocality = WINRPlaceAddress.fromComponents([
+      final viaSublocality = AvafliPlaceAddress.fromComponents([
         component('sublocality', 'Brooklyn'),
         component('administrative_area_level_1', 'New York', 'NY'),
       ]);
       expect(viaSublocality.city, 'Brooklyn');
 
-      final viaPostalTown = WINRPlaceAddress.fromComponents([
+      final viaPostalTown = AvafliPlaceAddress.fromComponents([
         component('postal_town', 'Springfield'),
       ]);
       expect(viaPostalTown.city, 'Springfield');
     });
 
     test('route without a street_number still yields a street', () {
-      final address = WINRPlaceAddress.fromComponents([
+      final address = AvafliPlaceAddress.fromComponents([
         component('route', 'Amphitheatre Parkway'),
       ]);
       expect(address.street, 'Amphitheatre Parkway');
     });
 
     test('empty/garbage components map to all-empty fields', () {
-      final address = WINRPlaceAddress.fromComponents(const ['nope', 42, null]);
+      final address =
+          AvafliPlaceAddress.fromComponents(const ['nope', 42, null]);
       expect(address.street, '');
       expect(address.city, '');
       expect(address.state, '');
@@ -167,14 +168,14 @@ void main() {
     });
   });
 
-  group('WINRPlacesClient', () {
+  group('AvafliPlacesClient', () {
     test('caps suggestions at 5 and reads placePrediction.text.text', () async {
       final fake = _FakePlaces(predictions: [
         for (var i = 0; i < 7; i++)
           {'placeId': 'place-$i', 'text': '$i Main St, Springfield, IL, USA'},
       ]);
       final results = await fake.client().autocomplete('Main St');
-      expect(results.length, WINRPlacesClient.maxSuggestions);
+      expect(results.length, AvafliPlacesClient.maxSuggestions);
       expect(results.first.placeId, 'place-0');
       expect(results.first.description, '0 Main St, Springfield, IL, USA');
     });
@@ -197,14 +198,14 @@ void main() {
 
     test('failures degrade silently: non-200 and garbage → empty/null',
         () async {
-      final broken = WINRPlacesClient(
+      final broken = AvafliPlacesClient(
         apiKey: 'k',
         httpClient: MockClient((_) async => http.Response('nope', 500)),
       );
       expect(await broken.autocomplete('123 Main'), isEmpty);
       expect(await broken.resolve('place-x'), isNull);
 
-      final garbage = WINRPlacesClient(
+      final garbage = AvafliPlacesClient(
         apiKey: 'k',
         httpClient: MockClient((_) async => http.Response('not json', 200)),
       );
@@ -223,11 +224,11 @@ void main() {
     });
   });
 
-  group('WINRAddressAutocomplete debounce/min-chars', () {
+  group('AvafliAddressAutocomplete debounce/min-chars', () {
     testWidgets('under 3 chars never queries; 3+ queries after the debounce',
         (tester) async {
       final fake = _FakePlaces();
-      final auto = WINRAddressAutocomplete(client: fake.client());
+      final auto = AvafliAddressAutocomplete(client: fake.client());
 
       auto.onQueryChanged('12');
       await tester.pump(const Duration(milliseconds: 400));
@@ -246,7 +247,7 @@ void main() {
     testWidgets('rapid typing coalesces to one request with the latest input',
         (tester) async {
       final fake = _FakePlaces();
-      final auto = WINRAddressAutocomplete(client: fake.client());
+      final auto = AvafliAddressAutocomplete(client: fake.client());
 
       auto.onQueryChanged('160');
       await tester.pump(const Duration(milliseconds: 100));
@@ -265,7 +266,7 @@ void main() {
     testWidgets('shrinking below 3 chars clears suggestions and cancels',
         (tester) async {
       final fake = _FakePlaces();
-      final auto = WINRAddressAutocomplete(client: fake.client());
+      final auto = AvafliAddressAutocomplete(client: fake.client());
 
       auto.onQueryChanged('1600 Amph');
       await tester.pump(const Duration(milliseconds: 350));
@@ -281,7 +282,7 @@ void main() {
 
     testWidgets('dismiss() drops an in-flight response', (tester) async {
       final fake = _FakePlaces();
-      final auto = WINRAddressAutocomplete(client: fake.client());
+      final auto = AvafliAddressAutocomplete(client: fake.client());
 
       auto.onQueryChanged('1600 Amph');
       await tester.pump(const Duration(milliseconds: 300));
@@ -349,7 +350,7 @@ void main() {
     testWidgets('failed details resolution leaves the form as typed',
         (tester) async {
       var calls = 0;
-      final client = WINRPlacesClient(
+      final client = AvafliPlacesClient(
         apiKey: 'k',
         httpClient: MockClient((request) async {
           calls++;

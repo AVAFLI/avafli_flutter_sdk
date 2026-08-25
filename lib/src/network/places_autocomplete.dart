@@ -22,18 +22,19 @@ import 'package:http/http.dart' as http;
 /// One row in the suggestions overlay: the place to resolve on tap plus the
 /// display line (`suggestion.placePrediction.text.text`).
 @immutable
-class WINRPlaceSuggestion {
+class AvafliPlaceSuggestion {
   final String placeId;
   final String description;
 
-  const WINRPlaceSuggestion({required this.placeId, required this.description});
+  const AvafliPlaceSuggestion(
+      {required this.placeId, required this.description});
 }
 
 /// A resolved US shipping address mapped onto the claim form's four address
 /// fields. Empty strings mean the component was missing — the person types
 /// it by hand (all fields stay editable regardless).
 @immutable
-class WINRPlaceAddress {
+class AvafliPlaceAddress {
   final String street;
   final String city;
 
@@ -41,7 +42,7 @@ class WINRPlaceAddress {
   final String state;
   final String zip;
 
-  const WINRPlaceAddress({
+  const AvafliPlaceAddress({
     required this.street,
     required this.city,
     required this.state,
@@ -56,7 +57,7 @@ class WINRPlaceAddress {
   ///
   /// Null-tolerant against partial payloads; anything unrecognized is
   /// ignored.
-  factory WINRPlaceAddress.fromComponents(List<dynamic> components) {
+  factory AvafliPlaceAddress.fromComponents(List<dynamic> components) {
     String streetNumber = '';
     String route = '';
     String locality = '';
@@ -96,7 +97,7 @@ class WINRPlaceAddress {
         ? locality
         : (sublocality.trim().isNotEmpty ? sublocality : postalTown);
 
-    return WINRPlaceAddress(
+    return AvafliPlaceAddress(
       street: street.trim(),
       city: city.trim(),
       state: state.trim(),
@@ -108,7 +109,7 @@ class WINRPlaceAddress {
 /// Thin client over the Places API (New) REST endpoints. Fail-quiet by
 /// contract: [autocomplete] returns an empty list and [resolve] returns null
 /// on ANY failure — callers never see an exception.
-class WINRPlacesClient {
+class AvafliPlacesClient {
   /// At most this many suggestions are surfaced (the API may return more).
   static const int maxSuggestions = 5;
 
@@ -122,13 +123,13 @@ class WINRPlacesClient {
   /// an injected client belongs to the caller/test).
   final bool _ownsHttp;
 
-  WINRPlacesClient({required this.apiKey, http.Client? httpClient})
+  AvafliPlacesClient({required this.apiKey, http.Client? httpClient})
       : _http = httpClient ?? http.Client(),
         _ownsHttp = httpClient == null;
 
   /// POST `places:autocomplete` — US-only, address-shaped results, capped at
   /// [maxSuggestions]. Empty list on any failure.
-  Future<List<WINRPlaceSuggestion>> autocomplete(String input) async {
+  Future<List<AvafliPlaceSuggestion>> autocomplete(String input) async {
     try {
       final response = await _http
           .post(
@@ -155,7 +156,7 @@ class WINRPlacesClient {
       final raw = data['suggestions'];
       if (raw is! List) return const [];
 
-      final out = <WINRPlaceSuggestion>[];
+      final out = <AvafliPlaceSuggestion>[];
       for (final item in raw) {
         if (out.length >= maxSuggestions) break;
         if (item is! Map<String, dynamic>) continue;
@@ -168,7 +169,7 @@ class WINRPlacesClient {
         if (placeId == null || placeId.isEmpty) continue;
         if (description == null || description.isEmpty) continue;
         out.add(
-            WINRPlaceSuggestion(placeId: placeId, description: description));
+            AvafliPlaceSuggestion(placeId: placeId, description: description));
       }
       return out;
     } catch (_) {
@@ -179,7 +180,7 @@ class WINRPlacesClient {
   /// GET `places/{placeId}` with a field mask of only `addressComponents`
   /// (the smallest — and cheapest — details request that fills the form).
   /// Null on any failure.
-  Future<WINRPlaceAddress?> resolve(String placeId) async {
+  Future<AvafliPlaceAddress?> resolve(String placeId) async {
     try {
       final response = await _http.get(
         Uri.parse('$_baseUrl/places/${Uri.encodeComponent(placeId)}'),
@@ -194,7 +195,7 @@ class WINRPlacesClient {
       if (data is! Map<String, dynamic>) return null;
       final components = data['addressComponents'];
       if (components is! List) return null;
-      return WINRPlaceAddress.fromComponents(components);
+      return AvafliPlaceAddress.fromComponents(components);
     } catch (_) {
       return null;
     }
@@ -210,14 +211,14 @@ class WINRPlacesClient {
 /// Widget-independent (a [ChangeNotifier]) so the debounce and min-chars
 /// rules are unit-testable without any widget machinery, matching the SDK's
 /// form-model style.
-class WINRAddressAutocomplete extends ChangeNotifier {
+class AvafliAddressAutocomplete extends ChangeNotifier {
   /// Queries shorter than this (trimmed) never hit the network.
   static const int minChars = 3;
 
   /// Keystroke debounce — one request per typing pause, not per character.
   final Duration debounce;
 
-  final WINRPlacesClient _client;
+  final AvafliPlacesClient _client;
 
   Timer? _timer;
 
@@ -229,11 +230,11 @@ class WINRAddressAutocomplete extends ChangeNotifier {
 
   bool _disposed = false;
 
-  List<WINRPlaceSuggestion> _suggestions = const [];
-  List<WINRPlaceSuggestion> get suggestions => _suggestions;
+  List<AvafliPlaceSuggestion> _suggestions = const [];
+  List<AvafliPlaceSuggestion> get suggestions => _suggestions;
 
-  WINRAddressAutocomplete({
-    required WINRPlacesClient client,
+  AvafliAddressAutocomplete({
+    required AvafliPlacesClient client,
     this.debounce = const Duration(milliseconds: 300),
   }) : _client = client;
 
@@ -275,12 +276,12 @@ class WINRAddressAutocomplete extends ChangeNotifier {
   /// Resolves a tapped suggestion to a full address (dismissing the list
   /// immediately). Null → the resolution failed; the caller leaves the form
   /// exactly as typed (silent degradation).
-  Future<WINRPlaceAddress?> select(WINRPlaceSuggestion suggestion) {
+  Future<AvafliPlaceAddress?> select(AvafliPlaceSuggestion suggestion) {
     dismiss();
     return _client.resolve(suggestion.placeId);
   }
 
-  void _setSuggestions(List<WINRPlaceSuggestion> value) {
+  void _setSuggestions(List<AvafliPlaceSuggestion> value) {
     if (_suggestions.isEmpty && value.isEmpty) return;
     _suggestions = value;
     if (!_disposed) notifyListeners();

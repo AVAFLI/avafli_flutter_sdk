@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 void main() {
   late StreakEngine engine;
@@ -46,7 +46,7 @@ void main() {
       final day1 = engine.nextState(null, DateTime.utc(2026, 3, 1));
       final duplicate = engine.nextState(day1.value, DateTime.utc(2026, 3, 1));
       expect(duplicate.isError, isTrue);
-      expect(duplicate.error, WINRError.ineligibleToday);
+      expect(duplicate.error, AvafliError.ineligibleToday);
     });
 
     test('baseEntries follows streak ladder', () {

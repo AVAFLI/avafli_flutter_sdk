@@ -258,8 +258,8 @@ class ClaimDailyEntriesRequest extends PostRequest<ClaimDailyEntriesResponse> {
     String? platformOS,
     String? sdkVersion,
   })  : timezone = timezone ?? DateTime.now().timeZoneName,
-        platformOS = platformOS ?? WINRRequestDefaults.platformOS,
-        sdkVersion = sdkVersion ?? WINRRequestDefaults.sdkVersion;
+        platformOS = platformOS ?? AvafliRequestDefaults.platformOS,
+        sdkVersion = sdkVersion ?? AvafliRequestDefaults.sdkVersion;
 
   @override
   String get endpoint => '/claimDailyEntries';
@@ -278,13 +278,13 @@ class ClaimDailyEntriesRequest extends PostRequest<ClaimDailyEntriesResponse> {
   }
 }
 
-/// Default request metadata, kept in sync by [WINR.configure]. Lives here so
+/// Default request metadata, kept in sync by [Avafli.configure]. Lives here so
 /// request classes don't import the SDK facade (avoids an import cycle).
-class WINRRequestDefaults {
-  WINRRequestDefaults._();
+class AvafliRequestDefaults {
+  AvafliRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '2.9.5';
+  static String sdkVersion = '3.0.0';
 }
 
 /// Response from claiming daily entries (mirrors iOS
@@ -371,7 +371,7 @@ class MilestoneAward {
 // ---------------------------------------------------------------------------
 
 /// FIXED API contract, mirroring `PrizeClaimBlock` in the backend's types.ts
-/// and the iOS SDK's `PrizeClaimBlock` (WINRAPI.swift).
+/// and the iOS SDK's `PrizeClaimBlock` (AvafliAPI.swift).
 class PrizeClaimBlock {
   /// "pending" | "submitted"
   final String status;
@@ -379,7 +379,7 @@ class PrizeClaimBlock {
   final String prizeDescription;
   final double prizeValue;
 
-  /// Display-only masked winning email ("d********r@winr.example.com") for
+  /// Display-only masked winning email ("d********r@avafli.example.com") for
   /// the claim form's locked field. Absent from older backends.
   final String? maskedEmail;
 
@@ -687,7 +687,7 @@ class AttachClaimStoryResponse {
 
 /// Confirms a soft email verification with the emailed 6-digit code. Same
 /// request/response envelope as [VerifyAdoptionCodeRequest]; on success the
-/// backend returns `{verified: true}`. Failures throw a [WINRException] whose
+/// backend returns `{verified: true}`. Failures throw a [AvafliException] whose
 /// server message mentions "expired"/"attempts"/mismatch — mapped to the same
 /// UI copy the adoption flow uses.
 class ConfirmEmailVerificationRequest

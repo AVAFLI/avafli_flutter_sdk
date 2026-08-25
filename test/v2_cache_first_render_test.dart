@@ -14,15 +14,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:winr_flutter_sdk/src/network/api_request.dart';
-import 'package:winr_flutter_sdk/src/network/network_client.dart';
-import 'package:winr_flutter_sdk/src/storage/preferences_storage.dart';
-import 'package:winr_flutter_sdk/src/storage/secure_storage.dart';
-import 'package:winr_flutter_sdk/src/storage/storage.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/src/network/api_request.dart';
+import 'package:avafli_sdk/src/network/network_client.dart';
+import 'package:avafli_sdk/src/storage/preferences_storage.dart';
+import 'package:avafli_sdk/src/storage/secure_storage.dart';
+import 'package:avafli_sdk/src/storage/storage.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_experience.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_screens.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 /// A backend that never answers — every frame these tests observe is one the
 /// drawer produced WITHOUT the network.
@@ -63,7 +63,7 @@ Giveaway _giveaway() => const Giveaway(
     );
 
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -84,11 +84,11 @@ Widget _experience({
 }) {
   return MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: WINRV2Experience(
-      configuration: const WINRConfiguration(
+    home: AvafliV2Experience(
+      configuration: const AvafliConfiguration(
         apiKey: 'winr_test_key',
         bundleId: 'com.example.test',
-        user: WINRUser(id: 'user-1', firstName: 'Test', lastName: 'User'),
+        user: AvafliUser(id: 'user-1', firstName: 'Test', lastName: 'User'),
       ),
       networkClient: client,
       secureStorage: _RegisteredSecureStorage(),
@@ -146,8 +146,8 @@ void main() {
     await _pumpLocalReads(tester);
 
     // The dashboard is up…
-    expect(find.byType(WINRV2DashboardView), findsOneWidget);
-    expect(find.byType(WINRV2LoadingView), findsNothing);
+    expect(find.byType(AvafliV2DashboardView), findsOneWidget);
+    expect(find.byType(AvafliV2LoadingView), findsNothing);
     expect(find.text('GOT IT'), findsOneWidget);
     // …painted from the cached streak (day 3, pre-reveal shows day 2)…
     expect(find.text('2 DAY STREAK'), findsOneWidget);
@@ -177,10 +177,10 @@ void main() {
     ));
     await _pumpLocalReads(tester);
 
-    expect(find.byType(WINRV2DashboardView), findsNothing);
-    expect(find.byType(WINRV2CaptureView), findsNothing,
+    expect(find.byType(AvafliV2DashboardView), findsNothing);
+    expect(find.byType(AvafliV2CaptureView), findsNothing,
         reason: 'capture only appears once the network confirms the gate');
-    expect(find.byType(WINRV2LoadingView), findsOneWidget);
+    expect(find.byType(AvafliV2LoadingView), findsOneWidget);
   });
 
   testWidgets('a cold device shows the layout skeleton, not a spinner',
@@ -192,16 +192,16 @@ void main() {
     ));
     await _pumpLocalReads(tester);
 
-    expect(find.byType(WINRV2LoadingView), findsOneWidget);
+    expect(find.byType(AvafliV2LoadingView), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing,
         reason: 'the bare spinner is what made the wait feel dead');
     expect(find.text('Loading…'), findsNothing);
     // The skeleton blocks out the real dashboard layout (prize card, three
     // streak tiles, bar, pill) so the wait reads as content arriving.
-    expect(find.byType(WINRV2TabGrabber), findsOneWidget);
+    expect(find.byType(AvafliV2TabGrabber), findsOneWidget);
     final blocks = tester
         .widgetList<Container>(find.descendant(
-          of: find.byType(WINRV2LoadingView),
+          of: find.byType(AvafliV2LoadingView),
           matching: find.byType(Container),
         ))
         .length;
@@ -217,7 +217,7 @@ void main() {
 
     double opacity() => tester
         .widget<FadeTransition>(find.descendant(
-          of: find.byType(WINRV2LoadingView),
+          of: find.byType(AvafliV2LoadingView),
           matching: find.byType(FadeTransition),
         ))
         .opacity

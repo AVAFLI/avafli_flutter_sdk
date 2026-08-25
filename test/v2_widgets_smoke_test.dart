@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_effects.dart'
-    show WINRV2GifView;
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_experience.dart'
-    show winrV2MountRevealDelay;
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_legal.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_screens.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_strings.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_winner.dart';
-import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_effects.dart'
+    show AvafliV2GifView;
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_experience.dart'
+    show avafliV2MountRevealDelay;
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_legal.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_screens.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_strings.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_winner.dart';
+import 'package:avafli_sdk/avafli_sdk.dart';
 
 Widget _host(Widget child) {
   return MaterialApp(
@@ -40,7 +40,7 @@ Giveaway _giveaway({String? streakMode, GiveawayWinner? winner}) {
 /// Loads the real bundled Inter/Oswald faces so text measures like production
 /// (the test-default Ahem font is much wider and would skew layout).
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-500.ttf',
@@ -53,7 +53,7 @@ Future<void> _loadRealFonts() async {
   }
   await inter.load();
 
-  final oswald = FontLoader('packages/winr_flutter_sdk/Oswald');
+  final oswald = FontLoader('packages/avafli_sdk/Oswald');
   for (final file in [
     'oswald-v57-latin-500.ttf',
     'oswald-v57-latin-700.ttf',
@@ -66,10 +66,10 @@ Future<void> _loadRealFonts() async {
 void main() {
   setUpAll(_loadRealFonts);
 
-  final accent = WINRV2Accent(null).color;
+  final accent = AvafliV2Accent(null).color;
 
   testWidgets('capture view renders', (tester) async {
-    await tester.pumpWidget(_host(WINRV2CaptureView(
+    await tester.pumpWidget(_host(AvafliV2CaptureView(
       accent: accent,
       logoUrl: null,
       rulesUrl: null,
@@ -86,11 +86,11 @@ void main() {
     expect(find.text('CLAIM MY 10 ENTRIES'), findsOneWidget);
     expect(
         find.text('I confirm I am 18 years of age or older'), findsOneWidget);
-    expect(find.text(winrV2DefaultMarketingConsentText), findsOneWidget);
+    expect(find.text(avafliV2DefaultMarketingConsentText), findsOneWidget);
   });
 
   testWidgets('dashboard renders with winner banner and rail', (tester) async {
-    await tester.pumpWidget(_host(WINRV2DashboardView(
+    await tester.pumpWidget(_host(AvafliV2DashboardView(
       accent: accent,
       logoUrl: null,
       rulesUrl: null,
@@ -127,7 +127,7 @@ void main() {
       findsOneWidget,
     );
     // A tile that MOUNTS already active never replays the confetti burst.
-    expect(find.byType(WINRV2GifView), findsNothing);
+    expect(find.byType(AvafliV2GifView), findsNothing);
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
@@ -141,7 +141,7 @@ void main() {
     await tester.pumpWidget(_host(StatefulBuilder(
       builder: (context, setState) {
         rebuild = setState;
-        return WINRV2DashboardView(
+        return AvafliV2DashboardView(
           accent: accent,
           logoUrl: null,
           rulesUrl: null,
@@ -163,9 +163,9 @@ void main() {
     )));
     // Mirror the experience controller: the predicted grant is staged BEFORE
     // the dashboard mounts and the reveal fires on its own
-    // winrV2MountRevealDelay (150ms) after mount.
+    // avafliV2MountRevealDelay (150ms) after mount.
     Future<void>.delayed(
-        winrV2MountRevealDelay, () => rebuild(() => revealed = true));
+        avafliV2MountRevealDelay, () => rebuild(() => revealed = true));
 
     // FIRST visible frame: the bar opens ON the "YOU'RE ON A ROLL!" toast —
     // the pitch is NEVER shown before it — while the streak label holds the
@@ -183,7 +183,7 @@ void main() {
     expect(find.text('2 DAY STREAK'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
-    expect(find.byType(WINRV2GifView), findsNothing);
+    expect(find.byType(AvafliV2GifView), findsNothing);
 
     // ~150ms later the reveal flips in place: the streak label advances and
     // the tile flips ready → active, mounting the one-shot confetti-burst
@@ -191,7 +191,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump();
     expect(find.text('3 DAY STREAK'), findsOneWidget);
-    expect(find.byType(WINRV2GifView), findsWidgets);
+    expect(find.byType(AvafliV2GifView), findsWidgets);
     expect(find.text('YOU’RE ON A ROLL!'), findsOneWidget);
     expect(find.text('GOT IT'), findsOneWidget);
     expect(find.text('CLAIM 60 ENTRIES'), findsNothing);
@@ -214,7 +214,7 @@ void main() {
       'tappable', (tester) async {
     var verifyTaps = 0;
 
-    Widget dash({required bool unverified}) => _host(WINRV2DashboardView(
+    Widget dash({required bool unverified}) => _host(AvafliV2DashboardView(
           accent: accent,
           logoUrl: null,
           rulesUrl: null,
@@ -233,21 +233,21 @@ void main() {
     // Unverified → the persistent "Verify your email" chip is present.
     await tester.pumpWidget(dash(unverified: true));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text(WINRV2Strings.emailVerifyChip), findsOneWidget);
+    expect(find.text(AvafliV2Strings.emailVerifyChip), findsOneWidget);
 
     // Tapping it fires the callback (opens the code screen in the experience).
-    await tester.tap(find.text(WINRV2Strings.emailVerifyChip));
+    await tester.tap(find.text(AvafliV2Strings.emailVerifyChip));
     await tester.pump();
     expect(verifyTaps, 1);
 
     // Verified (emailVerified absent/null → unverified false) → no chip.
     await tester.pumpWidget(dash(unverified: false));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text(WINRV2Strings.emailVerifyChip), findsNothing);
+    expect(find.text(AvafliV2Strings.emailVerifyChip), findsNothing);
   });
 
   testWidgets('dashboard visit mode swaps copy', (tester) async {
-    await tester.pumpWidget(_host(WINRV2DashboardView(
+    await tester.pumpWidget(_host(AvafliV2DashboardView(
       accent: accent,
       logoUrl: null,
       rulesUrl: null,
@@ -275,7 +275,7 @@ void main() {
     // Unified Day-1 flow (Aug 2026 CTO decision): no "You're in!" modal —
     // the dashboard mounts celebrating exactly like Day 2+, only the toast
     // headline differs.
-    await tester.pumpWidget(_host(WINRV2DashboardView(
+    await tester.pumpWidget(_host(AvafliV2DashboardView(
       accent: accent,
       logoUrl: null,
       rulesUrl: null,
@@ -310,7 +310,7 @@ void main() {
   });
 
   testWidgets('winner modal renders with initials fallback', (tester) async {
-    await tester.pumpWidget(_host(WINRV2WinnerModal(
+    await tester.pumpWidget(_host(AvafliV2WinnerModal(
       accent: accent,
       winner: const GiveawayWinner(
         name: 'Catherine C.',
@@ -332,7 +332,7 @@ void main() {
   });
 
   testWidgets('how it works renders with visit-mode variants', (tester) async {
-    await tester.pumpWidget(_host(WINRV2HowItWorksView(
+    await tester.pumpWidget(_host(AvafliV2HowItWorksView(
       accent: accent,
       logoUrl: null,
       day1Entries: 10,
@@ -345,7 +345,7 @@ void main() {
     expect(find.text('Don’t miss a day - your streak resets if you do.'),
         findsOneWidget);
 
-    await tester.pumpWidget(_host(WINRV2HowItWorksView(
+    await tester.pumpWidget(_host(AvafliV2HowItWorksView(
       accent: accent,
       logoUrl: null,
       day1Entries: 10,
@@ -360,14 +360,14 @@ void main() {
   });
 
   // ── Delete-my-data opt-out flow (lives INSIDE the privacy webview     ──
-  // ── behind the winr://delete bridge; 2.9.5: the webview closes first   ──
+  // ── behind the avafli://delete bridge; 2.9.5: the webview closes first   ──
   // ── and the confirmation presents over the experience, iOS/web parity) ──
 
   testWidgets(
       'how-it-works hosts no privacy surface at all (2.9.5) — no Privacy '
       'choices entry, no delete listing, no destructive dialog',
       (tester) async {
-    await tester.pumpWidget(_host(WINRV2HowItWorksView(
+    await tester.pumpWidget(_host(AvafliV2HowItWorksView(
       accent: accent,
       logoUrl: null,
       day1Entries: 10,
@@ -380,9 +380,9 @@ void main() {
     // and the capture screen's inline links keep the delete path findable.
     expect(find.text('Privacy choices'), findsNothing);
     // And the native delete surfaces stay gone — that flow lives inside the
-    // privacy page, behind winr://delete.
-    expect(find.text(WINRV2Strings.optOutConfirm), findsNothing);
-    expect(find.text(WINRV2Strings.optOutTitle), findsNothing);
+    // privacy page, behind avafli://delete.
+    expect(find.text(AvafliV2Strings.optOutConfirm), findsNothing);
+    expect(find.text(AvafliV2Strings.optOutTitle), findsNothing);
   });
 
   Widget optOutFlow({
@@ -390,7 +390,7 @@ void main() {
     VoidCallback? onCancel,
     VoidCallback? onDeleted,
   }) {
-    return _host(WINRV2OptOutFlow(
+    return _host(AvafliV2OptOutFlow(
       optOutAction: optOutAction,
       onCancel: onCancel ?? () {},
       onDeleted: onDeleted ?? () {},
@@ -398,7 +398,7 @@ void main() {
   }
 
   testWidgets(
-      'the winr://delete opt-out flow opens on the destructive confirmation '
+      'the avafli://delete opt-out flow opens on the destructive confirmation '
       'and cancel hands back without deleting', (tester) async {
     var cancelled = 0;
     var optOutCalls = 0;
@@ -408,10 +408,10 @@ void main() {
     ));
     await tester.pump();
 
-    expect(find.text(WINRV2Strings.optOutTitle), findsOneWidget);
-    expect(find.text(WINRV2Strings.optOutBody), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutTitle), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutBody), findsOneWidget);
 
-    await tester.tap(find.text(WINRV2Strings.optOutCancel));
+    await tester.tap(find.text(AvafliV2Strings.optOutCancel));
     await tester.pump();
     expect(cancelled, 1);
     expect(optOutCalls, 0);
@@ -427,15 +427,15 @@ void main() {
       onDeleted: () => deleted++,
     ));
     await tester.pump();
-    await tester.tap(find.text(WINRV2Strings.optOutConfirm));
+    await tester.tap(find.text(AvafliV2Strings.optOutConfirm));
     await tester.pump();
     await tester.pump();
 
     expect(optOutCalls, 1);
-    expect(find.text(WINRV2Strings.optOutSuccess), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutSuccess), findsOneWidget);
     // The success copy holds for the dismiss delay, THEN everything closes.
     expect(deleted, 0);
-    await tester.pump(WINRV2OptOutFlow.successHold);
+    await tester.pump(AvafliV2OptOutFlow.successHold);
     expect(deleted, 1);
   });
 
@@ -448,15 +448,15 @@ void main() {
       onDeleted: () => deleted++,
     ));
     await tester.pump();
-    await tester.tap(find.text(WINRV2Strings.optOutConfirm));
+    await tester.tap(find.text(AvafliV2Strings.optOutConfirm));
     await tester.pump();
     await tester.pump();
 
-    expect(find.text(WINRV2Strings.optOutFailed), findsOneWidget);
-    expect(find.text(WINRV2Strings.optOutSuccess), findsNothing);
+    expect(find.text(AvafliV2Strings.optOutFailed), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutSuccess), findsNothing);
     // Still confirmable (retry) and cancellable; nothing dismissed.
-    expect(find.text(WINRV2Strings.optOutConfirm), findsOneWidget);
-    expect(find.text(WINRV2Strings.optOutCancel), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutConfirm), findsOneWidget);
+    expect(find.text(AvafliV2Strings.optOutCancel), findsOneWidget);
     expect(deleted, 0);
   });
 }

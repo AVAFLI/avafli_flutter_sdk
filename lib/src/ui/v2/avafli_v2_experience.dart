@@ -2,8 +2,8 @@
 // (dim backdrop, gunmetal sheet flush to bottom/sides, top corners rounded 30,
 // ~90% screen height, spring slide-up) plus the experience state machine.
 //
-// Mirrors the iOS SDK's WINRV2ExperienceRoot (WINRV2Screens.swift) and
-// WINRExperienceViewModel.swift:
+// Mirrors the iOS SDK's AvafliV2ExperienceRoot (AvafliV2Screens.swift) and
+// AvafliExperienceViewModel.swift:
 //   loading → emailCapture | streak → howItWorks…
 // Entries are granted automatically when the drawer opens (auto-claim).
 // Day 1 AND Day 2+ celebrate IN PLACE (the Day-1 "You're in!" modal is
@@ -26,24 +26,24 @@ import '../../domain/sdk_config.dart';
 import '../../domain/streak_engine.dart';
 import '../../domain/streak_state.dart';
 import '../../network/network_client.dart';
-import '../../network/winr_api.dart';
+import '../../network/avafli_api.dart';
 import '../../services/logger.dart';
 import '../../storage/preferences_storage.dart';
 import '../../storage/secure_storage.dart';
 import '../../storage/storage.dart';
-import '../../winr.dart';
-import '../../winr_configuration.dart';
-import '../../winr_error.dart';
-import 'winr_v2_claim.dart';
-import 'winr_v2_components.dart';
-import 'winr_v2_effects.dart';
-import 'winr_v2_legal.dart';
-import 'winr_v2_screens.dart';
-import 'winr_v2_strings.dart';
-import 'winr_v2_theme.dart';
-import 'winr_v2_winner.dart';
+import '../../avafli.dart';
+import '../../avafli_configuration.dart';
+import '../../avafli_error.dart';
+import 'avafli_v2_claim.dart';
+import 'avafli_v2_components.dart';
+import 'avafli_v2_effects.dart';
+import 'avafli_v2_legal.dart';
+import 'avafli_v2_screens.dart';
+import 'avafli_v2_strings.dart';
+import 'avafli_v2_theme.dart';
+import 'avafli_v2_winner.dart';
 
-/// Experience state — mirrors iOS `WINRExperienceViewModel.State` (the V2
+/// Experience state — mirrors iOS `AvafliExperienceViewModel.State` (the V2
 /// subset; bonus/milestone states are parked for Phase 1).
 enum _V2Phase {
   loading,
@@ -63,7 +63,7 @@ enum _V2Phase {
   /// instead of the dashboard. Takes precedence on open.
   winnerClaim,
 
-  /// Geo-blocked (`WINRError.geographyNotAllowed`) — dedicated US-only
+  /// Geo-blocked (`AvafliError.geographyNotAllowed`) — dedicated US-only
   /// messaging instead of the generic empty state.
   geoBlocked,
 
@@ -80,11 +80,11 @@ enum _WinnerClaimStep { splash, form, share, confirmation }
 /// for Flutter to render the staged "before" frame so every transition and
 /// count has something to animate from. Visually imperceptible; the drawer's
 /// slide-up covers it.
-/// Mirrors iOS `WINRExperienceViewModel.mountRevealDelay`.
-const winrV2MountRevealDelay = Duration(milliseconds: 150);
+/// Mirrors iOS `AvafliExperienceViewModel.mountRevealDelay`.
+const avafliV2MountRevealDelay = Duration(milliseconds: 150);
 
-class WINRV2Experience extends StatefulWidget {
-  final WINRConfiguration configuration;
+class AvafliV2Experience extends StatefulWidget {
+  final AvafliConfiguration configuration;
   final NetworkClient networkClient;
   final SecureStorage secureStorage;
   final PreferencesStorage preferencesStorage;
@@ -92,14 +92,14 @@ class WINRV2Experience extends StatefulWidget {
   final Giveaway? cachedGiveaway;
   final bool? cachedClaimedToday;
   final int? cachedStreakDay;
-  final WinrSdkConfig? sdkConfig;
+  final AvafliSdkConfig? sdkConfig;
 
   /// Adoption re-entry (2.9): true when the register response carried
   /// `adoptionPending: true` — an interrupted verification-gated adoption.
   /// Null-safe against current prod (absent → null → normal flow).
   final bool? adoptionPending;
 
-  const WINRV2Experience({
+  const AvafliV2Experience({
     super.key,
     required this.configuration,
     required this.networkClient,
@@ -114,10 +114,10 @@ class WINRV2Experience extends StatefulWidget {
   });
 
   @override
-  State<WINRV2Experience> createState() => _WINRV2ExperienceState();
+  State<AvafliV2Experience> createState() => _AvafliV2ExperienceState();
 }
 
-class _WINRV2ExperienceState extends State<WINRV2Experience> {
+class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   _V2Phase _phase = _V2Phase.loading;
   _V2Phase? _lastPrimaryPhase;
 
@@ -140,7 +140,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   /// Inline, retryable error on the capture screen for a failed email
   /// submit — the user stays on capture; the SDK never proceeds as if the
-  /// submit worked ([WINRV2Strings.emailSubmitFailed]).
+  /// submit worked ([AvafliV2Strings.emailSubmitFailed]).
   String? _emailSubmitError;
 
   /// Non-blocking dashboard notice (duplicate same-day entry / failed
@@ -183,13 +183,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   bool _isVerifyingEmail = false;
   String? _emailVerifyError;
 
-  // ── V2 reveal flow (Day 2+) — mirrors iOS WINRExperienceViewModel ──
+  // ── V2 reveal flow (Day 2+) — mirrors iOS AvafliExperienceViewModel ──
   //
   // The dashboard's FIRST VISIBLE FRAME is the celebration (the CTO's final
   // spec): toast bar, streak flip, counting total, and tile confetti all
   // fire in one beat at mount. Because the claim round-trip lands AFTER the
   // dashboard mounts, the grant is PREDICTED client-side from the pre-claim
-  // status (WINRV2Ladder mirrors the backend's math exactly) and the real
+  // status (AvafliV2Ladder mirrors the backend's math exactly) and the real
   // response reconciles silently — identical numbers in the normal case.
   // The pill reads "GOT IT" the whole time — there is no claim tap.
 
@@ -213,7 +213,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// — the guards here and in [_revealClaim] make double-fires harmless.
   void _armCelebrationReveal() {
     if (_pendingRevealGrant == null || _claimRevealed) return;
-    unawaited(Future<void>.delayed(winrV2MountRevealDelay, () {
+    unawaited(Future<void>.delayed(avafliV2MountRevealDelay, () {
       if (!mounted) return;
       _revealClaim();
     }));
@@ -222,7 +222,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// One-shot guard for the "already claimed on another device" re-sync.
   bool _didResyncAfterAlreadyClaimed = false;
 
-  // ── Winner prize claim (mirrors iOS WINRExperienceViewModel) ──
+  // ── Winner prize claim (mirrors iOS AvafliExperienceViewModel) ──
 
   /// The pending prize-claim block driving the winner flow.
   PrizeClaimBlock? _prizeClaim;
@@ -238,7 +238,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   String? _claimSubmitError;
 
   /// The submitted form, kept for the confirmation screen's winner card.
-  WINRPrizeClaimForm? _submittedClaimForm;
+  AvafliPrizeClaimForm? _submittedClaimForm;
 
   /// Confirmation payload from the backend.
   String _claimNumber = '';
@@ -251,7 +251,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   bool _showWinnerModal = false;
 
   /// The delete-my-data confirmation (2.9.5): presented over the drawer
-  /// AFTER the privacy webview pops on winr://delete (iOS/web parity).
+  /// AFTER the privacy webview pops on avafli://delete (iOS/web parity).
   bool _showsOptOutFlow = false;
   bool _drawerAppeared = false;
   bool _isDismissing = false;
@@ -261,7 +261,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   // -------------------------------------------------------------------------
 
   Color get _accent =>
-      WINRV2Accent(widget.sdkConfig?.branding?.primaryColor).color;
+      AvafliV2Accent(widget.sdkConfig?.branding?.primaryColor).color;
 
   String? get _logoUrl => widget.sdkConfig?.branding?.logoUrl;
 
@@ -290,13 +290,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     });
     // Decode the confetti-burst GIF NOW so mounting it at the reveal beat
     // (dashboard mount) plays instantly from frame 0.
-    WINRV2GifAsset.prewarm(WINRV2Assets.confettiBurst);
+    AvafliV2GifAsset.prewarm(AvafliV2Assets.confettiBurst);
     // Same idea for the publisher's remote prize art: normally already warm
     // (the SDK warms it at registration/refresh), but a drawer opened before
     // that landed gets one more chance to have it decoded before the prize
     // card paints.
-    WINRV2ImageWarmer.prewarm(_giveaway?.prizeImageUrl);
-    WINRV2ImageWarmer.prewarm(widget.sdkConfig?.branding?.logoUrl);
+    AvafliV2ImageWarmer.prewarm(_giveaway?.prizeImageUrl);
+    AvafliV2ImageWarmer.prewarm(widget.sdkConfig?.branding?.logoUrl);
     // Paint the dashboard from cache on the first frames — before any network
     // call resolves — then let [_load] reconcile silently.
     unawaited(_hydrateFromCache());
@@ -418,7 +418,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   }
 
   // -------------------------------------------------------------------------
-  // State machine (port of WINRExperienceViewModel)
+  // State machine (port of AvafliExperienceViewModel)
   // -------------------------------------------------------------------------
 
   /// Whether the registration handshake produced a user_uid.
@@ -449,7 +449,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
       // RTD: an opted-out person never sees the experience content.
       if (response.optedOut == true) {
-        WINR.markOptedOut();
+        Avafli.markOptedOut();
         _setPhase(_V2Phase.noActiveGiveaway);
         return;
       }
@@ -475,7 +475,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _giveaway = response.giveaway;
         await storage.cacheGiveaway(response.giveaway!);
         // Keep the prize art warm across prize changes mid-session.
-        WINRV2ImageWarmer.prewarm(response.giveaway!.prizeImageUrl);
+        AvafliV2ImageWarmer.prewarm(response.giveaway!.prizeImageUrl);
       }
       backendClaimedToday = response.claimedToday;
       backendStreakDay = response.streakDay;
@@ -502,14 +502,14 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // Session expired: the network client already tried the refresh-token
       // path and it failed — a dedicated retryable state, because every
       // subsequent call (claim included) would bounce the same way.
-      if (e is WINRException && e.error == WINRError.authenticationFailed) {
+      if (e is AvafliException && e.error == AvafliError.authenticationFailed) {
         Logger.instance.error('Session expired during load', e);
         _setPhase(_V2Phase.sessionExpired);
         return;
       }
       // Geo-blocked: the person needs to know WHY (US-only), not a generic
       // "check back soon".
-      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+      if (e is AvafliException && e.error == AvafliError.geographyNotAllowed) {
         Logger.instance.info('Load blocked by geography');
         _setPhase(_V2Phase.geoBlocked);
         return;
@@ -589,7 +589,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         backendStreakDay != null &&
         backendStreakDay >= 1 &&
         _backendTotalEntries != null) {
-      final predicted = WINRV2Ladder.entries(
+      final predicted = AvafliV2Ladder.entries(
         day: backendStreakDay,
         ladder: _displayLadder,
         milestones: _giveaway?.milestones,
@@ -672,7 +672,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     final result = widget.streakEngine.nextState(stored, today);
     if (!mounted) return;
     if (result.isError) {
-      if (result.error == WINRError.ineligibleToday && stored != null) {
+      if (result.error == AvafliError.ineligibleToday && stored != null) {
         final dayIndex = (stored.currentDay - 1).clamp(0, ladder.length - 1);
         setState(() {
           _streakState = stored;
@@ -769,16 +769,16 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       _unverified = response.emailVerified == false;
 
       // The backend now holds a confirmed email + consent for this user, but
-      // WINR's cached copy of that flag is only ever refreshed by
+      // Avafli's cached copy of that flag is only ever refreshed by
       // getActiveGiveaway. Mark it here too so nothing downstream (notably
       // the unregistered auto-open impression cap) keeps treating a
       // just-registered user as unregistered until the next refresh lands.
-      WINR.markEmailConsentGranted();
+      Avafli.markEmailConsentGranted();
       Logger.instance.debug('Email submitted to backend');
     } catch (e) {
       Logger.instance.error('Email submit to backend failed', e);
       if (!mounted) return;
-      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+      if (e is AvafliException && e.error == AvafliError.geographyNotAllowed) {
         setState(() {
           _isSubmittingEmail = false;
           _phase = _V2Phase.geoBlocked;
@@ -790,7 +790,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // raw text.
       setState(() {
         _isSubmittingEmail = false;
-        _emailSubmitError = WINRV2Strings.emailSubmitFailed;
+        _emailSubmitError = AvafliV2Strings.emailSubmitFailed;
       });
       return;
     } finally {
@@ -838,8 +838,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       _preClaimTotalEntries = response.totalEntries - grant.total;
       _claimRevealed = false;
 
-      WINR.syncClaimedToday(true);
-      await WINR.persistClaimedToday(widget.preferencesStorage);
+      Avafli.syncClaimedToday(true);
+      await Avafli.persistClaimedToday(widget.preferencesStorage);
 
       widget.configuration.options.analyticsAdapter?.track(
         'winr_daily_entry_claimed',
@@ -892,8 +892,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         weeklyCurrent: response.weeklyCurrent,
       );
       await widget.preferencesStorage.saveStreakState(updatedStreak);
-      WINR.syncClaimedToday(true);
-      await WINR.persistClaimedToday(widget.preferencesStorage);
+      Avafli.syncClaimedToday(true);
+      await Avafli.persistClaimedToday(widget.preferencesStorage);
 
       widget.configuration.options.analyticsAdapter?.track(
         'winr_daily_entry_claimed',
@@ -944,20 +944,20 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
       // Session expired mid-claim (refresh already failed inside the network
       // client) — the dedicated retryable state, same as during load.
-      if (e is WINRException && e.error == WINRError.authenticationFailed) {
+      if (e is AvafliException && e.error == AvafliError.authenticationFailed) {
         Logger.instance.error('Session expired during claim', e);
         _setPhase(_V2Phase.sessionExpired);
         return;
       }
       // Geo-blocked mid-claim — dedicated US-only messaging.
-      if (e is WINRException && e.error == WINRError.geographyNotAllowed) {
+      if (e is AvafliException && e.error == AvafliError.geographyNotAllowed) {
         Logger.instance.info('Claim blocked by geography');
         _setPhase(_V2Phase.geoBlocked);
         return;
       }
 
       final isAlreadyClaimed =
-          (e is WINRException && e.error == WINRError.ineligibleToday) ||
+          (e is AvafliException && e.error == AvafliError.ineligibleToday) ||
               e.toString().contains('Already claimed');
 
       // "Already claimed" means the user already got their entries today —
@@ -971,8 +971,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         Logger.instance.info('Already claimed today — updating local state');
         final updatedStreak = streak.copyWith(lastClaimedDate: DateTime.now());
         await widget.preferencesStorage.saveStreakState(updatedStreak);
-        WINR.syncClaimedToday(true);
-        await WINR.persistClaimedToday(widget.preferencesStorage);
+        Avafli.syncClaimedToday(true);
+        await Avafli.persistClaimedToday(widget.preferencesStorage);
         if (!mounted) return;
         setState(() {
           // Roll back the predicted celebration NUMBERS — the prediction was
@@ -985,7 +985,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           _phase = _V2Phase.streak;
         });
         _showDashboardNotice(
-          WINRV2Strings.alreadyEnteredToday,
+          AvafliV2Strings.alreadyEnteredToday,
           autoClear: _noticeAutoClear,
         );
         // One-shot: never loop if status + claim keep disagreeing.
@@ -1013,7 +1013,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _phase = _V2Phase.streak;
       });
       _showDashboardNotice(
-        WINRV2Strings.entryNotRecorded,
+        AvafliV2Strings.entryNotRecorded,
         onRetry: _retryDailyClaim,
       );
     }
@@ -1025,7 +1025,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
 
   /// Prefill for the claim form (host-app-provided identity) — mirrors iOS
   /// `claimFormPrefill`.
-  WINRPrizeClaimForm get _claimFormPrefill => WINRPrizeClaimForm(
+  AvafliPrizeClaimForm get _claimFormPrefill => AvafliPrizeClaimForm(
         firstName: widget.configuration.user.firstName,
         lastName: widget.configuration.user.lastName,
         phone: widget.configuration.user.phone ?? '',
@@ -1042,8 +1042,8 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         _backendStreakDay = response.streakDay;
         _backendTotalEntries = response.totalEntries;
         _claimedToday = true;
-        WINR.syncClaimedToday(true);
-        await WINR.persistClaimedToday(widget.preferencesStorage);
+        Avafli.syncClaimedToday(true);
+        await Avafli.persistClaimedToday(widget.preferencesStorage);
         Logger.instance.debug(
             'Silent daily claim during winner flow: +${response.entries}');
       } catch (e) {
@@ -1094,7 +1094,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// the claim is banked first, so closing share loses nothing). A backend
   /// "Not the winner"/"Already submitted" rejection falls back to the normal
   /// dashboard silently (logged); transport failures surface inline.
-  Future<void> _submitPrizeClaim(WINRPrizeClaimForm form) async {
+  Future<void> _submitPrizeClaim(AvafliPrizeClaimForm form) async {
     final claim = _prizeClaim;
     if (_phase != _V2Phase.winnerClaim || claim == null || _isSubmittingClaim) {
       return;
@@ -1141,7 +1141,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     } catch (e) {
       _isSubmittingClaim = false;
       final message =
-          e is WINRException ? (e.serverMessage ?? e.toString()) : '$e';
+          e is AvafliException ? (e.serverMessage ?? e.toString()) : '$e';
       if (message.contains('Not the winner') ||
           message.contains('Already submitted')) {
         // Stale/duplicate winner state — never trap the user in the claim
@@ -1177,7 +1177,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   Future<void> _retrySessionExpired() async {
     _setPhase(_V2Phase.loading);
     try {
-      await WINR.recoverExpiredSession();
+      await Avafli.recoverExpiredSession();
     } catch (e) {
       Logger.instance.error('Session recovery failed', e);
     }
@@ -1204,7 +1204,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     });
   }
 
-  /// winr://delete landed and the webview has popped — raise the
+  /// avafli://delete landed and the webview has popped — raise the
   /// destructive confirmation over whatever SDK screen is behind it.
   void _presentOptOutFlow() {
     if (!mounted || _showsOptOutFlow) return;
@@ -1218,7 +1218,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     _isDismissing = true;
     // Distinguishes a user-tapped close from the route being destroyed by
     // host navigation (which must NOT consume the once-a-day auto-open).
-    WINR.noteUserDismissedExperience();
+    Avafli.noteUserDismissedExperience();
     setState(() => _drawerAppeared = false);
     // Must outlast the 450ms AnimatedSlide below — the route has no exit
     // transition of its own, so popping early freezes the sheet mid-slide.
@@ -1239,13 +1239,13 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     // with filled/rounded inputs (Skape does this) painted a second white pill
     // inside our code-entry box. The SDK styles all of its inputs explicitly,
     // so reset input theming to the framework default at the experience root.
-    // WINRV2ExperienceScope: the in-app legal webview (winr_v2_legal.dart)
+    // AvafliV2ExperienceScope: the in-app legal webview (avafli_v2_legal.dart)
     // is pushed as a route OUTSIDE this subtree, so its openers capture the
     // delete-confirmation presenter from the tapped link's context here.
-    // 2.9.5 (iOS/web parity): on winr://delete the webview pops FIRST, then
-    // this presents WINRV2OptOutFlow over the drawer — cancel returns the
+    // 2.9.5 (iOS/web parity): on avafli://delete the webview pops FIRST, then
+    // this presents AvafliV2OptOutFlow over the drawer — cancel returns the
     // user to the SDK screen they came from, not the privacy page.
-    return WINRV2ExperienceScope(
+    return AvafliV2ExperienceScope(
       presentDeleteConfirmation: _presentOptOutFlow,
       child: Theme(
         data: Theme.of(context).copyWith(
@@ -1282,28 +1282,28 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(30)),
                         child: ColoredBox(
-                          color: WINRV2Colors.gunmetal,
+                          color: AvafliV2Colors.gunmetal,
                           child: _drawerContent(),
                         ),
                       ),
                     ),
                   ),
                   if (_showWinnerModal && latestWinner != null)
-                    WINRV2WinnerModal(
+                    AvafliV2WinnerModal(
                       accent: _accent,
                       winner: latestWinner,
                       onDismiss: () => setState(() => _showWinnerModal = false),
                     ),
                   // The delete-my-data confirmation (2.9.5): presents over
                   // the whole drawer once the privacy webview has closed.
-                  // WINR.optOut throws on failure, so the confirmation can
+                  // Avafli.optOut throws on failure, so the confirmation can
                   // show an honest error instead of pretending success; on
                   // success it holds the deleted copy, then the entire
                   // experience dismisses.
                   if (_showsOptOutFlow)
                     Positioned.fill(
-                      child: WINRV2OptOutFlow(
-                        optOutAction: WINR.optOut,
+                      child: AvafliV2OptOutFlow(
+                        optOutAction: Avafli.optOut,
                         onCancel: () =>
                             setState(() => _showsOptOutFlow = false),
                         onDeleted: () {
@@ -1345,11 +1345,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // The email flow is only now truly complete — persist the non-PII
       // "email submitted" flag here, not at submit time (see _submitEmail).
       await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
-      WINR.markEmailConsentGranted();
+      Avafli.markEmailConsentGranted();
       // The pending adoption (if this code screen was a 2.9 re-stage) is now
       // resolved — clear every cached copy so future opens don't re-stage.
       _backendAdoptionPending = false;
-      WINR.clearAdoptionPending();
+      Avafli.clearAdoptionPending();
       if (mounted) {
         setState(() {
           _pendingVerificationEmail = null;
@@ -1377,11 +1377,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   /// expired / too-many-attempts / incorrect — mirrors the web SDK exactly.
   String _codeErrorFor(Object e) {
     final message =
-        e is WINRException ? (e.serverMessage ?? e.toString()) : e.toString();
+        e is AvafliException ? (e.serverMessage ?? e.toString()) : e.toString();
     final lower = message.toLowerCase();
-    if (lower.contains('expired')) return WINRV2Strings.codeExpired;
-    if (lower.contains('attempts')) return WINRV2Strings.codeTooManyAttempts;
-    return WINRV2Strings.codeIncorrect;
+    if (lower.contains('expired')) return AvafliV2Strings.codeExpired;
+    if (lower.contains('attempts')) return AvafliV2Strings.codeTooManyAttempts;
+    return AvafliV2Strings.codeIncorrect;
   }
 
   /// Adoption re-entry (2.9): re-stages an INTERRUPTED verification-gated
@@ -1409,7 +1409,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // Backend reports nothing pending after all — clear the stale flag and
       // take the normal capture path.
       _backendAdoptionPending = false;
-      WINR.clearAdoptionPending();
+      Avafli.clearAdoptionPending();
       _setPhase(_V2Phase.emailCapture);
     } catch (e) {
       Logger.instance
@@ -1444,7 +1444,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         if (mounted) {
           setState(() {
             _isSubmittingEmail = false;
-            _codeError = WINRV2Strings.codeResendFailed;
+            _codeError = AvafliV2Strings.codeResendFailed;
           });
         }
       }
@@ -1483,7 +1483,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         widget.networkClient.setAuthToken(response.token!);
       }
       await widget.preferencesStorage.setBool(StorageKeys.emailConfirmed, true);
-      WINR.markEmailConsentGranted();
+      Avafli.markEmailConsentGranted();
       if (mounted) {
         setState(() {
           _pendingVerificationEmail = null;
@@ -1498,7 +1498,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         // Stay on the code screen; surface the failure in the code-error slot.
         setState(() {
           _isSubmittingEmail = false;
-          _codeError = WINRV2Strings.codeResendFailed;
+          _codeError = AvafliV2Strings.codeResendFailed;
         });
       }
     }
@@ -1552,7 +1552,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           _phase = _V2Phase.streak;
         });
         _showDashboardNotice(
-          WINRV2Strings.emailVerifiedNotice,
+          AvafliV2Strings.emailVerifiedNotice,
           autoClear: _noticeAutoClear,
         );
         return;
@@ -1560,7 +1560,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       // A non-throwing, unverified response (defensive) — treat as a mismatch.
       setState(() {
         _isVerifyingEmail = false;
-        _emailVerifyError = WINRV2Strings.codeIncorrect;
+        _emailVerifyError = AvafliV2Strings.codeIncorrect;
       });
     } catch (e) {
       Logger.instance.error('Email verification code check failed', e);
@@ -1585,34 +1585,36 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
     } catch (e) {
       Logger.instance.error('Resend email verification code failed', e);
       if (!mounted) return;
-      setState(() => _emailVerifyError = WINRV2Strings.codeResendFailed);
+      setState(() => _emailVerifyError = AvafliV2Strings.codeResendFailed);
     }
   }
 
   Widget _drawerContent() {
     switch (_phase) {
       case _V2Phase.loading:
-        return const WINRV2LoadingView();
+        return const AvafliV2LoadingView();
 
       case _V2Phase.noActiveGiveaway:
       case _V2Phase.error:
         // Nothing to pitch (or opted out / errored) — quiet empty state.
-        // Raw backend text (WINRException.serverMessage / displayMessage)
+        // Raw backend text (AvafliException.serverMessage / displayMessage)
         // is never rendered; unknown errors always land here.
-        return WINRV2EmptyStateView(accent: _accent, onClose: _requestDismiss);
+        return AvafliV2EmptyStateView(
+            accent: _accent, onClose: _requestDismiss);
 
       case _V2Phase.geoBlocked:
-        return WINRV2GeoBlockedView(accent: _accent, onClose: _requestDismiss);
+        return AvafliV2GeoBlockedView(
+            accent: _accent, onClose: _requestDismiss);
 
       case _V2Phase.sessionExpired:
-        return WINRV2SessionExpiredView(
+        return AvafliV2SessionExpiredView(
           accent: _accent,
           onRetry: () => unawaited(_retrySessionExpired()),
           onClose: _requestDismiss,
         );
 
       case _V2Phase.codeEntry:
-        return WINRV2CodeEntryView(
+        return AvafliV2CodeEntryView(
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
@@ -1622,7 +1624,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           // Re-staged adoption (2.9): no locally-held email to interpolate —
           // the "pick up where you left off" copy replaces the default.
           subtitle: _isRestagedAdoption
-              ? WINRV2Strings.adoptionRestagedSubtitle
+              ? AvafliV2Strings.adoptionRestagedSubtitle
               : null,
           onSubmit: (code) => unawaited(_submitVerificationCode(code)),
           onResend: () => unawaited(_resendVerificationCode()),
@@ -1633,15 +1635,15 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       case _V2Phase.emailVerify:
         // Reuses the SAME 6-digit code widget as adoption — only the copy, the
         // callables, and the (dismissible) back arrow differ.
-        return WINRV2CodeEntryView(
+        return AvafliV2CodeEntryView(
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
           email: '',
           isVerifying: _isVerifyingEmail,
           errorText: _emailVerifyError,
-          title: WINRV2Strings.emailVerifyTitle,
-          subtitle: WINRV2Strings.emailVerifySubtitle,
+          title: AvafliV2Strings.emailVerifyTitle,
+          subtitle: AvafliV2Strings.emailVerifySubtitle,
           showsBack: true,
           onBack: _cancelEmailVerify,
           onSubmit: (code) => unawaited(_confirmEmailVerification(code)),
@@ -1651,7 +1653,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         );
 
       case _V2Phase.emailCapture:
-        return WINRV2CaptureView(
+        return AvafliV2CaptureView(
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
@@ -1676,7 +1678,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
       case _V2Phase.streak:
         // Staged "before" frame: while the reveal hasn't played, show
         // yesterday's numbers (on a celebration open this frame lasts one
-        // imperceptible beat — winrV2MountRevealDelay). Without the
+        // imperceptible beat — avafliV2MountRevealDelay). Without the
         // claimedToday clause there's a flash of the raw post-claim server
         // state during the network round-trip, and elements flip at
         // different times.
@@ -1684,12 +1686,12 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
             !_claimRevealed && (_pendingRevealGrant != null || !_claimedToday);
         // A staged celebration counts up to the PREDICTED post-claim total —
         // the real claim response reconciles this silently (normally a
-        // no-op, since WINRV2Ladder mirrors the backend's math).
+        // no-op, since AvafliV2Ladder mirrors the backend's math).
         final grant = _pendingRevealGrant;
         final postClaimTotal = (grant != null && _preClaimTotalEntries != null)
             ? _preClaimTotalEntries! + grant.total
             : _streakState?.totalEntriesEarned ?? _backendTotalEntries ?? 0;
-        return WINRV2DashboardView(
+        return AvafliV2DashboardView(
           accent: _accent,
           logoUrl: _logoUrl,
           rulesUrl: _rulesUrl,
@@ -1716,7 +1718,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
         return _winnerClaimContent();
 
       case _V2Phase.howItWorks:
-        return WINRV2HowItWorksView(
+        return AvafliV2HowItWorksView(
           accent: _accent,
           logoUrl: _logoUrl,
           day1Entries: _displayLadder.isNotEmpty ? _displayLadder.first : 10,
@@ -1728,19 +1730,19 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
   }
 
   /// Winner splash → claim form → confirmation, cross-faded between steps
-  /// (mirrors iOS's easeInOut step animation on `WINRV2WinnerClaimFlow`).
+  /// (mirrors iOS's easeInOut step animation on `AvafliV2WinnerClaimFlow`).
   Widget _winnerClaimContent() {
     final claim = _prizeClaim;
-    if (claim == null) return const WINRV2LoadingView();
+    if (claim == null) return const AvafliV2LoadingView();
 
     final Widget step;
     switch (_winnerClaimStep) {
       case _WinnerClaimStep.splash:
-        step = WINRV2WinnerSplashView(
+        step = AvafliV2WinnerSplashView(
           key: const ValueKey('winner-splash'),
           accent: _accent,
           logoUrl: _logoUrl,
-          prizeHeadline: winrV2StripHeadline(
+          prizeHeadline: avafliV2StripHeadline(
             claim.prizeDescription,
             claim.prizeValue.toInt(),
           ),
@@ -1748,7 +1750,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onClose: _requestDismiss,
         );
       case _WinnerClaimStep.form:
-        step = WINRV2ClaimStepsFlow(
+        step = AvafliV2ClaimStepsFlow(
           key: const ValueKey('winner-form'),
           accent: _accent,
           logoUrl: _logoUrl,
@@ -1766,11 +1768,11 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onClose: _requestDismiss,
         );
       case _WinnerClaimStep.share:
-        step = WINRV2ClaimShareView(
+        step = AvafliV2ClaimShareView(
           key: const ValueKey('winner-share'),
           accent: _accent,
           logoUrl: _logoUrl,
-          prizeHeadline: winrV2StripHeadline(
+          prizeHeadline: avafliV2StripHeadline(
             claim.prizeDescription,
             claim.prizeValue.toInt(),
           ),
@@ -1783,7 +1785,7 @@ class _WINRV2ExperienceState extends State<WINRV2Experience> {
           onClose: _requestDismiss,
         );
       case _WinnerClaimStep.confirmation:
-        step = WINRV2ClaimConfirmationView(
+        step = AvafliV2ClaimConfirmationView(
           key: const ValueKey('winner-confirmation'),
           accent: _accent,
           logoUrl: _logoUrl,

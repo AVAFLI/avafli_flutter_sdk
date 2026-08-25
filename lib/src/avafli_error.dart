@@ -1,13 +1,13 @@
-/// Represents errors that can occur within the WINR SDK.
+/// Represents errors that can occur within the Avafli SDK.
 ///
 /// Each error type provides specific information about what went wrong
 /// and can be used to implement appropriate error handling and user feedback.
-enum WINRError {
-  /// SDK has not been configured with [WINR.configure]
-  notConfigured('SDK not configured. Call WINR.configure() first.'),
+enum AvafliError {
+  /// SDK has not been configured with [Avafli.configure]
+  notConfigured('SDK not configured. Call Avafli.configure() first.'),
 
   /// No user has been set in configuration
-  noUser('No user set. Pass WINRUser in WINRConfiguration.'),
+  noUser('No user set. Pass AvafliUser in AvafliConfiguration.'),
 
   /// User already claimed their entries today
   ineligibleToday('Already claimed entries today. Try again tomorrow.'),
@@ -41,14 +41,14 @@ enum WINRError {
   /// Internal server error occurred
   serverError('Server error occurred. Please try again later.'),
 
-  /// The WINR experience is no longer available for this publisher — the
+  /// The Avafli experience is no longer available for this publisher — the
   /// publisher account has been suspended or its API key revoked (typically
   /// due to a billing lapse). Surfaced from a failed device registration.
-  serviceUnavailable('The WINR experience is no longer available.'),
+  serviceUnavailable('The Avafli experience is no longer available.'),
 
   /// The user opted out (RTD — Right To Delete). The experience is
   /// permanently silenced on this device: it is never auto-presented again.
-  optedOut('User has opted out of the WINR experience.'),
+  optedOut('User has opted out of the Avafli experience.'),
 
   /// Unknown or unexpected error
   unknown('An unexpected error occurred.'),
@@ -59,23 +59,23 @@ enum WINRError {
   /// No presenting view controller available
   noPresentingViewController('No presenting view controller available.');
 
-  const WINRError(this.message);
+  const AvafliError(this.message);
 
   /// Human-readable error message
   final String message;
 
   @override
-  String toString() => 'WINRError.$name: $message';
+  String toString() => 'AvafliError.$name: $message';
 }
 
-/// Exception wrapper for [WINRError] that can be thrown and caught.
+/// Exception wrapper for [AvafliError] that can be thrown and caught.
 ///
-/// Use this when you need to throw a WINR-specific error that can
+/// Use this when you need to throw a Avafli-specific error that can
 /// be caught with a try-catch block.
-class WINRException implements Exception {
-  const WINRException(this.error, [this.serverMessage]);
+class AvafliException implements Exception {
+  const AvafliException(this.error, [this.serverMessage]);
 
-  final WINRError error;
+  final AvafliError error;
 
   /// The backend's actual error message, when one was returned. Lets the SDK
   /// surface what really went wrong instead of a generic enum description —
@@ -89,5 +89,5 @@ class WINRException implements Exception {
   @override
   String toString() => serverMessage == null
       ? error.toString()
-      : 'WINRError.${error.name}: $serverMessage';
+      : 'AvafliError.${error.name}: $serverMessage';
 }

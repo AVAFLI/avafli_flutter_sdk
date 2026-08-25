@@ -11,19 +11,19 @@
 // These tests pin the two invariants that make a collision impossible:
 //   1. the stacked display lines' painted boxes never overlap (this is what
 //      the negative translate broke — `getRect` includes paint transforms), and
-//   2. the display lines carry real leading (>= winrV2HeadlineLineHeight), so
+//   2. the display lines carry real leading (>= avafliV2HeadlineLineHeight), so
 //      glyphs stay inside their own line box at any FittedBox scale.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_theme.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_theme.dart';
 
 /// Loads the real bundled Inter faces so text measures like production (the
 /// test-default font has different metrics and would mask a leading bug).
 Future<void> _loadRealFonts() async {
-  final inter = FontLoader('packages/winr_flutter_sdk/Inter');
+  final inter = FontLoader('packages/avafli_sdk/Inter');
   for (final file in [
     'inter-v20-latin-regular.ttf',
     'inter-v20-latin-700.ttf',
@@ -44,14 +44,14 @@ Widget _card({
   return MaterialApp(
     debugShowCheckedModeBanner: false,
     home: Material(
-      color: WINRV2Colors.gunmetal,
+      color: AvafliV2Colors.gunmetal,
       child: Center(
         child: SizedBox(
           width: width,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: WINRV2PrizeCard(
-              accent: WINRV2Accent(null).color,
+            child: AvafliV2PrizeCard(
+              accent: AvafliV2Accent(null).color,
               streakDay: 3,
               totalEntries: 100,
               prizeImageUrl: null,
@@ -82,7 +82,7 @@ void main() {
           await tester.pumpWidget(_card(width: width, prizeValue: prizeValue));
           await tester.pump(const Duration(seconds: 1));
 
-          final headline = find.text('WIN \$${winrV2FormatInt(prizeValue)}');
+          final headline = find.text('WIN \$${avafliV2FormatInt(prizeValue)}');
           final subline = find.text('CASH PRIZE');
           expect(headline, findsOneWidget);
           expect(subline, findsOneWidget);
@@ -104,12 +104,12 @@ void main() {
           // the "$" tail) stay inside their own line box rather than spilling
           // into the neighbouring line.
           expect(_lineHeightOf(tester, headline),
-              greaterThanOrEqualTo(winrV2HeadlineLineHeight));
+              greaterThanOrEqualTo(avafliV2HeadlineLineHeight));
           expect(_lineHeightOf(tester, subline),
-              greaterThanOrEqualTo(winrV2HeadlineLineHeight));
+              greaterThanOrEqualTo(avafliV2HeadlineLineHeight));
 
           // And the whole lockup stays inside the 200pt card.
-          final cardRect = tester.getRect(find.byType(WINRV2PrizeCard));
+          final cardRect = tester.getRect(find.byType(AvafliV2PrizeCard));
           expect(sublineRect.bottom, lessThanOrEqualTo(cardRect.bottom + 0.5));
         });
       }
@@ -148,12 +148,12 @@ void main() {
       // This one WRAPS to two lines inside a single Text, so its leading is
       // what keeps line 1's descenders off line 2's caps.
       expect(_lineHeightOf(tester, headline),
-          greaterThanOrEqualTo(winrV2HeadlineLineHeight));
+          greaterThanOrEqualTo(avafliV2HeadlineLineHeight));
 
       // The description already states the amount, so no value line.
       expect(find.text('\$500.00 VALUE!'), findsNothing);
 
-      final cardRect = tester.getRect(find.byType(WINRV2PrizeCard));
+      final cardRect = tester.getRect(find.byType(AvafliV2PrizeCard));
       expect(tester.getRect(headline).bottom,
           lessThanOrEqualTo(cardRect.bottom + 0.5));
     });

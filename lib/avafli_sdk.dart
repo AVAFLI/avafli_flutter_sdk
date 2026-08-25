@@ -1,4 +1,4 @@
-/// WINR Flutter SDK
+/// Avafli Flutter SDK
 ///
 /// A sweepstakes and engagement SDK for Flutter applications.
 ///
@@ -11,14 +11,14 @@
 ///
 /// Example usage:
 /// ```dart
-/// import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';
+/// import 'package:avafli_sdk/avafli_sdk.dart';
 ///
 /// // Configure the SDK with user (call once at app launch)
-/// await WINR.configure(WINRConfiguration(
+/// await Avafli.configure(AvafliConfiguration(
 ///   apiKey: 'winr_live_xxxxxxxxxx',
-///   environment: WINREnvironment.production,
+///   environment: AvafliEnvironment.production,
 ///   bundleId: 'com.example.myapp',
-///   user: WINRUser(
+///   user: AvafliUser(
 ///     id: 'user123',
 ///     firstName: 'Jane',
 ///     lastName: 'Doe',
@@ -28,18 +28,18 @@
 /// // Attach the SDK navigator key so the experience can auto-open on the
 /// // first app-open of the day (the experience presents itself; there is
 /// // no manual launch API):
-/// MaterialApp(navigatorKey: WINR.navigatorKey, ...);
+/// MaterialApp(navigatorKey: Avafli.navigatorKey, ...);
 /// ```
-library winr_flutter_sdk;
+library avafli_sdk;
 
 // Core SDK
-export 'src/winr.dart';
-export 'src/winr_options.dart';
-export 'src/winr_configuration.dart';
-export 'src/winr_environment.dart';
-export 'src/winr_error.dart';
-export 'src/winr_user.dart';
-export 'src/winr_branding.dart';
+export 'src/avafli.dart';
+export 'src/avafli_options.dart';
+export 'src/avafli_configuration.dart';
+export 'src/avafli_environment.dart';
+export 'src/avafli_error.dart';
+export 'src/avafli_user.dart';
+export 'src/avafli_branding.dart';
 
 // Domain Models
 export 'src/domain/giveaway.dart';

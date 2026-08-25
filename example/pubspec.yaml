@@ -1,5 +1,5 @@
-name: winr_example
-description: Example app demonstrating WINR Flutter SDK integration
+name: avafli_example
+description: Example app demonstrating Avafli Flutter SDK integration
 version: 1.0.0+1
 publish_to: "none"
 
@@ -11,8 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # WINR Flutter SDK - using local path for development
-  winr_flutter_sdk:
+  # Avafli Flutter SDK - using local path for development
+  avafli_sdk:
     path: ../
 
   # UI and styling
@@ -30,13 +30,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/winrmedia-logo-dark.png
-
   # Example fonts (if needed)
   # fonts:
-  #   - family: WINRFont
+  #   - family: AvafliFont
   #     fonts:
-  #       - asset: fonts/WINRFont-Regular.ttf
-  #       - asset: fonts/WINRFont-Bold.ttf
+  #       - asset: fonts/AvafliFont-Regular.ttf
+  #       - asset: fonts/AvafliFont-Bold.ttf
   #         weight: 700

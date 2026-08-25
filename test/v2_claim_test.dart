@@ -3,11 +3,11 @@
 // decode contract (mirrors functions/src/types.ts and the iOS suite exactly).
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:winr_flutter_sdk/src/network/winr_api.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_claim.dart';
-import 'package:winr_flutter_sdk/src/ui/v2/winr_v2_components.dart';
+import 'package:avafli_sdk/src/network/avafli_api.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_claim.dart';
+import 'package:avafli_sdk/src/ui/v2/avafli_v2_components.dart';
 
-WINRPrizeClaimForm _validForm() => WINRPrizeClaimForm(
+AvafliPrizeClaimForm _validForm() => AvafliPrizeClaimForm(
       firstName: 'Catherine',
       lastName: 'Cinosta',
       street: '5 Haide Pl.',
@@ -38,7 +38,7 @@ void main() {
       // 14 Aug 2026 team decision: the review screen keeps ONLY the
       // likeness/promo checkbox, OPTIONAL — consent must be an affirmative
       // act, so it starts unchecked, and SUBMIT is enabled either way.
-      final fresh = WINRPrizeClaimForm();
+      final fresh = AvafliPrizeClaimForm();
       expect(fresh.promoConsentGranted, isFalse);
       expect((_validForm()..promoConsentGranted = false).isValid, isTrue);
       expect((_validForm()..promoConsentGranted = true).isValid, isTrue);
@@ -47,12 +47,12 @@ void main() {
     test('per-step validity', () {
       // Step 1: first + last name only.
       expect(
-        WINRPrizeClaimForm(firstName: 'Sam', lastName: 'W').isStep1Valid,
+        AvafliPrizeClaimForm(firstName: 'Sam', lastName: 'W').isStep1Valid,
         isTrue,
       );
-      expect(WINRPrizeClaimForm(firstName: 'Sam').isStep1Valid, isFalse);
+      expect(AvafliPrizeClaimForm(firstName: 'Sam').isStep1Valid, isFalse);
       expect(
-        WINRPrizeClaimForm(firstName: ' ', lastName: 'W').isStep1Valid,
+        AvafliPrizeClaimForm(firstName: ' ', lastName: 'W').isStep1Valid,
         isFalse,
       );
       // Step 2: full US shipping address (apartment optional).
@@ -73,12 +73,12 @@ void main() {
     });
 
     test('zip validation', () {
-      expect(WINRPrizeClaimForm.isValidZip('11737'), isTrue);
-      expect(WINRPrizeClaimForm.isValidZip(' 11737 '), isTrue); // trimmed
-      expect(WINRPrizeClaimForm.isValidZip('1173'), isFalse); // too short
-      expect(WINRPrizeClaimForm.isValidZip('117378'), isFalse); // too long
-      expect(WINRPrizeClaimForm.isValidZip('1173a'), isFalse); // non-digit
-      expect(WINRPrizeClaimForm.isValidZip(''), isFalse);
+      expect(AvafliPrizeClaimForm.isValidZip('11737'), isTrue);
+      expect(AvafliPrizeClaimForm.isValidZip(' 11737 '), isTrue); // trimmed
+      expect(AvafliPrizeClaimForm.isValidZip('1173'), isFalse); // too short
+      expect(AvafliPrizeClaimForm.isValidZip('117378'), isFalse); // too long
+      expect(AvafliPrizeClaimForm.isValidZip('1173a'), isFalse); // non-digit
+      expect(AvafliPrizeClaimForm.isValidZip(''), isFalse);
     });
 
     test('display name is first name plus last initial', () {
@@ -91,60 +91,62 @@ void main() {
 
     test('fifty states plus the District of Columbia', () {
       // The official rules promise "50 states and the District of Columbia".
-      expect(WINRPrizeClaimForm.usStates.length, 51);
-      expect(WINRPrizeClaimForm.usStates.toSet().length, 51);
-      expect(WINRPrizeClaimForm.usStates, contains('District of Columbia'));
+      expect(AvafliPrizeClaimForm.usStates.length, 51);
+      expect(AvafliPrizeClaimForm.usStates.toSet().length, 51);
+      expect(AvafliPrizeClaimForm.usStates, contains('District of Columbia'));
       // Alphabetical placement: between Delaware and Florida.
-      final sorted = [...WINRPrizeClaimForm.usStates]..sort();
-      expect(WINRPrizeClaimForm.usStates, sorted);
+      final sorted = [...AvafliPrizeClaimForm.usStates]..sort();
+      expect(AvafliPrizeClaimForm.usStates, sorted);
     });
   });
 
   group('prize text derivation', () {
     test('cash prize strip headline', () {
-      expect(winrV2StripHeadline('Cash Prize', 1000), r'$1,000.00 CASH PRIZE');
+      expect(
+          avafliV2StripHeadline('Cash Prize', 1000), r'$1,000.00 CASH PRIZE');
       // Empty description defaults to cash.
-      expect(winrV2StripHeadline('', 500), r'$500.00 CASH PRIZE');
+      expect(avafliV2StripHeadline('', 500), r'$500.00 CASH PRIZE');
     });
 
     test('non-cash strip headline uses article', () {
       expect(
-        winrV2StripHeadline('Apple Watch Ultra 3', 799),
+        avafliV2StripHeadline('Apple Watch Ultra 3', 799),
         'Win an Apple Watch Ultra 3',
       );
-      expect(winrV2StripHeadline('PlayStation 5', 500), 'Win a PlayStation 5');
+      expect(
+          avafliV2StripHeadline('PlayStation 5', 500), 'Win a PlayStation 5');
       // Leading non-letter ("$500 …" reads "a five-hundred…") takes "a".
       expect(
-        winrV2StripHeadline(r'$500 Amazon Gift Card', 500),
+        avafliV2StripHeadline(r'$500 Amazon Gift Card', 500),
         r'Win a $500 Amazon Gift Card',
       );
     });
 
     test('value line suppressed when description states amount', () {
-      expect(winrV2ShowsValueLine(r'$500 Amazon Gift Card', 500), isFalse);
-      expect(winrV2ShowsValueLine('Apple Watch Ultra 3', 799), isTrue);
-      expect(winrV2ShowsValueLine('Apple Watch', 0), isFalse);
+      expect(avafliV2ShowsValueLine(r'$500 Amazon Gift Card', 500), isFalse);
+      expect(avafliV2ShowsValueLine('Apple Watch Ultra 3', 799), isTrue);
+      expect(avafliV2ShowsValueLine('Apple Watch', 0), isFalse);
     });
   });
 
   group('award date display', () {
     test('month year display from ISO', () {
       expect(
-        WINRClaimDates.monthYearDisplay('2026-08-04T12:34:56Z'),
+        AvafliClaimDates.monthYearDisplay('2026-08-04T12:34:56Z'),
         'AUGUST, 2026',
       );
       expect(
-        WINRClaimDates.monthYearDisplay('2026-08-04T12:34:56.789Z'),
+        AvafliClaimDates.monthYearDisplay('2026-08-04T12:34:56.789Z'),
         'AUGUST, 2026',
       );
-      expect(WINRClaimDates.monthYearDisplay('2026-12-31'), 'DECEMBER, 2026');
+      expect(AvafliClaimDates.monthYearDisplay('2026-12-31'), 'DECEMBER, 2026');
     });
 
     test('month year display falls back to now', () {
       final now = DateTime(2026, 8, 4);
-      expect(WINRClaimDates.monthYearDisplay(null, now: now), 'AUGUST, 2026');
+      expect(AvafliClaimDates.monthYearDisplay(null, now: now), 'AUGUST, 2026');
       expect(
-        WINRClaimDates.monthYearDisplay('garbage', now: now),
+        AvafliClaimDates.monthYearDisplay('garbage', now: now),
         'AUGUST, 2026',
       );
     });
@@ -173,9 +175,9 @@ void main() {
         'giveawayId': 'gw_123',
         'prizeDescription': 'Cash Prize',
         'prizeValue': 1000,
-        'maskedEmail': 'd********r@winr.example.com',
+        'maskedEmail': 'd********r@avafli.example.com',
       });
-      expect(block.maskedEmail, 'd********r@winr.example.com');
+      expect(block.maskedEmail, 'd********r@avafli.example.com');
     });
 
     test('decodes submitted', () {
