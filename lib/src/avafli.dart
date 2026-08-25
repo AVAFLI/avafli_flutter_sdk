@@ -820,6 +820,10 @@ class Avafli {
   }
 
   /// Stable per-install guest identity, minted on first use.
+  ///
+  /// 3.0: NEW mints carry the `avafli_guest_` prefix; an id persisted by a
+  /// 2.x install (`winr_guest_…`) is returned verbatim — stored identities
+  /// are never rewritten. The storage key itself is deliberately unchanged.
   static Future<String> _loadOrCreateGuestId() async {
     const key = 'winr_guest_id';
     final existing = await _preferencesStorage?.getString(key);
@@ -828,7 +832,7 @@ class Avafli {
     final rng = Random.secure();
     final hex = List.generate(
         16, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-    final fresh = 'winr_guest_$hex';
+    final fresh = 'avafli_guest_$hex';
     await _preferencesStorage?.setString(key, fresh);
     return fresh;
   }

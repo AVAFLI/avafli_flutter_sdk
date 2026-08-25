@@ -11,7 +11,7 @@ abstract class AnalyticsAdapter {
   ///
   /// Example:
   /// ```dart
-  /// analytics.track('winr_daily_claim', {
+  /// analytics.track('avafli_daily_claim', {
   ///   'streak_day': 3,
   ///   'entries_granted': 60,
   ///   'bonus_entries': 0,
@@ -26,7 +26,7 @@ abstract class AnalyticsAdapter {
   ///
   /// Example:
   /// ```dart
-  /// analytics.setUserProperty('winr_user_tier', 'premium');
+  /// analytics.setUserProperty('avafli_user_tier', 'premium');
   /// ```
   void setUserProperty(String name, String value);
 
@@ -39,28 +39,28 @@ abstract class AnalyticsAdapter {
 /// Built-in analytics events tracked by the Avafli SDK.
 class AvafliAnalyticsEvents {
   // Configuration events
-  static const String sdkConfigured = 'winr_sdk_configured';
-  static const String userSet = 'winr_user_set';
+  static const String sdkConfigured = 'avafli_sdk_configured';
+  static const String userSet = 'avafli_user_set';
 
   // Experience events
-  static const String experiencePresented = 'winr_experience_presented';
-  static const String experienceDismissed = 'winr_experience_dismissed';
+  static const String experiencePresented = 'avafli_experience_presented';
+  static const String experienceDismissed = 'avafli_experience_dismissed';
 
   // Claim events
-  static const String dailyEntriesClaimed = 'winr_daily_entries_claimed';
-  static const String claimFailed = 'winr_claim_failed';
+  static const String dailyEntriesClaimed = 'avafli_daily_entries_claimed';
+  static const String claimFailed = 'avafli_claim_failed';
 
   // Email capture events
-  static const String emailCaptureStarted = 'winr_email_capture_started';
-  static const String emailCaptureCompleted = 'winr_email_capture_completed';
-  static const String emailCaptureFailed = 'winr_email_capture_failed';
+  static const String emailCaptureStarted = 'avafli_email_capture_started';
+  static const String emailCaptureCompleted = 'avafli_email_capture_completed';
+  static const String emailCaptureFailed = 'avafli_email_capture_failed';
 
   // Streak events
-  static const String streakBroken = 'winr_streak_broken';
+  static const String streakBroken = 'avafli_streak_broken';
 
   // Error events
-  static const String error = 'winr_error';
-  static const String networkError = 'winr_network_error';
+  static const String error = 'avafli_error';
+  static const String networkError = 'avafli_network_error';
 
   // Prevent instantiation
   AvafliAnalyticsEvents._();

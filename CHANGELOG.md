@@ -18,6 +18,8 @@ updates. No feature or behavior changes beyond the rename.
 | `WINRPushNotificationManager.instance` | `AvafliPushNotificationManager.instance` |
 | `WINRBranding` | `AvafliBranding` |
 | Internal `winr_*.dart` / `winr_v2_*.dart` files, `WINRV2*` classes | `avafli_*.dart` / `avafli_v2_*.dart`, `AvafliV2*` |
+| Analytics event names `winr_*` (`winr_sdk_configured`, `winr_daily_entry_claimed`, `winr_experience_presented`, …) | `avafli_*` (`avafli_sdk_configured`, `avafli_daily_entry_claimed`, `avafli_experience_presented`, …) — matching iOS/Android/web 3.0; update adapter filters and dashboards keyed on the old names |
+| Guest ids minted as `winr_guest_…` | NEW mints are `avafli_guest_…`; ids already stored on a device are returned verbatim — stored identities are never rewritten (and the storage key is unchanged) |
 
 `Avafli.sdkVersion` (and the request-metadata default) now report `3.0.0`.
 
@@ -35,9 +37,6 @@ updates. No feature or behavior changes beyond the rename.
   (`winr_flutter_sdk`), token/streak storage keys (`winr_*`), and the
   per-bundle SharedPreferences bookkeeping keys are unchanged — upgraded users
   keep their session, streak, and opt-out state.
-- **Analytics event names are unchanged** (`winr_sdk_configured`,
-  `winr_daily_entry_claimed`, …) so existing dashboards and adapter filters
-  keep matching.
 
 ### User-visible branding
 

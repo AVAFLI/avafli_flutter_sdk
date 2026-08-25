@@ -536,7 +536,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _phase = _V2Phase.winnerClaim;
       });
       widget.configuration.options.analyticsAdapter?.track(
-        'winr_winner_claim_shown',
+        'avafli_winner_claim_shown',
         {'giveaway_id': pendingPrizeClaim.giveawayId},
       );
       if (backendClaimedToday != true && hasConsent) {
@@ -842,7 +842,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       await Avafli.persistClaimedToday(widget.preferencesStorage);
 
       widget.configuration.options.analyticsAdapter?.track(
-        'winr_daily_entry_claimed',
+        'avafli_daily_entry_claimed',
         {'day': response.streakDay, 'entries': response.entries},
       );
     } catch (e) {
@@ -896,7 +896,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       await Avafli.persistClaimedToday(widget.preferencesStorage);
 
       widget.configuration.options.analyticsAdapter?.track(
-        'winr_daily_entry_claimed',
+        'avafli_daily_entry_claimed',
         {
           'day': response.streakDay,
           'entries': response.entries,
@@ -1132,7 +1132,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _winnerClaimStep = _WinnerClaimStep.share;
       });
       widget.configuration.options.analyticsAdapter?.track(
-        'winr_prize_claim_submitted',
+        'avafli_prize_claim_submitted',
         {
           'giveaway_id': claim.giveawayId,
           'claim_number': response.claimNumber,
@@ -1544,7 +1544,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       if (response.verified) {
         Logger.instance.info('Email verified');
         widget.configuration.options.analyticsAdapter
-            ?.track('winr_email_verified', const {});
+            ?.track('avafli_email_verified', const {});
         setState(() {
           _unverified = false;
           _isVerifyingEmail = false;

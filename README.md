@@ -4,8 +4,8 @@
 > **Formerly `winr_flutter_sdk`.** Version 3.0.0 renames the package and its
 > public API from WINR to Avafli — see [Migrating from
 > winr_flutter_sdk](#migrating-from-winr_flutter_sdk). Existing API keys
-> (`winr_live_…` / `winr_test_…`), analytics event names, and on-device user
-> state all keep working unchanged.
+> (`winr_live_…` / `winr_test_…`) and on-device user state keep working
+> unchanged; analytics event names now carry the `avafli_` prefix.
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.10%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.0%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
@@ -105,7 +105,7 @@ await Avafli.configure(AvafliConfiguration(
 ));
 ```
 
-The SDK mints a stable per-install guest id (`winr_guest_…`) for attribution —
+The SDK mints a stable per-install guest id (`avafli_guest_…`) for attribution —
 never fabricate placeholder ids yourself. The experience is fully functional
 for guests. When the user signs in, call `configure` again with the real user:
 attribution upgrades in place and the streak carries over automatically.
@@ -135,10 +135,12 @@ updates. Migration is a mechanical rename; no behavior changes:
 | `WINRConfiguration`, `WINRUser`, `WINROptions` | `AvafliConfiguration`, `AvafliUser`, `AvafliOptions` |
 | `WINREnvironment`, `WINRError`, `WINRException` | `AvafliEnvironment`, `AvafliError`, `AvafliException` |
 | `WINRPushNotificationManager` | `AvafliPushNotificationManager` |
+| Analytics event names `winr_*` (e.g. `winr_daily_entry_claimed`) | `avafli_*` (e.g. `avafli_daily_entry_claimed`) — update adapter filters/dashboards |
+| New guest ids minted as `winr_guest_…` | `avafli_guest_…` — ids already stored on a device are returned verbatim, never rewritten |
 
-Everything wire- and device-facing is intentionally unchanged: your API keys,
-analytics event names (`winr_*`), and users' stored streaks/sessions survive
-the upgrade in place.
+API keys and on-device state are intentionally unchanged: your `winr_live_…` /
+`winr_test_…` keys and users' stored streaks/sessions/identities survive the
+upgrade in place.
 
 Then run:
 
@@ -320,10 +322,10 @@ await Avafli.configure(AvafliConfiguration(
 ```
 
 **Events emitted by the SDK:**
-- `winr_sdk_configured` — SDK configured successfully
-- `winr_experience_presented` — User opened the Avafli experience
-- `winr_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`.
-- `winr_experience_dismissed` — User closed the Avafli experience without a new claim
+- `avafli_sdk_configured` — SDK configured successfully
+- `avafli_experience_presented` — User opened the Avafli experience
+- `avafli_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`.
+- `avafli_experience_dismissed` — User closed the Avafli experience without a new claim
 
 ## GDPR / CCPA
 
