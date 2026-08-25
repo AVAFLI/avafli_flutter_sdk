@@ -5,9 +5,8 @@ description: >
   lines of code.
 version: 3.0.0
 homepage: https://winrmedia.com/sdk
-# Still the repo's pre-rename GitHub URL: GitHub 404s AVAFLI/avafli_sdk until
 # the repo itself is renamed, and redirects this URL forever afterwards.
-repository: https://github.com/AVAFLI/winr_flutter_sdk
+repository: https://github.com/AVAFLI/avafli_flutter_sdk
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
