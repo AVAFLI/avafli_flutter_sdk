@@ -148,7 +148,7 @@ Then run:
 flutter pub get
 ```
 
-> **Note:** Contact [AVAFLI](https://winrmedia.com/sdk/pricing) to obtain an API key.
+> **Note:** Contact [AVAFLI](https://sdk.avafli.com/pricing) to obtain an API key.
 
 ## Configuration
 
@@ -275,7 +275,7 @@ FirebaseMessaging.instance.onTokenRefresh.listen(Avafli.registerPushToken);
 
 ### 3. Upload FCM Service Account Key
 
-Upload your FCM service account key via the [Avafli Dashboard](https://winrmedia.com/sdk/dashboard) to enable push notifications.
+Upload your FCM service account key via the [Avafli Dashboard](https://sdk.avafli.com/dashboard) to enable push notifications.
 
 ### 4. Enable Push Reminders
 
@@ -289,7 +289,7 @@ await Avafli.registerForPushNotifications();
 
 ## Customization
 
-The V2 experience is hardcoded to the Avafli design; publishers customize exactly three things through the [Avafli Dashboard](https://winrmedia.com/sdk/dashboard):
+The V2 experience is hardcoded to the Avafli design; publishers customize exactly three things through the [Avafli Dashboard](https://sdk.avafli.com/dashboard):
 
 - **Logo** — Shown in the drawer header
 - **Prize image** — Art for the dashboard prize card
@@ -369,12 +369,12 @@ section runs the same erasure as `optOut()`.
 | `Avafli.registerPushToken(token)` | `Future<void>` | Forward an FCM token to Avafli (one-line `onTokenRefresh` listener) |
 | `AvafliPushNotificationManager.instance.didReceiveRegistrationToken(token)` | `Future<void>` | Forward FCM token to Avafli |
 
-For detailed API documentation, see the [Avafli Docs](https://winrmedia.com/sdk/flutter).
+For detailed API documentation, see the [Avafli Docs](https://sdk.avafli.com/flutter).
 
 ## Links
 
-- **Dashboard:** [https://winrmedia.com/sdk/dashboard](https://winrmedia.com/sdk/dashboard)
-- **Documentation:** [https://winrmedia.com/sdk/flutter](https://winrmedia.com/sdk/flutter)
+- **Dashboard:** [https://sdk.avafli.com/dashboard](https://sdk.avafli.com/dashboard)
+- **Documentation:** [https://sdk.avafli.com/flutter](https://sdk.avafli.com/flutter)
 - **Support:** [info@avafli.com](mailto:info@avafli.com)
 
 ---
