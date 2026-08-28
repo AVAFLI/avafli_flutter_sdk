@@ -88,9 +88,15 @@ class AvafliV2ExperienceScope extends InheritedWidget {
   /// erasure (`Avafli.optOut`) and the post-success drawer dismissal itself.
   final VoidCallback presentDeleteConfirmation;
 
+  /// The publisher accent (branding.primaryColor), so surfaces pushed OUTSIDE
+  /// the experience subtree (the legal webview route) stay on-brand. Null in
+  /// bare tests/previews -> the Avafli default blue.
+  final Color? accent;
+
   const AvafliV2ExperienceScope({
     super.key,
     required this.presentDeleteConfirmation,
+    this.accent,
     required super.child,
   });
 
@@ -138,6 +144,7 @@ void _pushLegalWebView(
     builder: (_) => AvafliV2LegalWebView(
       title: title,
       uri: uri,
+      accent: scope?.accent,
       onDeleteRequested: scope?.presentDeleteConfirmation,
     ),
   ));
@@ -153,6 +160,9 @@ class AvafliV2LegalWebView extends StatefulWidget {
   final String title;
   final Uri uri;
 
+  /// Publisher accent for the RETRY pill (branding parity). Null → default.
+  final Color? accent;
+
   /// Fired AFTER this screen pops when the `avafli://delete` bridge fires (the
   /// openers wire the experience's presenter via [AvafliV2ExperienceScope]).
   /// Null (bare tests/previews) → the bridge just closes the webview.
@@ -162,6 +172,7 @@ class AvafliV2LegalWebView extends StatefulWidget {
     super.key,
     required this.title,
     required this.uri,
+    this.accent,
     this.onDeleteRequested,
   });
 
@@ -325,7 +336,10 @@ class _AvafliV2LegalWebViewState extends State<AvafliV2LegalWebView> {
             SizedBox(
               width: 200,
               child: AvafliV2PillButton(
-                accent: AvafliV2Colors.avafliBlue,
+                // Publisher accent when the experience provided one — the
+                // legal route sits outside the themed subtree, so it must be
+                // handed the brand color explicitly.
+                accent: widget.accent ?? AvafliV2Colors.avafliBlue,
                 title: AvafliV2Strings.tryAgain,
                 onTap: _retry,
               ),

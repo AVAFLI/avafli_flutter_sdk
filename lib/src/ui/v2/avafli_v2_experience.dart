@@ -1247,6 +1247,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
     // user to the SDK screen they came from, not the privacy page.
     return AvafliV2ExperienceScope(
       presentDeleteConfirmation: _presentOptOutFlow,
+      accent: _accent,
       child: Theme(
         data: Theme.of(context).copyWith(
           inputDecorationTheme: const InputDecorationTheme(),
