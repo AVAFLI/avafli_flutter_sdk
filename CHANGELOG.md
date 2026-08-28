@@ -1,3 +1,11 @@
+## 3.0.1 — 2026-08-28
+
+### Fixed
+- Legal-webview RETRY pill now uses the publisher accent color (was hardcoded blue).
+
+### Verified
+- Streak data flow audited against the server contract — no changes needed (header, tiles, and come-back bar already render from server truth).
+
 ## 3.0.0 — 2026-08-25
 
 **Full brand rename: WINR → Avafli.** This release renames the package, its
