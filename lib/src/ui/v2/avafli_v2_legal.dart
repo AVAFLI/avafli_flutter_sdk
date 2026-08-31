@@ -2,7 +2,7 @@
 // INSIDE the experience — a full-screen gunmetal webview with a slim
 // title + X header — instead of bouncing the user out to the external
 // browser. The privacy page is loaded with `?app=1`, under which
-// winrmedia.com/sdk/privacy renders a "Delete my data" section; tapping it
+// sdk.avafli.com/sdk/privacy renders a "Delete my data" section; tapping it
 // navigates to `winr://delete` (the 3.0 SDK also accepts `avafli://delete`
 // so the hosted page can migrate schemes without stranding either SDK
 // generation), which the webview intercepts
@@ -23,7 +23,7 @@ import 'avafli_v2_theme.dart';
 /// Canonical Avafli privacy policy, mirroring iOS `AvafliConstants.privacyURL`.
 /// Publisher config carries no privacy URL (`rulesUrl` covers the Official
 /// Rules only), so every "Privacy Policy" link/span opens this.
-const String avafliV2PrivacyPolicyUrl = 'https://winrmedia.com/sdk/privacy';
+const String avafliV2PrivacyPolicyUrl = 'https://sdk.avafli.com/sdk/privacy';
 
 /// Returns [url] with `app=1` appended — the flag under which the privacy
 /// page renders its in-app variant (including the Delete-my-data section
@@ -55,9 +55,9 @@ enum AvafliV2LegalNav {
 }
 
 /// The bridge schemes the legal webview intercepts. `avafli://` is the
-/// canonical 3.0 scheme; `winr://` stays accepted because the hosted
-/// winrmedia.com privacy page still emits it (and older page builds always
-/// will) — both must keep working regardless of which side ships first.
+/// canonical 3.0 scheme; `winr://` stays accepted because older builds of
+/// the hosted privacy page emit it — both must keep working regardless of
+/// which side ships first.
 const Set<String> _avafliV2BridgeSchemes = {'avafli', 'winr'};
 
 /// Pure decision for [NavigationDelegate.onNavigationRequest] — kept free of

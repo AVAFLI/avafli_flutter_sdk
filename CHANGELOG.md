@@ -1,3 +1,8 @@
+## 3.0.2 — 2026-08-31
+
+### Changed
+- Legal pages now load from sdk.avafli.com; no winrmedia.com references remain.
+
 ## 3.0.1 — 2026-08-28
 
 ### Fixed
@@ -16,7 +21,7 @@ updates. No feature or behavior changes beyond the rename.
 
 ### Migration
 
-| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.0.0) |
+| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.x) |
 | --- | --- |
 | `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` dependencies | `avafli_sdk: ^3.0.0` |
 | `import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';` | `import 'package:avafli_sdk/avafli_sdk.dart';` |

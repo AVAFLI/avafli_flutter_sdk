@@ -1,7 +1,7 @@
 # Avafli Engagement SDK for Flutter
 **Drop-in sweepstakes, prizing, and gamification for your Flutter app**
 
-> **Formerly `winr_flutter_sdk`.** Version 3.0.0 renames the package and its
+> **Formerly `winr_flutter_sdk`.** The 3.x line renames the package and its
 > public API from WINR to Avafli — see [Migrating from
 > winr_flutter_sdk](#migrating-from-winr_flutter_sdk). Existing API keys
 > (`winr_live_…` / `winr_test_…`) and on-device user state keep working
@@ -116,20 +116,20 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.0.0
+  avafli_sdk: ^3.0.2
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
 
 ### Migrating from winr_flutter_sdk
 
-`avafli_sdk` 3.0.0 is the same SDK under its new brand — the old
+The `avafli_sdk` 3.x line is the same SDK under its new brand — the old
 `winr_flutter_sdk` pub.dev listing is discontinued and receives no further
 updates. Migration is a mechanical rename; no behavior changes:
 
-| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.0.0) |
+| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.x) |
 | --- | --- |
-| `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` | `avafli_sdk: ^3.0.0` |
+| `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` | `avafli_sdk: ^3.0.2` |
 | `import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';` | `import 'package:avafli_sdk/avafli_sdk.dart';` |
 | `WINR.configure(...)` / `WINR.navigatorKey` / `WINR.optOut()` | `Avafli.configure(...)` / `Avafli.navigatorKey` / `Avafli.optOut()` |
 | `WINRConfiguration`, `WINRUser`, `WINROptions` | `AvafliConfiguration`, `AvafliUser`, `AvafliOptions` |
