@@ -900,6 +900,12 @@ class AvafliV2DashboardView extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onWinnerTap;
 
+  /// Server flag (`sdkConfig.experience.winnerBannerEnabled`): the winner
+  /// banner + its winner-feed modal render ONLY when this is true. Defaults
+  /// to false — hidden unless the server explicitly enables it (Aug 31 GTM
+  /// decision; keeps GOT IT above the fold on small screens).
+  final bool showWinnerBanner;
+
   /// Reveal flow (Day 2+): the celebration is the dashboard's FIRST VISIBLE
   /// FRAME. The experience stages a PREDICTED grant before this view mounts,
   /// the UI renders one imperceptible pinned "before" frame, and the reveal
@@ -933,6 +939,7 @@ class AvafliV2DashboardView extends StatelessWidget {
     required this.onInfo,
     required this.onClose,
     this.onWinnerTap,
+    this.showWinnerBanner = false,
     this.pendingClaimEntries,
     this.revealed = true,
     this.notice,
@@ -1034,7 +1041,13 @@ class AvafliV2DashboardView extends StatelessWidget {
                         onTap: onVerifyTap!,
                       ),
                     ),
-                  if (giveaway?.latestWinner != null && onWinnerTap != null)
+                  // Server-flag-gated (sdkConfig.experience.winnerBannerEnabled,
+                  // default hidden): even with a latestWinner present the
+                  // banner — and the winner-feed modal it opens — only shows
+                  // when [showWinnerBanner] is true.
+                  if (showWinnerBanner &&
+                      giveaway?.latestWinner != null &&
+                      onWinnerTap != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 15),
                       child: AvafliV2WinnerBanner(onTap: onWinnerTap!),

@@ -1,3 +1,8 @@
+## Unreleased
+
+### Changed
+- The "WE HAVE A WINNER!" dashboard banner is now server-flag-gated and DEFAULT HIDDEN: it renders only when `sdkConfig.experience.winnerBannerEnabled` is exactly `true` (absent/false/null hide it). The banner is the winner-feed modal's only entry point, so the flag hides the feed with it (Aug 31 GTM decision — keeps GOT IT above the fold; the admin enables it per publisher).
+
 ## 3.0.2 — 2026-08-31
 
 ### Changed

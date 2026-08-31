@@ -1,6 +1,9 @@
 // "WE HAVE A WINNER!" banner + winners dialog, from the Figma
 // (MESSAGE TOAST / WINNER, Modal Property 1=Winner). Shown when the giveaway
-// payload carries a latestWinner.
+// payload carries a latestWinner AND the server flag
+// `sdkConfig.experience.winnerBannerEnabled` is exactly true (default hidden
+// — Aug 31 GTM decision; the banner is also the winner-feed modal's only
+// entry point, so hiding it hides the feed).
 //
 // Mirrors the iOS SDK's AvafliV2Winner.swift.
 

@@ -109,6 +109,8 @@ void main() {
       onInfo: () {},
       onClose: () {},
       onWinnerTap: () {},
+      // Server flag ON: only an explicit true shows the banner.
+      showWinnerBanner: true,
     )));
     // Let the rail auto-center timer (350ms) and scroll animation play out.
     await tester.pump(const Duration(seconds: 1));
@@ -131,6 +133,43 @@ void main() {
     // Day-7 milestone accelerator tile.
     expect(find.text('+25'), findsOneWidget);
     expect(find.text('EVERY DAY!'), findsOneWidget);
+  });
+
+  testWidgets(
+      'winner banner is HIDDEN by default (server flag absent) even with a '
+      'latestWinner present', (tester) async {
+    await tester.pumpWidget(_host(AvafliV2DashboardView(
+      accent: accent,
+      logoUrl: null,
+      rulesUrl: null,
+      giveaway: _giveaway(
+        winner: const GiveawayWinner(
+          name: 'Catherine C.',
+          location: 'Brooklyn, New York',
+          awardedAt: '2026-08-20',
+        ),
+      ),
+      streakDay: 3,
+      totalEntries: 100,
+      entriesToday: 60,
+      ladder: const [10, 30, 60, 130, 240, 300, 500],
+      claimedToday: true,
+      onInfo: () {},
+      onClose: () {},
+      onWinnerTap: () {},
+      // showWinnerBanner deliberately NOT passed — the default (false)
+      // mirrors an absent/false/null sdkConfig.experience.winnerBannerEnabled.
+    )));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    // Banner (the winner feed's only entry point) is gone entirely — no
+    // orphan spacer: the padded slot lives inside the same conditional.
+    expect(find.text('WE HAVE A WINNER!'), findsNothing);
+    expect(find.byType(AvafliV2WinnerBanner), findsNothing);
+    // The rest of the dashboard renders normally.
+    expect(find.text('3 DAY STREAK'), findsOneWidget);
+    expect(find.text('GOT IT'), findsOneWidget);
   });
 
   testWidgets(

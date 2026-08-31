@@ -204,10 +204,18 @@ class AvafliExperienceConfig {
   /// Dismissal requires an explicit tap; never auto-fade (default true).
   final bool? requireDismissClick;
 
+  /// Show the "WE HAVE A WINNER!" banner (and with it the winner-feed modal,
+  /// whose only entry point is the banner's + button) on the dashboard.
+  /// Default OFF (Aug 31 GTM decision — keeps the GOT IT button above the
+  /// fold); the admin enables it per publisher. Only an explicit `true`
+  /// shows the banner — absent/false/null all hide it.
+  final bool? winnerBannerEnabled;
+
   const AvafliExperienceConfig({
     this.autoOpenEnabled,
     this.unregisteredImpressionCap,
     this.requireDismissClick,
+    this.winnerBannerEnabled,
   });
 
   factory AvafliExperienceConfig.fromJson(Map<String, dynamic> json) {
@@ -216,6 +224,7 @@ class AvafliExperienceConfig {
       unregisteredImpressionCap:
           (json['unregisteredImpressionCap'] as num?)?.toInt(),
       requireDismissClick: json['requireDismissClick'] as bool?,
+      winnerBannerEnabled: json['winnerBannerEnabled'] as bool?,
     );
   }
 }

@@ -340,4 +340,36 @@ void main() {
       );
     });
   });
+
+  group('sdkConfig experience.winnerBannerEnabled parsing', () {
+    test('parses an explicit true', () {
+      final config = AvafliSdkConfig.fromJson({
+        'experience': {'winnerBannerEnabled': true},
+      });
+      expect(config.experience?.winnerBannerEnabled, isTrue);
+    });
+
+    test('parses an explicit false', () {
+      final config = AvafliSdkConfig.fromJson({
+        'experience': {'winnerBannerEnabled': false},
+      });
+      expect(config.experience?.winnerBannerEnabled, isFalse);
+    });
+
+    test('absent/null stays null (banner default-hidden)', () {
+      expect(
+        AvafliSdkConfig.fromJson({'experience': <String, dynamic>{}})
+            .experience
+            ?.winnerBannerEnabled,
+        isNull,
+      );
+      expect(
+        AvafliSdkConfig.fromJson({
+          'experience': {'winnerBannerEnabled': null},
+        }).experience?.winnerBannerEnabled,
+        isNull,
+      );
+      expect(AvafliSdkConfig.fromJson({}).experience, isNull);
+    });
+  });
 }

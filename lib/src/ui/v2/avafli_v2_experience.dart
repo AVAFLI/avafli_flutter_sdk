@@ -1707,6 +1707,11 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
           onInfo: _showHowItWorks,
           onClose: _requestDismiss,
           onWinnerTap: () => setState(() => _showWinnerModal = true),
+          // Default hidden: only an explicit server `true` shows the winner
+          // banner (and with it the winner-feed modal, whose only entry
+          // point is the banner).
+          showWinnerBanner:
+              widget.sdkConfig?.experience?.winnerBannerEnabled == true,
           pendingClaimEntries: _pendingRevealGrant?.total,
           revealed: _claimRevealed,
           notice: _dashboardNotice,
