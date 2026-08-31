@@ -1,7 +1,11 @@
-## Unreleased
+## 3.0.3 — 2026-09-01
 
 ### Changed
 - The "WE HAVE A WINNER!" dashboard banner is now server-flag-gated and DEFAULT HIDDEN: it renders only when `sdkConfig.experience.winnerBannerEnabled` is exactly `true` (absent/false/null hide it). The banner is the winner-feed modal's only entry point, so the flag hides the feed with it (Aug 31 GTM decision — keeps GOT IT above the fold; the admin enables it per publisher).
+
+### Docs
+- README and docs now show the current API key prefixes (`avafli_test_` / `avafli_live_`).
+- README and pubspec drop the rename-era "Formerly winr_flutter_sdk" callout and migration section (the 3.0.0 CHANGELOG entry keeps the migration table).
 
 ## 3.0.2 — 2026-08-31
 
