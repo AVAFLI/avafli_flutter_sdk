@@ -31,7 +31,7 @@ Avafli lets you add daily-entry sweepstakes and prize experiences to your app in
 import 'package:avafli_sdk/avafli_sdk.dart';
 
 await Avafli.configure(AvafliConfiguration(
-  apiKey: 'YOUR_API_KEY', // debug builds: use your winr_test_ sandbox key
+  apiKey: 'YOUR_API_KEY', // debug builds: use your avafli_test_ sandbox key
   bundleId: 'com.example.myapp',
   user: AvafliUser(
     id: 'user_123',             // only id is required — pass whatever identity you have
@@ -93,7 +93,7 @@ user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe', email: 'jan
 
 ```dart
 await Avafli.configure(AvafliConfiguration(
-  apiKey: 'winr_live_…',
+  apiKey: 'avafli_live_…',
   bundleId: 'com.example.myapp',
   user: AvafliUser.guest,
 ));
@@ -129,7 +129,7 @@ Initialize the SDK with your user and environment settings:
 
 ```dart
 final config = AvafliConfiguration(
-  apiKey: 'winr_live_xxxxxxxxxx',
+  apiKey: 'avafli_live_xxxxxxxxxx',
   bundleId: 'com.example.myapp',
   environment: AvafliEnvironment.production,
   user: AvafliUser(
@@ -179,8 +179,8 @@ Your publisher dashboard shows two API keys:
 
 | Key | Use it in |
 | --- | --------- |
-| `winr_live_…` | Release builds — your real giveaway |
-| `winr_test_…` | Debug/dev builds and CI — an isolated sandbox |
+| `avafli_live_…` | Release builds — your real giveaway |
+| `avafli_test_…` | Debug/dev builds and CI — an isolated sandbox |
 
 The sandbox key hits the **same production backend** with identical behavior —
 registration, streaks, entries, the full experience — but every user and entry
