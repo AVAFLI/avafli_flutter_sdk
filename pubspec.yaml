@@ -1,8 +1,7 @@
 name: avafli_sdk
 description: >
-  Avafli Engagement SDK for Flutter (formerly winr_flutter_sdk) — add
-  daily-streak sweepstakes and prize experiences to your app with a few
-  lines of code.
+  Avafli Engagement SDK for Flutter — add daily-streak sweepstakes and
+  prize experiences to your app with a few lines of code.
 version: 3.0.2
 homepage: https://sdk.avafli.com
 # the repo itself is renamed, and redirects this URL forever afterwards.

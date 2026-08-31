@@ -1,12 +1,6 @@
 # Avafli Engagement SDK for Flutter
 **Drop-in sweepstakes, prizing, and gamification for your Flutter app**
 
-> **Formerly `winr_flutter_sdk`.** The 3.x line renames the package and its
-> public API from WINR to Avafli — see [Migrating from
-> winr_flutter_sdk](#migrating-from-winr_flutter_sdk). Existing API keys
-> (`winr_live_…` / `winr_test_…`) and on-device user state keep working
-> unchanged; analytics event names now carry the `avafli_` prefix.
-
 [![Flutter](https://img.shields.io/badge/Flutter-3.10%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.0%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
 [![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg)](https://flutter.dev)
@@ -120,27 +114,6 @@ dependencies:
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
-
-### Migrating from winr_flutter_sdk
-
-The `avafli_sdk` 3.x line is the same SDK under its new brand — the old
-`winr_flutter_sdk` pub.dev listing is discontinued and receives no further
-updates. Migration is a mechanical rename; no behavior changes:
-
-| Before (winr_flutter_sdk 2.9.x) | After (avafli_sdk 3.x) |
-| --- | --- |
-| `winr_flutter_sdk: ^2.9.5` in `pubspec.yaml` | `avafli_sdk: ^3.0.2` |
-| `import 'package:winr_flutter_sdk/winr_flutter_sdk.dart';` | `import 'package:avafli_sdk/avafli_sdk.dart';` |
-| `WINR.configure(...)` / `WINR.navigatorKey` / `WINR.optOut()` | `Avafli.configure(...)` / `Avafli.navigatorKey` / `Avafli.optOut()` |
-| `WINRConfiguration`, `WINRUser`, `WINROptions` | `AvafliConfiguration`, `AvafliUser`, `AvafliOptions` |
-| `WINREnvironment`, `WINRError`, `WINRException` | `AvafliEnvironment`, `AvafliError`, `AvafliException` |
-| `WINRPushNotificationManager` | `AvafliPushNotificationManager` |
-| Analytics event names `winr_*` (e.g. `winr_daily_entry_claimed`) | `avafli_*` (e.g. `avafli_daily_entry_claimed`) — update adapter filters/dashboards |
-| New guest ids minted as `winr_guest_…` | `avafli_guest_…` — ids already stored on a device are returned verbatim, never rewritten |
-
-API keys and on-device state are intentionally unchanged: your `winr_live_…` /
-`winr_test_…` keys and users' stored streaks/sessions/identities survive the
-upgrade in place.
 
 Then run:
 
