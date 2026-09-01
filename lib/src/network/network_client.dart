@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -219,9 +220,14 @@ class NetworkClientImpl implements NetworkClient {
 
       return response;
     } on SocketException {
-      throw const AvafliException(AvafliError.networkError);
+      // transport: true — the request never completed (offline/DNS/reset).
+      // The offline retry queue only ever replays these; HTTP responses
+      // mapped to networkError (e.g. 429) stay non-transport.
+      throw const AvafliException(AvafliError.networkError, null, true);
     } on HttpException {
-      throw const AvafliException(AvafliError.networkError);
+      throw const AvafliException(AvafliError.networkError, null, true);
+    } on TimeoutException {
+      throw const AvafliException(AvafliError.networkError, null, true);
     } catch (e) {
       if (e is AvafliException) rethrow;
       Logger.instance.error('Network request failed', e);

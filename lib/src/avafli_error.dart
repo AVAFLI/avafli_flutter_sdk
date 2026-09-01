@@ -73,9 +73,17 @@ enum AvafliError {
 /// Use this when you need to throw a Avafli-specific error that can
 /// be caught with a try-catch block.
 class AvafliException implements Exception {
-  const AvafliException(this.error, [this.serverMessage]);
+  const AvafliException(this.error,
+      [this.serverMessage, this.transport = false]);
 
   final AvafliError error;
+
+  /// True when the request never completed — a genuine transport failure
+  /// (offline, DNS, socket timeout), as opposed to an HTTP response that was
+  /// merely MAPPED to [AvafliError.networkError] (e.g. a 429). The offline
+  /// retry queue keys off this: only transport failures are safe to retry
+  /// automatically. Stamped by the network client's transport catch blocks.
+  final bool transport;
 
   /// The backend's actual error message, when one was returned. Lets the SDK
   /// surface what really went wrong instead of a generic enum description —

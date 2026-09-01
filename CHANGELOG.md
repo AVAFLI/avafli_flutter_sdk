@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Offline resilience: same-day automatic retry of registration/claims on connectivity regain; offline analytics event buffering. A NETWORK-class (transport) failure of `registerDevice` or `claimDailyEntries` — never a backend rejection — persists a pending intent and retries it automatically on app resume, next launch, and a capped exponential backoff (hard max 5 attempts per session). Flutter cannot observe connectivity without a new plugin dependency (none was added), so resume + backoff stand in for the connectivity-regain trigger the other SDKs have. The intent is dropped when its local calendar day ends — cross-midnight replay is deliberately out of scope (server-authoritative day windows). Duplicate retries are safe: the backend dedups daily claims and an "already claimed" answer is treated as success. Publisher analytics events emitted while offline are buffered (bounded ring of 100, persisted) and flushed on reconnect / next launch carrying their original timestamps (`original_timestamp` / `original_timestamp_ms`). No new UI — an open experience reconciles through the existing load path when a queued claim lands.
+
 ## 3.0.3 — 2026-09-01
 
 ### Changed

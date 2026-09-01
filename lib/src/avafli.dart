@@ -12,6 +12,7 @@ import 'domain/sdk_config.dart';
 import 'domain/streak_engine.dart';
 import 'network/network_client.dart';
 import 'network/avafli_api.dart';
+import 'offline/offline_resilience.dart';
 import 'services/analytics/analytics_adapter.dart';
 import 'services/logger.dart';
 import 'services/push_notification_manager.dart';
@@ -84,6 +85,16 @@ class Avafli {
   static bool _isPresenting = false;
 
   static _AvafliLifecycleObserver? _lifecycleObserver;
+
+  // Offline resilience (launch item 15): persisted same-day retry queue +
+  // offline analytics buffering. Built on configure.
+  static OfflineRetryCoordinator? _offlineCoordinator;
+  static BufferingAnalyticsAdapter? _offlineAnalytics;
+
+  /// @internal — A background offline-claim retry just landed; an open
+  /// experience registers here to reconcile through its existing load path
+  /// (no new UI). Cleared in the experience's dispose.
+  static void Function()? onOfflineClaimRecovered;
 
   /// Navigator key for the V2 auto-open flow. Attach it to your app's
   /// `MaterialApp(navigatorKey: Avafli.navigatorKey)` so the SDK can present the
@@ -158,6 +169,28 @@ class Avafli {
       // Set up token refresh handler
       _networkClient!.setRefreshHandler(_refreshTokenIfNeeded);
 
+      // Offline resilience: same-day retry queue + analytics buffering. The
+      // publisher's adapter is wrapped so events emitted while offline are
+      // queued (bounded, persisted) and flushed with original timestamps.
+      _offlineCoordinator?.shutdown();
+      _offlineCoordinator = OfflineRetryCoordinator(
+        storage: _preferencesStorage!,
+      )..retryHandler = _performOfflineRetry;
+      final publisherAdapter = config.options.analyticsAdapter;
+      _offlineAnalytics = publisherAdapter == null
+          ? null
+          : BufferingAnalyticsAdapter(
+              inner: publisherAdapter,
+              storage: _preferencesStorage!,
+            );
+      // Next-launch flush of analytics buffered during a previous offline run.
+      final offlineAnalytics = _offlineAnalytics;
+      if (offlineAnalytics != null) {
+        unawaited(offlineAnalytics
+            .loadPersisted()
+            .then((_) => offlineAnalytics.flushIfOnline()));
+      }
+
       // Restore the persisted RTD flag so an opted-out user stays suppressed
       // even before (or without) a network round-trip.
       final prefs = await SharedPreferences.getInstance();
@@ -182,9 +215,13 @@ class Avafli {
           : 'User set: ${_redactId(config.user.id)}');
 
       // Register device in background, then attempt the once-a-day
-      // auto-present.
-      unawaited(
-          _registerDeviceIfNeeded().then((_) => _autoPresentIfEligible()));
+      // auto-present. The launch trigger for the offline retry queue runs
+      // after that: a pending same-day claim persisted before a kill retries
+      // now that the session is (re)established.
+      unawaited(_registerDeviceIfNeeded().then((_) async {
+        await _autoPresentIfEligible();
+        _offlineCoordinator?.noteLaunch();
+      }));
 
       // Auto-present on subsequent foregrounds too (covers the "app stayed in
       // memory overnight" case — a new day should re-open the experience).
@@ -642,10 +679,20 @@ class Avafli {
 
       Logger.instance
           .info('Device registered successfully: ${_redactId(response.uuid)}');
+      // Registration is definitively on the backend — drop any queued retry.
+      OfflineState.isOnline = true;
+      unawaited(_offlineCoordinator?.clear(PendingIntentKind.registration));
     } catch (e) {
       Logger.instance.error('Device registration failed', e);
       // Cache the suspended state so repeat launches short-circuit cleanly.
       _handleSuspensionIfNeeded(e);
+      // NETWORK-class (transport) failure: queue a same-day retry on app
+      // resume / launch / capped backoff. Backend rejections are NOT queued —
+      // they'd only be rejected again.
+      if (OfflineErrorClassifier.isRetriable(e)) {
+        OfflineState.isOnline = false;
+        unawaited(_offlineCoordinator?.enqueue(PendingIntentKind.registration));
+      }
     } finally {
       _isRegistering = false;
       _registrationCompleter?.complete();
@@ -898,6 +945,121 @@ class Avafli {
   static Future<void> handleAppResumed() async {
     await _ensureRegistrationComplete();
     await _autoPresentIfEligible();
+    // Foreground trigger for the offline retry queue + buffered-analytics
+    // flush (Flutter has no connectivity listener without a new dependency,
+    // so resume + capped backoff stand in for connectivity regain).
+    _offlineCoordinator?.noteForeground();
+    _offlineAnalytics?.flushIfOnline();
+  }
+
+  // MARK: - Offline retry execution
+
+  /// @internal — Wraps an analytics adapter in the SDK's offline buffering
+  /// wrapper when it is the configured publisher adapter; otherwise returns
+  /// it unchanged (e.g. widget tests that mount the experience directly).
+  static AnalyticsAdapter? offlineWrapAnalytics(AnalyticsAdapter? inner) {
+    if (inner == null) return null;
+    final wrapper = _offlineAnalytics;
+    if (wrapper != null && identical(wrapper.inner, inner)) return wrapper;
+    return inner;
+  }
+
+  /// @internal — A claim transport failure in the experience. Queues a
+  /// same-day automatic retry when (and only when) it was a NETWORK-class
+  /// (transport) failure; backend rejections never queue.
+  static void enqueueOfflineClaimRetry(Object error) {
+    if (!OfflineErrorClassifier.isRetriable(error)) return;
+    OfflineState.isOnline = false;
+    unawaited(_offlineCoordinator?.enqueue(PendingIntentKind.claim));
+  }
+
+  /// @internal — Today's claim is definitively recorded on the backend; drop
+  /// any queued claim retry.
+  static void clearOfflineClaimRetry() {
+    OfflineState.isOnline = true;
+    unawaited(_offlineCoordinator?.clear(PendingIntentKind.claim));
+  }
+
+  /// Executes one queued offline retry.
+  ///
+  /// Duplicate-claim safety (verified in the backend claim transaction):
+  /// `claimDailyEntries` dedups server-side by the canonical user's local-day
+  /// entry window and `daily_last_claimed === today`, throwing an
+  /// `already-exists` callable error (surfaced here as
+  /// [AvafliError.ineligibleToday]) — so a duplicate retry can never
+  /// double-grant, and an already-claimed rejection is treated as SUCCESS.
+  static Future<RetryOutcome> _performOfflineRetry(
+      PendingIntentKind kind) async {
+    if (_configuration == null) return RetryOutcome.retriableFailure;
+    switch (kind) {
+      case PendingIntentKind.registration:
+        await _registerDeviceIfNeeded();
+        final token = await _secureStorage?.getAuthToken();
+        return token != null
+            ? RetryOutcome.success
+            : RetryOutcome.retriableFailure;
+
+      case PendingIntentKind.claim:
+        final networkClient = _networkClient;
+        final preferencesStorage = _preferencesStorage;
+        if (networkClient == null || preferencesStorage == null) {
+          return RetryOutcome.retriableFailure;
+        }
+        final token = await _secureStorage?.getAuthToken();
+        if (token == null) {
+          // Registration has to land first — its own retry restores the
+          // session; keep the claim queued for the next trigger.
+          return RetryOutcome.retriableFailure;
+        }
+        try {
+          // Freshly-constructed request: its timezone/platform defaults are
+          // frozen at construction, so a replay must re-mint them.
+          final response = await networkClient.send(ClaimDailyEntriesRequest());
+          OfflineState.isOnline = true;
+          syncClaimedToday(true);
+          await persistClaimedToday(preferencesStorage);
+          _cachedStreakDay = response.streakDay;
+          // Publisher-facing analytics for the recovered claim (through the
+          // buffering wrapper, like every other emission).
+          (_offlineAnalytics ?? _configuration?.options.analyticsAdapter)
+              ?.track('avafli_daily_entry_claimed', {
+            'day': response.streakDay,
+            'entries': response.entries,
+            'recovered_offline': true,
+          });
+          Logger.instance.info(
+              'Offline claim retry recorded today\'s entry (+${response.entries})');
+          // An open experience reconciles via its existing load path.
+          onOfflineClaimRecovered?.call();
+          return RetryOutcome.success;
+        } catch (e) {
+          if (isAlreadyClaimedRejection(e)) {
+            // Server-side daily dedup already holds today's entry — the
+            // original attempt (or another device) landed.
+            OfflineState.isOnline = true;
+            syncClaimedToday(true);
+            await persistClaimedToday(preferencesStorage);
+            Logger.instance.info(
+                'Offline claim retry: already claimed — treating as success');
+            return RetryOutcome.success;
+          }
+          return OfflineErrorClassifier.isRetriable(e)
+              ? RetryOutcome.retriableFailure
+              : RetryOutcome.permanentFailure;
+        }
+    }
+  }
+
+  /// The backend's `already-exists` dedup, surfaced by the network client as
+  /// [AvafliError.ineligibleToday] (HTTP 409 / 403 "already claimed" /
+  /// "already entered" messages).
+  static bool isAlreadyClaimedRejection(Object e) {
+    if (e is AvafliException && e.error == AvafliError.ineligibleToday) {
+      return true;
+    }
+    final text = e.toString().toLowerCase();
+    return text.contains('already claimed') ||
+        text.contains('already entered today');
   }
 
   // MARK: - Testing Support
@@ -937,6 +1099,11 @@ class Avafli {
     _autoOpenHeld = false;
     _userDismissedExperience = false;
     _autoPresentRetries = 0;
+    _offlineCoordinator?.shutdown();
+    _offlineCoordinator = null;
+    _offlineAnalytics = null;
+    onOfflineClaimRecovered = null;
+    OfflineState.isOnline = true;
     if (_lifecycleObserver != null) {
       WidgetsBinding.instance.removeObserver(_lifecycleObserver!);
       _lifecycleObserver = null;

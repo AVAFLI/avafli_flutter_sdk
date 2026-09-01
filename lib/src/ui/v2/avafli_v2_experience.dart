@@ -27,6 +27,7 @@ import '../../domain/streak_engine.dart';
 import '../../domain/streak_state.dart';
 import '../../network/network_client.dart';
 import '../../network/avafli_api.dart';
+import '../../services/analytics/analytics_adapter.dart';
 import '../../services/logger.dart';
 import '../../storage/preferences_storage.dart';
 import '../../storage/secure_storage.dart';
@@ -279,9 +280,23 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
     return List.generate(7, (i) => widget.streakEngine.baseEntries(i + 1));
   }
 
+  /// Publisher analytics, routed through the SDK's offline buffering wrapper
+  /// (events emitted while offline queue and flush with original timestamps).
+  /// Falls back to the raw adapter when the facade isn't configured (e.g.
+  /// widget tests that mount the experience directly).
+  AnalyticsAdapter? get _analytics => Avafli.offlineWrapAnalytics(
+      widget.configuration.options.analyticsAdapter);
+
   @override
   void initState() {
     super.initState();
+    // A background offline-claim retry landed while the drawer is open —
+    // reconcile through the existing _load() refresh path (no new UI).
+    Avafli.onOfflineClaimRecovered = () {
+      if (mounted && _phase == _V2Phase.streak) {
+        unawaited(_load());
+      }
+    };
     _giveaway = widget.cachedGiveaway;
     _backendClaimedToday = widget.cachedClaimedToday;
     _backendStreakDay = widget.cachedStreakDay;
@@ -305,6 +320,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
 
   @override
   void dispose() {
+    Avafli.onOfflineClaimRecovered = null;
     _dashboardNoticeTimer?.cancel();
     super.dispose();
   }
@@ -535,7 +551,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _claimSubmitError = null;
         _phase = _V2Phase.winnerClaim;
       });
-      widget.configuration.options.analyticsAdapter?.track(
+      _analytics?.track(
         'avafli_winner_claim_shown',
         {'giveaway_id': pendingPrizeClaim.giveawayId},
       );
@@ -841,13 +857,15 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       Avafli.syncClaimedToday(true);
       await Avafli.persistClaimedToday(widget.preferencesStorage);
 
-      widget.configuration.options.analyticsAdapter?.track(
+      _analytics?.track(
         'avafli_daily_entry_claimed',
         {'day': response.streakDay, 'entries': response.entries},
       );
+      Avafli.clearOfflineClaimRetry();
     } catch (e) {
       Logger.instance.info(
           'Day-1 claim after email submit failed (dashboard will retry): $e');
+      Avafli.enqueueOfflineClaimRetry(e);
     }
   }
 
@@ -894,8 +912,9 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       await widget.preferencesStorage.saveStreakState(updatedStreak);
       Avafli.syncClaimedToday(true);
       await Avafli.persistClaimedToday(widget.preferencesStorage);
+      Avafli.clearOfflineClaimRetry();
 
-      widget.configuration.options.analyticsAdapter?.track(
+      _analytics?.track(
         'avafli_daily_entry_claimed',
         {
           'day': response.streakDay,
@@ -969,6 +988,8 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       // notice, not a modal.
       if (isAlreadyClaimed) {
         Logger.instance.info('Already claimed today — updating local state');
+        // The entry exists server-side — a queued offline retry is moot.
+        Avafli.clearOfflineClaimRetry();
         final updatedStreak = streak.copyWith(lastClaimedDate: DateTime.now());
         await widget.preferencesStorage.saveStreakState(updatedStreak);
         Avafli.syncClaimedToday(true);
@@ -1000,6 +1021,12 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       // unclaimed state — never a fabricated local success — plus a
       // non-blocking notice with a retry affordance so the person isn't left
       // believing today's entry landed.
+      //
+      // Offline resilience: also queue a same-day automatic retry (app
+      // resume / capped backoff) so a transient drop can't cost the streak
+      // if the person closes the drawer without tapping TRY AGAIN. No-op
+      // for backend rejections (classifier-guarded).
+      Avafli.enqueueOfflineClaimRetry(e);
       Logger.instance.info('Auto-claim declined: $e');
       if (!mounted) return;
       setState(() {
@@ -1044,11 +1071,13 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _claimedToday = true;
         Avafli.syncClaimedToday(true);
         await Avafli.persistClaimedToday(widget.preferencesStorage);
+        Avafli.clearOfflineClaimRetry();
         Logger.instance.debug(
             'Silent daily claim during winner flow: +${response.entries}');
       } catch (e) {
         Logger.instance
             .debug('Silent daily claim declined during winner flow: $e');
+        Avafli.enqueueOfflineClaimRetry(e);
       }
     }());
   }
@@ -1131,7 +1160,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         // 2.9: celebrate/share AFTER the claim is banked.
         _winnerClaimStep = _WinnerClaimStep.share;
       });
-      widget.configuration.options.analyticsAdapter?.track(
+      _analytics?.track(
         'avafli_prize_claim_submitted',
         {
           'giveaway_id': claim.giveawayId,
@@ -1544,8 +1573,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       if (!mounted) return;
       if (response.verified) {
         Logger.instance.info('Email verified');
-        widget.configuration.options.analyticsAdapter
-            ?.track('avafli_email_verified', const {});
+        _analytics?.track('avafli_email_verified', const {});
         setState(() {
           _unverified = false;
           _isVerifyingEmail = false;

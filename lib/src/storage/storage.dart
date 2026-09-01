@@ -50,6 +50,11 @@ class StorageKeys {
   // email-capture gate still works offline. Set true after a successful submit.
   static const String emailConfirmed = 'winr_email_confirmed';
 
+  // Offline resilience: pending same-day register/claim retry intents and the
+  // bounded offline analytics ring buffer (see offline/offline_resilience.dart).
+  static const String offlinePendingIntents = 'winr_offline_pending_intents';
+  static const String offlineAnalyticsBuffer = 'winr_offline_analytics_buffer';
+
   // Prevent instantiation
   StorageKeys._();
 }
