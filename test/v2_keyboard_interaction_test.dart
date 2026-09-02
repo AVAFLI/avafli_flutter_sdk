@@ -158,7 +158,8 @@ void main() {
   }
 
   group('email capture', () {
-    testWidgets('focused email field sits above the keyboard and the CTA + '
+    testWidgets(
+        'focused email field sits above the keyboard and the CTA + '
         'legal footer stay reachable', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_keyboardHost(captureView()));
@@ -183,7 +184,8 @@ void main() {
           reason: 'legal footer must be reachable above the keyboard');
     });
 
-    testWidgets('drag on the sheet dismisses the keyboard; programmatic '
+    testWidgets(
+        'drag on the sheet dismisses the keyboard; programmatic '
         'ensure-visible does not', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_keyboardHost(captureView()));
@@ -220,7 +222,8 @@ void main() {
   });
 
   group('OTP code entry (adoption + new-address verify)', () {
-    testWidgets('VERIFY and "Send a new code" stay reachable with the '
+    testWidgets(
+        'VERIFY and "Send a new code" stay reachable with the '
         'keyboard open', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_keyboardHost(codeEntryView()));
@@ -243,7 +246,8 @@ void main() {
           lessThanOrEqualTo(_kVisibleBottom + 0.5));
     });
 
-    testWidgets('bare host (no resizing Scaffold): the scroll view grows its '
+    testWidgets(
+        'bare host (no resizing Scaffold): the scroll view grows its '
         'bottom padding by the keyboard inset', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_bareHost(codeEntryView()));
@@ -274,7 +278,8 @@ void main() {
   });
 
   group('prize-claim form', () {
-    testWidgets('address step: focusing the bottom (zip) field scrolls it '
+    testWidgets(
+        'address step: focusing the bottom (zip) field scrolls it '
         'above the keyboard and CONTINUE stays reachable', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_keyboardHost(claimSteps()));
@@ -287,8 +292,8 @@ void main() {
       await tester.tap(zip);
       await _settleEnsureVisible(tester);
 
-      expect(tester.getRect(zip).bottom,
-          lessThanOrEqualTo(_kVisibleBottom + 0.5),
+      expect(
+          tester.getRect(zip).bottom, lessThanOrEqualTo(_kVisibleBottom + 0.5),
           reason: 'the focused zip field must sit above the keyboard');
 
       await tester.ensureVisible(find.text('CONTINUE'));
@@ -297,7 +302,8 @@ void main() {
           lessThanOrEqualTo(_kVisibleBottom + 0.5));
     });
 
-    testWidgets('address autocomplete: the suggestions card surfaces above '
+    testWidgets(
+        'address autocomplete: the suggestions card surfaces above '
         'the keyboard while typing', (tester) async {
       _sizeScreen(tester);
       final client = AvafliPlacesClient(
@@ -346,7 +352,8 @@ void main() {
   });
 
   group('share screen (story textarea)', () {
-    testWidgets('story field scrolls above the keyboard and CONTINUE stays '
+    testWidgets(
+        'story field scrolls above the keyboard and CONTINUE stays '
         'reachable; drag dismisses', (tester) async {
       _sizeScreen(tester);
       await tester.pumpWidget(_keyboardHost(AvafliV2ClaimShareView(

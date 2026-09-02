@@ -18,6 +18,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import 'avafli_v2_components.dart';
 import 'avafli_v2_strings.dart';
+import 'avafli_v2_svg_icon.dart';
 import 'avafli_v2_theme.dart';
 
 /// Canonical Avafli privacy policy, mirroring iOS `AvafliConstants.privacyURL`.
@@ -302,7 +303,12 @@ class _AvafliV2LegalWebViewState extends State<AvafliV2LegalWebView> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: const Icon(Icons.close, size: 14, color: Colors.white),
+              child: const AvafliV2BrandIcon(
+                AvafliV2BrandGlyphs.close,
+                width: 12,
+                height: 12,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

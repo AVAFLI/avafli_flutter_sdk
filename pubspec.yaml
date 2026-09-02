@@ -21,6 +21,9 @@ dependencies:
   crypto: ^3.0.7
   url_launcher: ">=6.2.0 <7.0.0"
   webview_flutter: ^4.14.1
+  # Claim photo step ("SHOW OFF YOUR WIN!") — first-party Flutter plugin,
+  # pinned to the current major.
+  image_picker: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -59,3 +62,9 @@ flutter:
           weight: 500
         - asset: assets/fonts/oswald-v57-latin-700.ttf
           weight: 700
+    # Winner-card serif (Source Serif 4 Black, OFL) — matches iOS's
+    # `.serif` + `.black` (New York Black) keepsake-card name.
+    - family: SourceSerif4
+      fonts:
+        - asset: assets/fonts/source-serif-4-900.ttf
+          weight: 900

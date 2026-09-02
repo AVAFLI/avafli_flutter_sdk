@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Used by the Avafli prize-claim photo step to take a winner photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used by the Avafli prize-claim photo step to pick a winner photo.</string>
 </dict>
 </plist>

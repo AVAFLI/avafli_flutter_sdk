@@ -1249,9 +1249,11 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
     // host navigation (which must NOT consume the once-a-day auto-open).
     Avafli.noteUserDismissedExperience();
     setState(() => _drawerAppeared = false);
-    // Must outlast the 450ms AnimatedSlide below — the route has no exit
+    // Must outlast the AnimatedSlide's spring below — the route has no exit
     // transition of its own, so popping early freezes the sheet mid-slide.
-    await Future.delayed(const Duration(milliseconds: 470));
+    await Future.delayed(
+      avafliV2DrawerSpring.duration + const Duration(milliseconds: 20),
+    );
     if (!mounted) return;
     Navigator.of(context).pop(_grant);
   }
@@ -1301,10 +1303,11 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
                   // rounded 30, ~90% screen height, spring slide-up.
                   AnimatedSlide(
                     offset: _drawerAppeared ? Offset.zero : const Offset(0, 1),
-                    duration: const Duration(milliseconds: 450),
-                    curve: _drawerAppeared
-                        ? Curves.easeOutCubic
-                        : Curves.easeInCubic,
+                    // iOS parity: .spring(response: 0.45, dampingFraction:
+                    // 0.9) drives the slide BOTH directions (SwiftUI's
+                    // .animation(_, value:) is symmetric).
+                    duration: avafliV2DrawerSpring.duration,
+                    curve: avafliV2DrawerSpring,
                     child: SizedBox(
                       height: constraints.maxHeight * 0.90,
                       width: double.infinity,

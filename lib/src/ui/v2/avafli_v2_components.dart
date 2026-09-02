@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'avafli_v2_effects.dart';
 import 'avafli_v2_legal.dart';
 import 'avafli_v2_strings.dart';
+import 'avafli_v2_svg_icon.dart';
 import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +77,12 @@ class AvafliV2Header extends StatelessWidget {
           ),
           _circleButton(
             onTap: onClose,
-            child: const Icon(Icons.close, size: 14, color: Colors.white),
+            child: const AvafliV2BrandIcon(
+              AvafliV2BrandGlyphs.close,
+              width: 12,
+              height: 12,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -103,7 +109,8 @@ class AvafliV2Header extends StatelessWidget {
         },
       );
     }
-    return Text('AVAFLI',
+    // Title-case wordmark, Inter Black 28 — matches iOS's fallback exactly.
+    return Text('Avafli',
         style: AvafliV2Font.inter(28, weight: FontWeight.w900));
   }
 
@@ -429,7 +436,12 @@ class AvafliV2PrizeCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_fire_department, size: 22, color: accent),
+                AvafliV2BrandIcon(
+                  AvafliV2BrandGlyphs.flame,
+                  width: 18,
+                  height: 22,
+                  color: accent,
+                ),
                 const SizedBox(width: 7),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -464,8 +476,12 @@ class AvafliV2PrizeCard extends StatelessWidget {
               children: [
                 Transform.rotate(
                   angle: -25 * 3.1415926535 / 180,
-                  child:
-                      Icon(Icons.confirmation_number, size: 20, color: accent),
+                  child: AvafliV2BrandIcon(
+                    AvafliV2BrandGlyphs.ticket,
+                    width: 22,
+                    height: 15,
+                    color: accent,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Column(
@@ -744,7 +760,12 @@ class _AvafliV2StreakRailState extends State<AvafliV2StreakRail> {
               overflow: TextOverflow.visible,
             ),
             const SizedBox(height: 2),
-            const Icon(Icons.arrow_drop_down, size: 14, color: Colors.white),
+            const AvafliV2BrandIcon(
+              AvafliV2BrandGlyphs.arrowDown,
+              width: 10,
+              height: 6,
+              color: Colors.white,
+            ),
           ],
         ),
       ),
@@ -985,7 +1006,12 @@ class _AvafliV2StreakTileState extends State<AvafliV2StreakTile> {
         // check can draw into place without the card resizing.
         return const SizedBox(width: 20, height: 20);
       case AvafliV2TileState.locked:
-        return Icon(Icons.lock, size: 18, color: _labelColor);
+        return AvafliV2BrandIcon(
+          AvafliV2BrandGlyphs.lock,
+          width: 16,
+          height: 20,
+          color: _labelColor,
+        );
     }
   }
 }
@@ -1018,8 +1044,12 @@ class AvafliV2PowerUpTile extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.local_fire_department,
-              size: 24, color: Colors.white),
+          const AvafliV2BrandIcon(
+            AvafliV2BrandGlyphs.flame,
+            width: 18,
+            height: 24,
+            color: Colors.white,
+          ),
           const Spacer(),
           Text(
             '$label\nSTREAK BONUS!',
@@ -1163,9 +1193,11 @@ class _AvafliV2ComeBackBarState extends State<AvafliV2ComeBackBar> {
           // `begin` drives it out the leading edge.
           ClipRect(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
+              // iOS parity: .spring(response: 0.5, dampingFraction: 0.85) —
+              // real spring physics for both the incoming and outgoing slide.
+              duration: avafliV2CarouselSpring.duration,
+              switchInCurve: avafliV2CarouselSpring,
+              switchOutCurve: avafliV2CarouselSpring,
               transitionBuilder: (child, animation) {
                 final incoming =
                     child.key == ValueKey(_showToast ? 'toast' : 'come-back');
@@ -1201,7 +1233,12 @@ class _AvafliV2ComeBackBarState extends State<AvafliV2ComeBackBar> {
       key: key,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.calendar_today, size: 26, color: accent),
+        AvafliV2BrandIcon(
+          AvafliV2BrandGlyphs.calendar,
+          width: 26,
+          height: 28,
+          color: accent,
+        ),
         const SizedBox(width: 14),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,

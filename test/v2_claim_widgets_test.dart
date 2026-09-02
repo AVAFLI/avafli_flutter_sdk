@@ -1,6 +1,8 @@
 // Widget smoke tests for the winner prize-claim steps (2.9 flow):
-// splash → stepped form (2 steps + review on Flutter) → submit →
+// splash → stepped form (3 steps + review, iOS parity) → submit →
 // share/celebrate → confirmation.
+
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -43,6 +45,7 @@ void main() {
     AvafliPrizeClaimForm? initialForm,
     String? submitError,
     ValueChanged<AvafliPrizeClaimForm>? onSubmit,
+    AvafliClaimPhotoPick? pickPhoto,
   }) {
     return _host(AvafliV2ClaimStepsFlow(
       accent: accent,
@@ -50,6 +53,7 @@ void main() {
       appName: appName,
       maskedEmail: maskedEmail,
       initialForm: initialForm ?? AvafliPrizeClaimForm(),
+      pickPhoto: pickPhoto,
       isSubmitting: false,
       submitError: submitError,
       onSubmit: onSubmit ?? (_) {},
@@ -102,7 +106,7 @@ void main() {
     expect(continued, isTrue);
   });
 
-  testWidgets('stepped form walks 2 steps, gates each, and submits',
+  testWidgets('stepped form walks 3 steps, gates each, and submits',
       (tester) async {
     AvafliPrizeClaimForm? submitted;
     await tester.pumpWidget(stepsFlow(
@@ -114,8 +118,8 @@ void main() {
     ));
     await tester.pump(const Duration(seconds: 1));
 
-    // ── Step 1 of 2: TELL US ABOUT YOURSELF ──
-    expect(find.text('STEP 1 OF 2'), findsOneWidget);
+    // ── Step 1 of 3: TELL US ABOUT YOURSELF ──
+    expect(find.text('STEP 1 OF 3'), findsOneWidget);
     expect(find.text('TELL US ABOUT YOURSELF'), findsOneWidget);
     // The winning email is locked/display-only, masked by the backend.
     expect(find.text('c******a@avafli.example.com'), findsOneWidget);
@@ -125,15 +129,15 @@ void main() {
     // Names are prefilled → CONTINUE advances.
     await tapContinue(tester);
 
-    // ── Step 2 of 2: address ──
-    expect(find.text('STEP 2 OF 2'), findsOneWidget);
+    // ── Step 2 of 3: address ──
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
     expect(find.text('WHERE SHOULD WE\nSEND YOUR PRIZE?'), findsOneWidget);
     expect(find.text('United States'), findsOneWidget);
     expect(find.byKey(const ValueKey('claim-back')), findsOneWidget);
 
     // Incomplete address: CONTINUE is a no-op.
     await tapContinue(tester);
-    expect(find.text('STEP 2 OF 2'), findsOneWidget);
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
 
     // Fill the address (text fields run street, apt, city, zip).
     final fields = find.byType(TextField);
@@ -153,6 +157,15 @@ void main() {
     await tester.tap(find.text('Alabama').last);
     await tester.pumpAndSettle();
 
+    await tapContinue(tester);
+
+    // ── Step 3 of 3: SHOW OFF YOUR WIN! (optional photo, iOS parity) ──
+    expect(find.text('STEP 3 OF 3'), findsOneWidget);
+    expect(find.text('SHOW OFF YOUR WIN!'), findsOneWidget);
+    expect(find.byKey(const ValueKey('claim-photo-upload')), findsOneWidget);
+    expect(find.byKey(const ValueKey('claim-photo-take')), findsOneWidget);
+
+    // The photo is fully optional — CONTINUE advances with none attached.
     await tapContinue(tester);
 
     // ── Review: ALMOST DONE! — only the OPTIONAL promo consent (2.9) ──
@@ -187,6 +200,7 @@ void main() {
     expect(submitted!.state, 'Alabama');
     expect(submitted!.zip, '11737');
     expect(submitted!.promoConsentGranted, isFalse);
+    expect(submitted!.photoBase64, isNull);
 
     // Ticking the promo consent carries through the payload.
     submitted = null;
@@ -212,15 +226,107 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     await tapContinue(tester);
-    expect(find.text('STEP 2 OF 2'), findsOneWidget);
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('claim-back')));
     await tester.pumpAndSettle();
-    expect(find.text('STEP 1 OF 2'), findsOneWidget);
+    expect(find.text('STEP 1 OF 3'), findsOneWidget);
 
     // Prefilled values survive the round trip.
     expect(find.text('Sam'), findsOneWidget);
     expect(find.text('Winner'), findsOneWidget);
+  });
+
+  testWidgets(
+      'photo step attaches via the picker, rides the submitted payload, '
+      'and a cancelled re-pick clears it (iOS attach(nil) parity)',
+      (tester) async {
+    // A 1×1 transparent PNG — decodable by Image.memory for the preview.
+    final png = Uint8List.fromList(const [
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // signature
+      0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+      0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, // IDAT
+      0x54, 0x78, 0x9C, 0x62, 0x00, 0x01, 0x00, 0x00,
+      0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+      0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, // IEND
+      0x42, 0x60, 0x82,
+    ]);
+    final picks = <bool>[];
+    Uint8List? nextPick = png;
+    AvafliPrizeClaimForm? submitted;
+
+    await tester.pumpWidget(stepsFlow(
+      initialForm: AvafliPrizeClaimForm(
+        firstName: 'Catherine',
+        lastName: 'Cinosta',
+        street: '5 Haide Pl.',
+        city: 'Brooklyn',
+        state: 'New York',
+        zip: '11737',
+      ),
+      pickPhoto: ({required bool preferCamera}) async {
+        picks.add(preferCamera);
+        return nextPick;
+      },
+      onSubmit: (form) => submitted = form,
+    ));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tapContinue(tester); // → step 2
+    await tapContinue(tester); // → step 3 (photo)
+    expect(find.text('SHOW OFF YOUR WIN!'), findsOneWidget);
+
+    // UPLOAD PHOTO goes straight to the library (no camera preference).
+    await tester.tap(find.byKey(const ValueKey('claim-photo-upload')));
+    await tester.pumpAndSettle();
+    expect(picks, [false]);
+    expect(
+      find.byKey(const ValueKey('claim-photo-preview')),
+      findsOneWidget, // circular preview
+    );
+
+    // TAKE PHOTO prefers the camera.
+    await tester.tap(find.byKey(const ValueKey('claim-photo-take')));
+    await tester.pumpAndSettle();
+    expect(picks, [false, true]);
+
+    // The attached photo rides the submitted payload base64-encoded.
+    await tapContinue(tester); // → review
+    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('SUBMIT PRIZE CLAIM'));
+    expect(submitted, isNotNull);
+    expect(submitted!.photoBase64, base64Encode(png));
+
+    // Going back keeps the preview; a pick that returns nothing CLEARS the
+    // photo — identical to iOS's attach(nil).
+    await tester.tap(find.byKey(const ValueKey('claim-back')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('claim-photo-preview')), findsOneWidget);
+    nextPick = null;
+    await tester.tap(find.byKey(const ValueKey('claim-photo-upload')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('claim-photo-preview')), findsNothing);
+
+    submitted = null;
+    await tapContinue(tester); // → review
+    await tester.ensureVisible(find.text('SUBMIT PRIZE CLAIM'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('SUBMIT PRIZE CLAIM'));
+    expect(submitted!.photoBase64, isNull);
+  });
+
+  test('claim photo encoding: base64 under the cap, dropped over it', () {
+    final small = Uint8List.fromList([1, 2, 3]);
+    expect(AvafliClaimPhoto.base64Jpeg(small), base64Encode(small));
+    expect(
+      AvafliClaimPhoto.base64Jpeg(
+        Uint8List(AvafliClaimPhoto.maxBytes + 1),
+      ),
+      isNull,
+    );
   });
 
   testWidgets('missing maskedEmail falls back to the generic locked copy',
@@ -247,6 +353,7 @@ void main() {
 
     // Every step is prefilled valid — walk straight to the review screen.
     await tapContinue(tester); // → step 2
+    await tapContinue(tester); // → step 3 (photo, optional)
     await tapContinue(tester); // → review
 
     expect(find.text('ALMOST DONE!'), findsOneWidget);
@@ -292,6 +399,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     await tapContinue(tester); // → step 2
+    await tapContinue(tester); // → step 3 (photo, optional)
     await tapContinue(tester); // → review
 
     expect(find.text('ALMOST DONE!'), findsOneWidget);
@@ -498,7 +606,7 @@ void main() {
     await tester.pump();
 
     // Close via the header X — the story must not be lost.
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byKey(const ValueKey('claim-close')));
     await tester.pump();
     expect(closed, 1);
     expect(stories, ['Buying mom dinner.']);

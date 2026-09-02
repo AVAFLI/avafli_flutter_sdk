@@ -1,5 +1,17 @@
 ## Unreleased
 
+### Added
+
+- **Photo claim step (iOS parity):** "SHOW OFF YOUR WIN!" is back as step 3 of the prize-claim form — the flow reads STEP 1 OF 3 again, matching iOS `AvafliV2ClaimStep3`. The optional photo is picked via the first-party `image_picker` plugin (new dependency, current major `^1.2.0`): UPLOAD PHOTO opens the library, TAKE PHOTO prefers the camera and falls back to the library when unavailable (simulator), a completed pick that returns nothing clears the photo (identical to iOS `attach(nil)`). The image is downscaled to a ≤1200px long edge at JPEG quality 85 (the same output iOS's `AvafliClaimPhoto` pipeline produces), capped at 5MB, and rides the existing `submitPrizeClaim` `photoBase64` field.
+
+### Changed (visual parity with iOS)
+
+- **Brand glyphs replace every Material stand-in:** the flame, entry ticket (with its −25° rotation), calendar, envelope, streak-tile lock, header/modal/legal close X, winner-banner "+", and DAILY PROGRESS pointer wedge now render the exact vectors from the iOS asset catalog (`avafli-*.svg` + `winner-plus.svg`), drawn by the in-repo SVG path renderer (`AvafliV2BrandIcon`) — no new dependency, no raster assets. Baked asset fill-opacities (mail 0.4, lock 0.5) are preserved under the tint exactly as iOS's template rendering does. The winner-splash shield is now half-filled (iOS `shield.lefthalf.filled`), and the confirmation's envelope sits in the accent ring tinted accent, ring 1.5pt (was white in a 2pt ring).
+- **Winner-card serif:** the OFFICIAL WINNER keepsake name renders in bundled Source Serif 4 Black (OFL) instead of the platform Georgia fallback — matching iOS's `.serif` + `.black` (New York Black) look on every device.
+- **Checkbox metrics:** the capture screen's age-gate/marketing checkboxes are 20×20 with a 12pt check (were 22×22/16), unchecked border accent-80%, contrast cut at luminance 0.6; the review consent check is 13pt (was 15) — all matching iOS.
+- **Wordmark fallback:** the no-logo header wordmark is title-case "Avafli" Inter-Black 28 (was all-caps), matching iOS.
+- **Spring motion:** the drawer slide-up/down, winner-modal pop, and come-back-bar toast↔pitch carousel now run real `SpringSimulation` physics matched to iOS's `.spring(response:dampingFraction:)` values (0.45/0.9, 0.4/0.8, 0.5/0.85) via a new `AvafliV2SpringCurve` — no new dependency; durations equal each spring's settling time.
+
 ### Fixed
 
 - Keyboard interaction audit across every input screen (email capture, adoption/new-address OTP code entry, prize-claim form, share-story textarea): a new shared `AvafliV2KeyboardDismiss` helper wraps each input screen so a drag on the scrollable or a tap on empty space naturally closes the keyboard (equivalent to `ScrollViewKeyboardDismissBehavior.onDrag`, implemented via scroll notifications because the package's minimum Flutter 3.24 predates `SingleChildScrollView.keyboardDismissBehavior`). Programmatic ensure-visible scrolls never dismiss. The existing guarantees — focused fields scroll clear of the keyboard via `AvafliV2EnsureVisible`, autocomplete suggestions surface above it, and viewInsets bottom padding keeps CTAs/legal footers reachable — are now locked in by widget tests (`test/v2_keyboard_interaction_test.dart`) that simulate an open keyboard.

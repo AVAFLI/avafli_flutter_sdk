@@ -117,7 +117,7 @@ Future<void> gotoAddressStep(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
   await tester.tap(find.text('CONTINUE'));
   await tester.pumpAndSettle();
-  expect(find.text('STEP 2 OF 2'), findsOneWidget);
+  expect(find.text('STEP 2 OF 3'), findsOneWidget);
 }
 
 void main() {

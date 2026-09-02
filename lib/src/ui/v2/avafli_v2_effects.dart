@@ -8,6 +8,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -643,3 +644,64 @@ class _AvafliV2PulseGlowState extends State<AvafliV2PulseGlow>
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// SwiftUI-parity spring curve
+// ---------------------------------------------------------------------------
+
+/// A [Curve] that runs the exact spring SwiftUI's
+/// `.spring(response:dampingFraction:)` runs — real [SpringSimulation]
+/// physics, not a cubic approximation — so the drawer slide-up, the winner
+/// modal pop, and the come-back bar carousel move identically on both
+/// platforms.
+///
+/// SwiftUI's parameters map onto a mass-1 spring with
+/// `stiffness = (2π / response)²` and the damping ratio taken verbatim.
+/// A [Curve] receives normalized 0..1 time, so the simulation is evaluated
+/// across [duration] — the spring's own settling time (where its envelope
+/// decays below ~0.1%). Drive the animation with exactly [duration] (the
+/// call sites do) and the normalized clock IS the physical clock.
+///
+/// Underdamped springs overshoot 1.0 by design; pair with transforms that
+/// tolerate >1 (slide, scale — not raw [Opacity]).
+class AvafliV2SpringCurve extends Curve {
+  AvafliV2SpringCurve({required double response, required double damping})
+      : assert(response > 0),
+        assert(damping > 0 && damping <= 1),
+        _settleSeconds =
+            -math.log(_settleEpsilon) * response / (2 * math.pi * damping),
+        _simulation = SpringSimulation(
+          SpringDescription.withDampingRatio(
+            mass: 1,
+            stiffness: math.pow(2 * math.pi / response, 2).toDouble(),
+            ratio: damping,
+          ),
+          0, // start
+          1, // end
+          0, // initial velocity
+        );
+
+  /// Envelope threshold that counts as "settled" (matches the default
+  /// physics tolerance's order of magnitude).
+  static const double _settleEpsilon = 0.001;
+
+  final SpringSimulation _simulation;
+  final double _settleSeconds;
+
+  /// The wall-clock time this spring needs to settle — pass as the paired
+  /// animation's duration.
+  Duration get duration =>
+      Duration(milliseconds: (_settleSeconds * 1000).round());
+
+  @override
+  double transformInternal(double t) => _simulation.x(t * _settleSeconds);
+}
+
+/// The three iOS spring recipes the V2 experience uses (values verbatim from
+/// the Swift sources).
+final avafliV2DrawerSpring = // iOS: .spring(response: 0.45, dampingFraction: 0.9)
+    AvafliV2SpringCurve(response: 0.45, damping: 0.9);
+final avafliV2ModalSpring = // iOS: .spring(response: 0.4, dampingFraction: 0.8)
+    AvafliV2SpringCurve(response: 0.4, damping: 0.8);
+final avafliV2CarouselSpring = // iOS: .spring(response: 0.5, dampingFraction: 0.85)
+    AvafliV2SpringCurve(response: 0.5, damping: 0.85);

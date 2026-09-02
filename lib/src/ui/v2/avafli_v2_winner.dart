@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/giveaway.dart';
 import 'avafli_v2_effects.dart';
+import 'avafli_v2_svg_icon.dart';
 import 'avafli_v2_theme.dart';
 
 // ---------------------------------------------------------------------------
@@ -82,7 +83,13 @@ class AvafliV2WinnerBanner extends StatelessWidget {
                 color: AvafliV2Colors.gunmetal,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add, size: 18, color: Colors.white),
+              alignment: Alignment.center,
+              child: const AvafliV2BrandIcon(
+                AvafliV2BrandGlyphs.winnerPlus,
+                width: 18,
+                height: 18,
+                color: Colors.white,
+              ),
             ),
           ],
         ),
@@ -137,8 +144,11 @@ class _AvafliV2WinnerModalState extends State<AvafliV2WinnerModal> {
         Center(
           child: AnimatedScale(
             scale: _appeared ? 1 : 0.9,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutBack,
+            // iOS parity: .spring(response: 0.4, dampingFraction: 0.8) —
+            // real spring physics (the opacity fade below stays a plain
+            // ramp; raw Opacity can't take the spring's >1 overshoot).
+            duration: avafliV2ModalSpring.duration,
+            curve: avafliV2ModalSpring,
             child: AnimatedOpacity(
               opacity: _appeared ? 1 : 0,
               duration: const Duration(milliseconds: 250),
@@ -222,7 +232,13 @@ class _AvafliV2WinnerModalState extends State<AvafliV2WinnerModal> {
                   color: AvafliV2Colors.gunmetal,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
+                alignment: Alignment.center,
+                child: const AvafliV2BrandIcon(
+                  AvafliV2BrandGlyphs.close,
+                  width: 11,
+                  height: 11,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),

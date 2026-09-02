@@ -12,12 +12,13 @@
 // callable (fire-and-forget; sent on DONE and on dismiss so a typed story is
 // never lost) — it no longer rides the submitPrizeClaim payload.
 //
-// Photo step note: iOS/Android's "SHOW OFF YOUR WIN!" attaches an optional
-// photo via the system pickers. This package deliberately has no
-// image-picker dependency (pure-Dart SDK, no heavy plugins), so the photo
-// step is SKIPPED on Flutter. The photo is OPTIONAL in the backend contract
-// (functions/src/prizeclaim.ts) and `SubmitPrizeClaimRequest.photoBase64`
-// stays wired for future use.
+// Photo step (3.1, iOS parity): "SHOW OFF YOUR WIN!" is step 3 of 3, exactly
+// as on iOS/Android — an OPTIONAL photo attached via the system pickers
+// (first-party `image_picker` plugin; camera falls back to the library when
+// unavailable, e.g. the simulator). The picker downscales to a ≤1200px long
+// edge at JPEG quality 85 (the same output iOS's AvafliClaimPhoto pipeline
+// produces) and the result rides `SubmitPrizeClaimRequest.photoBase64`,
+// capped at 5MB like iOS.
 //
 // Social share note (2.9): X opens the tweet intent with a prefilled winner
 // line (+ publisher shareUrl when configured); Facebook opens the sharer
@@ -27,9 +28,11 @@
 // the clipboard with a "Copied — paste it in your post" confirmation.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../network/places_autocomplete.dart';
@@ -59,8 +62,8 @@ class AvafliPrizeClaimForm {
   /// Fixed — US-only sweepstakes.
   final String country = 'United States';
 
-  /// JPEG/PNG base64 of the optional attached photo (already capped ≤5MB).
-  /// Always null on Flutter — see the photo note at the top of this file.
+  /// JPEG base64 of the optional attached photo (already downscaled and
+  /// capped ≤5MB — see [AvafliClaimPhoto]).
   String? photoBase64;
 
   /// Optional "please share a little" story. 2.9: the story is typed on the
@@ -306,6 +309,77 @@ class AvafliClaimDates {
 }
 
 // ---------------------------------------------------------------------------
+// Photo helpers (mirrors iOS `AvafliClaimPhoto`)
+// ---------------------------------------------------------------------------
+
+/// The claim photo pipeline's constants + encoding, matched to iOS: the
+/// picked image is downscaled so its long edge is ≤[longEdge] at JPEG
+/// quality [jpegQuality] (delegated to `image_picker`'s platform-side
+/// maxWidth/maxHeight/imageQuality — the same CGImage work iOS does by
+/// hand), then base64-encoded under the [maxBytes] cap.
+class AvafliClaimPhoto {
+  AvafliClaimPhoto._();
+
+  /// 5MB payload cap — matches iOS `AvafliClaimPhoto.maxBytes` and the
+  /// backend contract.
+  static const int maxBytes = 5 * 1024 * 1024;
+
+  /// Long-edge downscale target (iOS: `downscaled(_:longEdge: 1200)`).
+  static const double longEdge = 1200;
+
+  /// JPEG quality (iOS starts at 0.85 and only steps down when the encoded
+  /// payload exceeds the cap — which a 1200px JPEG never does in practice).
+  static const int jpegQuality = 85;
+
+  /// Base64 for the wire, or null when the (already downscaled) bytes still
+  /// exceed the cap — the photo is silently dropped, matching iOS's guard.
+  static String? base64Jpeg(Uint8List bytes) =>
+      bytes.length <= maxBytes ? base64Encode(bytes) : null;
+}
+
+/// Picks a claim photo and returns the downscaled JPEG bytes (null when the
+/// person cancels). [preferCamera] tries the camera first and falls back to
+/// the photo library when the camera is unavailable (simulator) or errors —
+/// mirroring iOS's `takePhoto()` fallback.
+typedef AvafliClaimPhotoPick = Future<Uint8List?> Function({
+  required bool preferCamera,
+});
+
+Future<Uint8List?> _pickClaimPhoto({required bool preferCamera}) async {
+  final picker = ImagePicker();
+  Future<XFile?> pick(ImageSource source) => picker.pickImage(
+        source: source,
+        maxWidth: AvafliClaimPhoto.longEdge,
+        maxHeight: AvafliClaimPhoto.longEdge,
+        imageQuality: AvafliClaimPhoto.jpegQuality,
+        requestFullMetadata: false,
+      );
+  XFile? file;
+  var pickedFromCamera = false;
+  if (preferCamera) {
+    try {
+      file = await pick(ImageSource.camera);
+      // The camera ran; a null here is the person CANCELLING the capture —
+      // don't bounce them into the library (matches iOS, where the camera
+      // sheet just dismisses).
+      pickedFromCamera = true;
+    } on Exception {
+      // No camera (simulator) or capture failed → library, like iOS.
+      pickedFromCamera = false;
+    }
+  }
+  if (!pickedFromCamera) {
+    try {
+      file = await pick(ImageSource.gallery);
+    } on Exception {
+      return null;
+    }
+  }
+  if (file == null) return null;
+  return file.readAsBytes();
+}
+
+// ---------------------------------------------------------------------------
 // Shared chrome
 // ---------------------------------------------------------------------------
 
@@ -331,17 +405,28 @@ class _AvafliClaimHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: onClose,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: AvafliV2Colors.deepCharcoal,
-                  shape: BoxShape.circle,
+            child: Semantics(
+              label: 'Close',
+              button: true,
+              child: GestureDetector(
+                key: const ValueKey('claim-close'),
+                onTap: onClose,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: AvafliV2Colors.deepCharcoal,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const AvafliV2BrandIcon(
+                    AvafliV2BrandGlyphs.close,
+                    width: 12,
+                    height: 12,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
           ),
@@ -361,8 +446,39 @@ class _AvafliClaimHeader extends StatelessWidget {
             progress == null ? child : const SizedBox.shrink(),
       );
     }
-    return Text('AVAFLI',
+    // Title-case wordmark, Inter Black 28 — matches iOS's fallback exactly.
+    return Text('Avafli',
         style: AvafliV2Font.inter(28, weight: FontWeight.w900));
+  }
+}
+
+/// The splash's half-filled shield, matching iOS's SF
+/// `shield.lefthalf.filled`: the outlined shield with its left half solid —
+/// built from the Material shield pair so no third-party icon set is needed.
+class _AvafliHalfFilledShield extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _AvafliHalfFilledShield({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          Icon(Icons.shield_outlined, size: size, color: color),
+          ClipRect(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              widthFactor: 0.5,
+              child: Icon(Icons.shield, size: size, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -545,7 +661,7 @@ class _AvafliV2WinnerSplashViewState extends State<AvafliV2WinnerSplashView> {
           ),
           const SizedBox(height: 14),
           _AvafliClaimInfoCard(
-            icon: Icon(Icons.shield_outlined, size: 26, color: accent),
+            icon: _AvafliHalfFilledShield(size: 26, color: accent),
             content: Text(
               'Your information is securely collected and only used to '
               'verify your prize and announce you as our winner.',
@@ -612,15 +728,14 @@ class _AvafliV2WinnerSplashViewState extends State<AvafliV2WinnerSplashView> {
 }
 
 // ---------------------------------------------------------------------------
-// Stepped claim form (Joe's Figma flow, 2.9) — 2 steps + review on Flutter
+// Stepped claim form (Joe's Figma flow, 2.9) — 3 steps + review
 // ---------------------------------------------------------------------------
 // Ported from iOS AvafliV2ClaimSteps/: a persistent gold-sparkle backdrop +
 // header + animated step indicator, with the form steps and the review
 // screen sliding horizontally beneath them (push left on advance, push right
-// on back). Flutter SKIPS the photo step (no image-picker dependency — see
-// the note at the top of this file), and 2.9 moved the share step AFTER
-// submit ([AvafliV2ClaimShareView]), so the numbered steps are: about you →
-// address, then review + SUBMIT.
+// on back). The numbered steps match iOS exactly: about you → address →
+// photo ("SHOW OFF YOUR WIN!", optional), then review + SUBMIT. 2.9 moved
+// the share step AFTER submit ([AvafliV2ClaimShareView]).
 
 /// Field styling from the claim-step frames: #212832 fill, #3D424B border, r10.
 class _AvafliStepTheme {
@@ -636,12 +751,12 @@ class _AvafliStepTheme {
       );
 }
 
-/// Total numbered steps on Flutter (photo step skipped, share step moved
-/// post-submit — see file header).
-const int _kClaimStepCount = 2;
+/// Total numbered steps (about you → address → photo; the share step moved
+/// post-submit — see file header). Matches iOS `totalFormSteps`.
+const int _kClaimStepCount = 3;
 
-/// 1..2 are the numbered steps; 3 is the review screen (no indicator).
-const int _kClaimReviewStep = 3;
+/// 1..3 are the numbered steps; 4 is the review screen (no indicator).
+const int _kClaimReviewStep = 4;
 
 class AvafliV2ClaimStepsFlow extends StatefulWidget {
   final Color accent;
@@ -669,6 +784,16 @@ class AvafliV2ClaimStepsFlow extends StatefulWidget {
   @visibleForTesting
   final AvafliPlacesClient? placesClient;
 
+  /// Test seam: replaces the system photo picker on the photo step. Null →
+  /// the real `image_picker` flow.
+  @visibleForTesting
+  final AvafliClaimPhotoPick? pickPhoto;
+
+  /// Test/preview seam: the step the flow mounts on (1..3 form steps,
+  /// 4 = review). Production always starts at 1.
+  @visibleForTesting
+  final int initialStep;
+
   final bool isSubmitting;
 
   /// Transport-level submit failure surfaced inline on the review screen
@@ -687,6 +812,8 @@ class AvafliV2ClaimStepsFlow extends StatefulWidget {
     required this.initialForm,
     this.placesApiKey,
     this.placesClient,
+    this.pickPhoto,
+    this.initialStep = 1,
     required this.isSubmitting,
     required this.submitError,
     required this.onSubmit,
@@ -727,8 +854,19 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
   /// screen. Optional; never gates SUBMIT (2.9).
   late bool _promoConsent;
 
-  /// 1..2 form steps, 3 = review.
-  int _step = 1;
+  /// The picked/taken photo (downscaled JPEG bytes) — held at flow level so
+  /// step 3 keeps its preview when the user navigates back and forth
+  /// (mirrors iOS holding `photo` in the flow root).
+  Uint8List? _photoBytes;
+
+  /// The wire payload for [_photoBytes] (encoded once at attach time).
+  String? _photoBase64;
+
+  /// Re-entrancy guard: one picker at a time.
+  bool _pickingPhoto = false;
+
+  /// 1..3 form steps, 4 = review.
+  late int _step = widget.initialStep.clamp(1, _kClaimReviewStep);
 
   /// Direction of the last navigation — drives the slide edges.
   bool _advancing = true;
@@ -806,6 +944,7 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
         city: _city.text,
         state: _state,
         zip: _zip.text,
+        photoBase64: _photoBase64,
         promoConsentGranted: _promoConsent,
       );
 
@@ -961,7 +1100,13 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
                   color: AvafliV2Colors.deepCharcoal,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
+                alignment: Alignment.center,
+                child: const AvafliV2BrandIcon(
+                  AvafliV2BrandGlyphs.close,
+                  width: 12,
+                  height: 12,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -981,7 +1126,8 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
             progress == null ? child : const SizedBox.shrink(),
       );
     }
-    return Text('AVAFLI',
+    // Title-case wordmark, Inter Black 28 — matches iOS's fallback exactly.
+    return Text('Avafli',
         style: AvafliV2Font.inter(28, weight: FontWeight.w900));
   }
 
@@ -1064,6 +1210,8 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
         return _step1();
       case 2:
         return _step2();
+      case 3:
+        return _photoStep();
       default:
         return _review();
     }
@@ -1326,6 +1474,181 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
     );
   }
 
+  // ── Step 3: SHOW OFF YOUR WIN! (optional photo — mirrors iOS
+  //    AvafliClaimStep3View) ──
+
+  Widget _photoStep() {
+    return _page(
+      title: 'SHOW OFF YOUR WIN!',
+      subtitle: "Upload a photo we'd be proud to\n"
+          'feature as one of our winners.',
+      // Fully optional — CONTINUE always advances, photo or not.
+      ctaEnabled: true,
+      onCTA: () => _go(4),
+      children: [
+        const SizedBox(height: 26),
+        _photoAvatar(),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: 277,
+          child: Column(
+            children: [
+              _photoButton(
+                key: const ValueKey('claim-photo-upload'),
+                icon: Icons.ios_share,
+                title: 'UPLOAD PHOTO',
+                onTap: () => _attachPhoto(preferCamera: false),
+              ),
+              const SizedBox(height: 12),
+              _photoButton(
+                key: const ValueKey('claim-photo-take'),
+                icon: Icons.photo_camera,
+                title: 'TAKE PHOTO',
+                onTap: () => _attachPhoto(preferCamera: true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 9),
+        Text(
+          'Your photo may appear in our Winner Gallery,\n'
+          'social media, and promotional materials.',
+          textAlign: TextAlign.center,
+          style: AvafliV2Font.inter(12, height: 1.3),
+        ),
+        const SizedBox(height: 17),
+      ],
+    );
+  }
+
+  /// 242pt circular preview with the 2pt accent ring and the 80pt camera
+  /// badge breaking the bottom-right edge (tappable — same as TAKE PHOTO).
+  Widget _photoAvatar() {
+    final bytes = _photoBytes;
+    return SizedBox(
+      width: 242,
+      height: 244, // circle + the badge's +2 y-offset (iOS offset(x: 6, y: 2))
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 242,
+            height: 242,
+            decoration: BoxDecoration(
+              color: AvafliV2Colors.gunmetal,
+              shape: BoxShape.circle,
+              border: Border.all(color: widget.accent, width: 2),
+            ),
+            clipBehavior: Clip.antiAlias,
+            alignment: Alignment.center,
+            child: bytes != null
+                ? Image.memory(
+                    bytes,
+                    key: const ValueKey('claim-photo-preview'),
+                    width: 242,
+                    height: 242,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  )
+                : const Icon(
+                    Icons.person,
+                    size: 110,
+                    color: Color(0x2EFFFFFF), // white 18%
+                  ),
+          ),
+          Positioned(
+            right: -6,
+            bottom: 0,
+            child: Semantics(
+              label: 'Take photo',
+              button: true,
+              child: GestureDetector(
+                onTap: () => _attachPhoto(preferCamera: true),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AvafliV2Colors.deepCharcoal,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: widget.accent, width: 2.2),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.photo_camera,
+                    size: 32,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The UPLOAD PHOTO / TAKE PHOTO outline buttons (frame metrics: 47pt tall,
+  /// r10 white-60% border, leading icon + Inter SemiBold 22 label).
+  Widget _photoButton({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      label: title,
+      button: true,
+      child: GestureDetector(
+        key: key,
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 47,
+          padding: const EdgeInsets.only(left: 30),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0x99FFFFFF)), // white 60%
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.white),
+              const SizedBox(width: 20),
+              Text(
+                title,
+                style: AvafliV2Font.inter(
+                  22,
+                  weight: FontWeight.w600,
+                  letterSpacing: -0.66,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Runs the picker and stores preview bytes + wire base64. A completed
+  /// pick that returns nothing CLEARS the photo — identical to iOS's
+  /// `attach(nil)` semantics.
+  Future<void> _attachPhoto({required bool preferCamera}) async {
+    if (_pickingPhoto) return;
+    _pickingPhoto = true;
+    try {
+      final pick = widget.pickPhoto ?? _pickClaimPhoto;
+      final bytes = await pick(preferCamera: preferCamera);
+      if (!mounted) return;
+      setState(() {
+        _photoBytes = bytes;
+        _photoBase64 =
+            bytes == null ? null : AvafliClaimPhoto.base64Jpeg(bytes);
+      });
+    } finally {
+      _pickingPhoto = false;
+    }
+  }
+
   // ── Review: ALMOST DONE! ──
 
   Widget _review() {
@@ -1441,8 +1764,9 @@ class _AvafliClaimConsentRow extends StatelessWidget {
                   width: 1.5,
                 ),
               ),
+              // iOS metrics: 24×24 box, 13pt bold check.
               child: isOn
-                  ? const Icon(Icons.check, size: 15, color: Colors.white)
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
                   : null,
             ),
             const SizedBox(width: 12),
@@ -2439,10 +2763,16 @@ class _AvafliV2ClaimConfirmationViewState
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: accent, width: 2),
+                // iOS: 1.5pt accent ring with the brand envelope inside,
+                // tinted accent (the asset's 40% wash included).
+                border: Border.all(color: accent, width: 1.5),
               ),
-              child:
-                  const Icon(Icons.mail_outline, size: 22, color: Colors.white),
+              child: AvafliV2BrandIcon(
+                AvafliV2BrandGlyphs.mail,
+                width: 24,
+                height: 19,
+                color: accent,
+              ),
             ),
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2542,12 +2872,16 @@ class _AvafliV2ClaimConfirmationViewState
                         ? form!.displayName
                         : 'Our Winner',
                     maxLines: 1,
+                    // Black-weight serif matching iOS's `.serif` + `.black`
+                    // (New York Black): Source Serif 4 Black (OFL), bundled
+                    // with the package so every device renders the same face.
                     style: const TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF1A1712),
-                      fontFamily: 'Georgia',
-                      fontFamilyFallback: ['Times New Roman', 'serif'],
+                      fontFamily: 'SourceSerif4',
+                      package: 'avafli_sdk',
+                      fontFamilyFallback: ['Georgia', 'Times New Roman'],
                       decoration: TextDecoration.none,
                     ),
                   ),

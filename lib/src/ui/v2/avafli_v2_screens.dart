@@ -12,6 +12,7 @@ import '../../domain/giveaway.dart';
 import 'avafli_v2_components.dart';
 import 'avafli_v2_legal.dart';
 import 'avafli_v2_strings.dart';
+import 'avafli_v2_svg_icon.dart';
 import 'avafli_v2_theme.dart';
 import 'avafli_v2_winner.dart';
 
@@ -765,9 +766,10 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.mail_outline,
-            size: 22,
+          AvafliV2BrandIcon(
+            AvafliV2BrandGlyphs.mail,
+            width: 22,
+            height: 18,
             color: AvafliV2Colors.gunmetal.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 10),
@@ -787,7 +789,7 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
               label: 'Email provided by this app',
               child: Icon(
                 Icons.lock,
-                size: 14,
+                size: 13,
                 color: AvafliV2Colors.gunmetal.withValues(alpha: 0.45),
               ),
             ),
@@ -850,7 +852,9 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
     required VoidCallback onTap,
   }) {
     final accent = widget.accent;
-    final checkColor = accent.computeLuminance() > 0.5
+    // iOS parity (AvafliV2Accent.contrastingMark): relative-luminance cut at
+    // 0.6 — white check on dark brands, gunmetal on light ones.
+    final checkColor = accent.computeLuminance() > 0.6
         ? AvafliV2Colors.gunmetal
         : Colors.white;
     return GestureDetector(
@@ -860,20 +864,22 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // iOS metrics: 20×20 box, r4, 1.5 stroke (accent 80% unchecked),
+          // 12pt bold check.
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 22,
-            height: 22,
+            width: 20,
+            height: 20,
             decoration: BoxDecoration(
               color: checked ? accent : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                color: checked ? accent : accent.withValues(alpha: 0.6),
+                color: checked ? accent : accent.withValues(alpha: 0.8),
                 width: 1.5,
               ),
             ),
             child:
-                checked ? Icon(Icons.check, size: 16, color: checkColor) : null,
+                checked ? Icon(Icons.check, size: 12, color: checkColor) : null,
           ),
           const SizedBox(width: 10),
           Flexible(
