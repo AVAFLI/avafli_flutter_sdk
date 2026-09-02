@@ -35,9 +35,10 @@ import 'avafli_user.dart';
 /// ```dart
 /// // Configure the SDK with user (call once at app launch)
 /// await Avafli.configure(AvafliConfiguration(
-///   apiKey: 'winr_live_xxxxxxxxxx',
+///   apiKey: 'YOUR_API_KEY',
 ///   environment: AvafliEnvironment.production,
-///   user: AvafliUser(id: 'user123', firstName: 'Jane', lastName: 'Doe'),
+///   bundleId: 'com.example.myapp',
+///   user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe'),
 /// ));
 ///
 /// // For the once-a-day auto-open, attach the SDK's navigator key:

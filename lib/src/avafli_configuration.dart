@@ -11,8 +11,10 @@ import 'avafli_user.dart';
 /// Example:
 /// ```dart
 /// final config = AvafliConfiguration(
-///   apiKey: 'winr_live_xxxxxxxxxx',
+///   apiKey: 'YOUR_API_KEY',
 ///   environment: AvafliEnvironment.production,
+///   bundleId: 'com.example.myapp',
+///   user: AvafliUser(id: 'user_123'),
 /// );
 ///
 /// await Avafli.configure(config);

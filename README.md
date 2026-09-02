@@ -1,8 +1,8 @@
 # Avafli Engagement SDK for Flutter
 **Drop-in sweepstakes, prizing, and gamification for your Flutter app**
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.10%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.0%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.24%2B-blue.svg?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.5%2B-blue.svg?logo=dart&logoColor=white)](https://dart.dev)
 [![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey.svg)](https://flutter.dev)
 
 ---
@@ -93,7 +93,7 @@ user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe', email: 'jan
 
 ```dart
 await Avafli.configure(AvafliConfiguration(
-  apiKey: 'avafli_live_…',
+  apiKey: 'YOUR_API_KEY',
   bundleId: 'com.example.myapp',
   user: AvafliUser.guest,
 ));
@@ -283,11 +283,23 @@ class MyAnalyticsAdapter implements AnalyticsAdapter {
     // Forward to Segment, Amplitude, Mixpanel, etc.
     analytics.track(eventName, parameters);
   }
+
+  @override
+  void setUserProperty(String name, String value) {
+    analytics.setUserProperty(name, value);
+  }
+
+  @override
+  void identify(String userId) {
+    analytics.identify(userId);
+  }
 }
 
 // Pass during configuration
 await Avafli.configure(AvafliConfiguration(
-  // ... other config
+  apiKey: 'YOUR_API_KEY',
+  bundleId: 'com.example.myapp',
+  user: AvafliUser(id: 'user_123'),
   options: AvafliOptions(
     analyticsAdapter: MyAnalyticsAdapter(),
   ),
@@ -300,27 +312,23 @@ await Avafli.configure(AvafliConfiguration(
 - `avafli_daily_entry_claimed` — Daily entries awarded (auto-claimed on open). Params: `day`, `entries`.
 - `avafli_experience_dismissed` — User closed the Avafli experience without a new claim
 
-## GDPR / CCPA
+## Account deletion in your app
 
-Handle erasure requests with `optOut()`:
+If your app has its own delete-account flow, call `optOut()` from it so the
+user's Avafli data is erased along with their account. Users can also delete
+their data themselves at any time from the Privacy Policy screen inside the
+experience — no integration required.
 
 ```dart
+// From your delete-account flow
 await Avafli.optOut();
 ```
 
-This is the complete Right-to-be-Forgotten path. It removes the person's personal
-information everywhere it is held — including prize-claim records, which carry name,
-address and phone — links their devices together so one call covers all of them, and
-permanently silences the experience on the device so it survives a reinstall.
-
-De-identified entry records are deliberately retained. They are the evidence that a
-drawing was fair and that a prize went to a real eligible person, which a sweepstakes
-operator must be able to show; GDPR Art. 17(3) exempts data needed for legal claims.
-The person is erased, the proof is kept.
-
-Users can also self-serve without any code from you: every legal link opens the
-Privacy Policy in an in-app webview, and its **Delete my data & stop participating**
-section runs the same erasure as `optOut()`.
+The erasure is identity-wide (one call covers all of the person's devices),
+includes prize-claim records, and permanently silences the experience on the
+device — it survives a reinstall. De-identified entry records are retained as
+the legally required evidence that drawings were fair (GDPR Art. 17(3)): the
+person is erased, the proof is kept.
 
 ## API Reference
 

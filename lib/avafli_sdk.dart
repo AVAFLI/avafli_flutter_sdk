@@ -15,11 +15,11 @@
 ///
 /// // Configure the SDK with user (call once at app launch)
 /// await Avafli.configure(AvafliConfiguration(
-///   apiKey: 'winr_live_xxxxxxxxxx',
+///   apiKey: 'YOUR_API_KEY',
 ///   environment: AvafliEnvironment.production,
 ///   bundleId: 'com.example.myapp',
 ///   user: AvafliUser(
-///     id: 'user123',
+///     id: 'user_123',
 ///     firstName: 'Jane',
 ///     lastName: 'Doe',
 ///   ),
