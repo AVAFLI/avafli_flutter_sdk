@@ -1,3 +1,10 @@
+## Unreleased
+
+### Fixed
+
+- Keyboard interaction audit across every input screen (email capture, adoption/new-address OTP code entry, prize-claim form, share-story textarea): a new shared `AvafliV2KeyboardDismiss` helper wraps each input screen so a drag on the scrollable or a tap on empty space naturally closes the keyboard (equivalent to `ScrollViewKeyboardDismissBehavior.onDrag`, implemented via scroll notifications because the package's minimum Flutter 3.24 predates `SingleChildScrollView.keyboardDismissBehavior`). Programmatic ensure-visible scrolls never dismiss. The existing guarantees — focused fields scroll clear of the keyboard via `AvafliV2EnsureVisible`, autocomplete suggestions surface above it, and viewInsets bottom padding keeps CTAs/legal footers reachable — are now locked in by widget tests (`test/v2_keyboard_interaction_test.dart`) that simulate an open keyboard.
+- Copy: "part of a Avafli streak" → "part of an Avafli streak" on the code-entry screen (plus two doc/test-name article fixes).
+
 ## 3.1.0 — 2026-09-01
 
 ### Added

@@ -849,7 +849,11 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    // Natural dismissal (shared helper): tap on empty space or a drag on any
+    // step's scrollable closes the keyboard; the street-address TapRegion
+    // still dismisses its own suggestions independently.
+    return AvafliV2KeyboardDismiss(
+        child: Stack(
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: AvafliV2Colors.deepCharcoal),
@@ -902,7 +906,7 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
           ],
         ),
       ],
-    );
+    ));
   }
 
   /// Persistent header: back chevron (steps 2+ / review), publisher logo,
@@ -2140,7 +2144,11 @@ class _AvafliV2ClaimShareViewState extends State<AvafliV2ClaimShareView> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
+    // Natural dismissal (shared helper): tapping outside the story box or
+    // dragging the sheet closes the keyboard so the share row + CONTINUE
+    // are never trapped behind it.
+    return AvafliV2KeyboardDismiss(
+        child: ColoredBox(
       color: AvafliV2Colors.deepCharcoal,
       child: SingleChildScrollView(
         padding:
@@ -2287,7 +2295,7 @@ class _AvafliV2ClaimShareViewState extends State<AvafliV2ClaimShareView> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

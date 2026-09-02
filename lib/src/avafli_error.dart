@@ -70,7 +70,7 @@ enum AvafliError {
 
 /// Exception wrapper for [AvafliError] that can be thrown and caught.
 ///
-/// Use this when you need to throw a Avafli-specific error that can
+/// Use this when you need to throw an Avafli-specific error that can
 /// be caught with a try-catch block.
 class AvafliException implements Exception {
   const AvafliException(this.error,

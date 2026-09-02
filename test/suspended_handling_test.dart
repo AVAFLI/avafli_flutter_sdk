@@ -9,7 +9,7 @@ void main() {
       expect(error.toString(), contains('serviceUnavailable'));
     });
 
-    test('can be wrapped and caught as a AvafliException', () {
+    test('can be wrapped and caught as an AvafliException', () {
       AvafliError? caught;
       try {
         throw const AvafliException(AvafliError.serviceUnavailable);

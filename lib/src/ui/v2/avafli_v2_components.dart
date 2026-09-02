@@ -201,6 +201,53 @@ class _AvafliV2EnsureVisibleState extends State<AvafliV2EnsureVisible> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// Natural keyboard dismissal for every SDK input screen, in one place:
+///
+/// * **Drag** — a user-initiated scroll (a [ScrollStartNotification] carrying
+///   `dragDetails`) closes the keyboard, matching
+///   `ScrollViewKeyboardDismissBehavior.onDrag`. Implemented via the
+///   notification rather than `SingleChildScrollView.keyboardDismissBehavior`
+///   because that parameter doesn't exist at this package's minimum Flutter
+///   (3.24). Programmatic scrolls ([Scrollable.ensureVisible] from
+///   [AvafliV2EnsureVisible], autocomplete reveals) carry no `dragDetails`
+///   and never dismiss.
+/// * **Tap** — a tap that nothing else claims (empty space, copy, images)
+///   unfocuses. Buttons, checkboxes, links and the fields themselves win the
+///   gesture arena as before, so nothing changes for real controls.
+///
+/// Wrap a whole input screen (not just its scrollable) so the header and any
+/// pinned footer also dismiss on tap.
+class AvafliV2KeyboardDismiss extends StatelessWidget {
+  final Widget child;
+
+  const AvafliV2KeyboardDismiss({super.key, required this.child});
+
+  static void _unfocus() {
+    final focus = FocusManager.instance.primaryFocus;
+    // Only drop focus that is actually showing a keyboard-ish editable —
+    // unfocusing scope nodes wholesale can break traversal.
+    if (focus != null && focus.hasFocus && focus.context != null) {
+      focus.unfocus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollStartNotification>(
+      onNotification: (notification) {
+        if (notification.dragDetails != null) _unfocus();
+        return false; // observe only — never swallow the notification.
+      },
+      child: GestureDetector(
+        onTap: _unfocus,
+        behavior: HitTestBehavior.translucent,
+        excludeFromSemantics: true,
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Soft email-verification nudge: a small, persistent pill on the streak
 /// dashboard shown while the person's newly-typed email is unverified. A mail
 /// glyph + "Verify your email" in the publisher accent, tappable, subtle — it

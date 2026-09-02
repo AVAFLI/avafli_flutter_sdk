@@ -505,7 +505,10 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    // Natural dismissal (shared helper): tap on empty space or a drag on the
+    // scrollable closes the keyboard; controls keep winning their taps.
+    return AvafliV2KeyboardDismiss(
+        child: Stack(
       fit: StackFit.expand,
       children: [
         // 2.9: the accent-blue radial glow is gone — the capture screen sits
@@ -688,7 +691,7 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   /// PRIZE-derived white strip (Day-1 examples):
@@ -1345,7 +1348,10 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // Natural dismissal (shared helper): tap-anywhere / drag-to-scroll close
+    // the keyboard, so the code screen never traps it over VERIFY.
+    return AvafliV2KeyboardDismiss(
+        child: Container(
       // 2.9.3 (Ryan): the code-entry screen sits on the SAME flat gunmetal
       // drawer surface as capture and the dashboard — no glow, no
       // off-drawer charcoal — so adoption/verify reads as the same product.
@@ -1381,7 +1387,7 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
                     const SizedBox(height: 10),
                     Text(
                       widget.subtitle ??
-                          'This email is already part of a Avafli streak. Enter '
+                          'This email is already part of an Avafli streak. Enter '
                               'the 6-digit code we sent to ${widget.email} to '
                               'pick it up on this device.',
                       textAlign: TextAlign.center,
@@ -1483,6 +1489,6 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
