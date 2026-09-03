@@ -1039,10 +1039,24 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _claimedToday = false;
         _phase = _V2Phase.streak;
       });
-      _showDashboardNotice(
-        AvafliV2Strings.entryNotRecorded,
-        onRetry: _retryDailyClaim,
-      );
+      // "Check your connection" + TRY AGAIN is only true for failures a retry
+      // can fix: genuine transport drops and 5xx outages. A backend 4xx
+      // rejection (giveaway ended/paused mid-session, upgrade-required,
+      // opt-out) can never succeed on retry — settle silently and re-load
+      // once so the drawer renders the truthful state. Matches iOS.
+      final retryCanFix = e is! AvafliException ||
+          e.transport ||
+          e.error == AvafliError.networkError ||
+          e.error == AvafliError.serverError;
+      if (retryCanFix) {
+        _showDashboardNotice(
+          AvafliV2Strings.entryNotRecorded,
+          onRetry: _retryDailyClaim,
+        );
+      } else if (!_didResyncAfterAlreadyClaimed) {
+        _didResyncAfterAlreadyClaimed = true;
+        unawaited(_load());
+      }
     }
   }
 

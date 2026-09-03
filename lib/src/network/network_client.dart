@@ -9,6 +9,7 @@ import 'package:http/io_client.dart';
 
 import '../services/logger.dart';
 import '../avafli_error.dart';
+import 'avafli_api.dart' show AvafliRequestDefaults;
 import 'api_request.dart';
 import 'gts_roots.dart';
 
@@ -171,7 +172,7 @@ class NetworkClientImpl implements NetworkClient {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'X-API-Key': apiKey,
-      'User-Agent': 'Avafli-Flutter-SDK/v3.0.0',
+      'User-Agent': 'Avafli-Flutter-SDK/v${AvafliRequestDefaults.sdkVersion}',
     };
 
     // Add auth token if available and the request requires it
@@ -300,7 +301,15 @@ class NetworkClientImpl implements NetworkClient {
           throw const AvafliException(AvafliError.serviceUnavailable);
         }
         if (lower?.contains('geograph') == true ||
-            lower?.contains('location') == true) {
+            lower?.contains('location') == true ||
+            lower?.contains('located') == true ||
+            lower?.contains('promotion is only available') == true) {
+          // Both backend geo messages: "…verify your location…" AND
+          // "This promotion is only available to users located in…" (the
+          // confirmed-non-US wording, which contains neither 'geograph' nor
+          // 'location' — it previously fell through to authenticationFailed,
+          // burning 3 token-refresh retries and ending in a bogus
+          // "check your connection" instead of the geo-blocked screen).
           throw const AvafliException(AvafliError.geographyNotAllowed);
         }
         if (lower?.contains('already claimed') == true ||
