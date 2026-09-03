@@ -1,3 +1,9 @@
+## 3.1.2
+
+- Fixed: terminal backend rejections (giveaway ended mid-session, upgrade required, opt-out) no longer show "Check your connection" with a dead-end TRY AGAIN — the drawer settles to the truthful state. Transport and 5xx failures keep the retry notice.
+- Fixed: the confirmed-non-US geo rejection now routes to the geo-blocked screen instead of a token-refresh loop ending in a bogus connection error.
+- Fixed: the HTTP User-Agent no longer reports v3.0.0.
+
 ## 3.1.1 — 2026-09-02
 
 ### Added
