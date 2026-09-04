@@ -1195,9 +1195,18 @@ class _AvafliV2ComeBackBarState extends State<AvafliV2ComeBackBar> {
             child: AnimatedSwitcher(
               // iOS parity: .spring(response: 0.5, dampingFraction: 0.85) —
               // real spring physics for both the incoming and outgoing slide.
+              //
+              // The OUTGOING child's animation runs 1→0 (AnimatedSwitcher
+              // reverses it), and a spring curve is asymmetric in time: fast
+              // start, long settled tail. Played backwards, the old text sat
+              // at full opacity, centered, for most of the handoff while the
+              // new text had already arrived — both banners painted on top of
+              // each other. `.flipped` mirrors the curve so the reverse
+              // traversal experiences the spring in FORWARD time, which is
+              // exactly what SwiftUI does for an asymmetric removal.
               duration: avafliV2CarouselSpring.duration,
               switchInCurve: avafliV2CarouselSpring,
-              switchOutCurve: avafliV2CarouselSpring,
+              switchOutCurve: avafliV2CarouselSpring.flipped,
               transitionBuilder: (child, animation) {
                 final incoming =
                     child.key == ValueKey(_showToast ? 'toast' : 'come-back');
@@ -1240,46 +1249,50 @@ class _AvafliV2ComeBackBarState extends State<AvafliV2ComeBackBar> {
           color: accent,
         ),
         const SizedBox(width: 14),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // "Come back tomorrow"/"Come back again" is BOLD, the rest
-            // regular — per Joe's banner lockup.
-            Text.rich(
-              TextSpan(
-                children: widget.visitMode
-                    ? [
-                        TextSpan(
-                          text: 'Come back again',
-                          style: AvafliV2Font.inter(12,
-                              weight: FontWeight.w700, height: 1.2),
-                        ),
-                        const TextSpan(text: ' to receive:'),
-                      ]
-                    : [
-                        TextSpan(
-                          text: 'Come back tomorrow',
-                          style: AvafliV2Font.inter(12,
-                              weight: FontWeight.w700, height: 1.2),
-                        ),
-                        const TextSpan(
-                            text: ' to\nkeep your streak alive and receive:'),
-                      ],
+        // Flexible (like the toast's column) so large accessibility text
+        // sizes wrap inside the bar instead of overflowing the Row.
+        Flexible(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // "Come back tomorrow"/"Come back again" is BOLD, the rest
+              // regular — per Joe's banner lockup.
+              Text.rich(
+                TextSpan(
+                  children: widget.visitMode
+                      ? [
+                          TextSpan(
+                            text: 'Come back again',
+                            style: AvafliV2Font.inter(12,
+                                weight: FontWeight.w700, height: 1.2),
+                          ),
+                          const TextSpan(text: ' to receive:'),
+                        ]
+                      : [
+                          TextSpan(
+                            text: 'Come back tomorrow',
+                            style: AvafliV2Font.inter(12,
+                                weight: FontWeight.w700, height: 1.2),
+                          ),
+                          const TextSpan(
+                              text: ' to\nkeep your streak alive and receive:'),
+                        ],
+                ),
+                textAlign: TextAlign.center,
+                style: AvafliV2Font.inter(12, height: 1.2),
               ),
-              textAlign: TextAlign.center,
-              style: AvafliV2Font.inter(12, height: 1.2),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              '${avafliV2FormatInt(widget.nextEntries)} ENTRIES',
-              style: AvafliV2Font.inter(
-                16,
-                weight: FontWeight.w900,
-                color: accent,
-                height: 1.1,
+              const SizedBox(height: 1),
+              Text(
+                '${avafliV2FormatInt(widget.nextEntries)} ENTRIES',
+                style: AvafliV2Font.inter(
+                  16,
+                  weight: FontWeight.w900,
+                  color: accent,
+                  height: 1.1,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

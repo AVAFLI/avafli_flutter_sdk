@@ -1,3 +1,8 @@
+## 3.1.3
+
+- Fixed: the bottom banner's "You're on a roll" → "Come back tomorrow" handoff no longer paints both messages on top of each other. The outgoing slide now runs the spring in forward time (iOS parity); a widget test guards the transition frame by frame.
+- Fixed: the come-back copy wraps inside the bar at large accessibility text sizes instead of overflowing.
+
 ## 3.1.2
 
 - Fixed: terminal backend rejections (giveaway ended mid-session, upgrade required, opt-out) no longer show "Check your connection" with a dead-end TRY AGAIN — the drawer settles to the truthful state. Transport and 5xx failures keep the retry notice.
