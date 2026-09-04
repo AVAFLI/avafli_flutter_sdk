@@ -860,9 +860,14 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
+      // Full-width, start-aligned rows (iOS/Android/web parity): a shrink-
+      // wrapped centered row put the short age-gate line in the middle of the
+      // screen while the wrapping marketing line hugged the left edge, so the
+      // two boxes never lined up.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // iOS metrics: 20×20 box, r4, 1.5 stroke (accent 80% unchecked),
           // 12pt bold check.
@@ -882,7 +887,7 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
                 checked ? Icon(Icons.check, size: 12, color: checkColor) : null,
           ),
           const SizedBox(width: 10),
-          Flexible(
+          Expanded(
             child: Text(label, style: AvafliV2Font.inter(14)),
           ),
         ],

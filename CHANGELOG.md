@@ -1,3 +1,7 @@
+## 3.1.4
+
+- Fixed: the email-capture screen's age-gate and marketing-consent checkboxes are full-width, start-aligned rows (iOS/Android/web parity) — the short age-gate line no longer floats to the centre while the wrapping marketing line hugs the left edge.
+
 ## 3.1.3
 
 - Fixed: the bottom banner's "You're on a roll" → "Come back tomorrow" handoff no longer paints both messages on top of each other. The outgoing slide now runs the spring in forward time (iOS parity); a widget test guards the transition frame by frame.
