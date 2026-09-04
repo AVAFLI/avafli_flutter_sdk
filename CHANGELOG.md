@@ -1,3 +1,7 @@
+## 3.1.5
+
+- Fixed: a long physical-prize name on the Day 2+ prize card now shrinks to fit two lines (iOS `minimumScaleFactor` parity) instead of being cut off with an ellipsis.
+
 ## 3.1.4
 
 - Fixed: the email-capture screen's age-gate and marketing-consent checkboxes are full-width, start-aligned rows (iOS/Android/web parity) — the short age-gate line no longer floats to the centre while the wrapping marketing line hugs the left edge.

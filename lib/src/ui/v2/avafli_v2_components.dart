@@ -592,11 +592,13 @@ class AvafliV2PrizeCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
+        // iOS parity (.minimumScaleFactor(0.55)): a long physical-prize name
+        // SHRINKS to fit two lines instead of being cut off with an ellipsis.
+        AvafliV2ShrinkToFitText(
           'Win ${avafliV2Article(prizeDescription)} $prizeDescription',
           maxLines: 2,
+          minScale: 0.55,
           textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
           style: AvafliV2Font.inter(
             28,
             weight: FontWeight.w900,
@@ -1574,5 +1576,64 @@ class _AvafliV2CountUpTextState extends State<AvafliV2CountUpText>
           ),
       ],
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shrink-to-fit text (iOS minimumScaleFactor parity)
+// ---------------------------------------------------------------------------
+
+/// Renders [text] at [style]'s font size, shrinking it (down to
+/// [minScale] × the size) until it fits within [maxLines] at the available
+/// width — SwiftUI's `.lineLimit(n).minimumScaleFactor(f)`. Only if even the
+/// minimum scale overflows does it fall back to an ellipsis.
+class AvafliV2ShrinkToFitText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  final int maxLines;
+  final double minScale;
+  final TextAlign textAlign;
+
+  const AvafliV2ShrinkToFitText(
+    this.text, {
+    super.key,
+    required this.style,
+    this.maxLines = 2,
+    this.minScale = 0.55,
+    this.textAlign = TextAlign.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final maxWidth = constraints.maxWidth.isFinite
+          ? constraints.maxWidth
+          : MediaQuery.of(context).size.width;
+      final base = style.fontSize ?? 14;
+      final textDirection = Directionality.of(context);
+      final scaler = MediaQuery.textScalerOf(context);
+      double size = base;
+      final floor = base * minScale;
+      // Step down in ~4% increments until the block fits its line budget.
+      while (size > floor) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style.copyWith(fontSize: size)),
+          maxLines: maxLines,
+          textAlign: textAlign,
+          textDirection: textDirection,
+          textScaler: scaler,
+        )..layout(maxWidth: maxWidth);
+        if (!painter.didExceedMaxLines) break;
+        size = (size * 0.96).clamp(floor, base);
+        if (size == floor) break;
+      }
+      return Text(
+        text,
+        maxLines: maxLines,
+        textAlign: textAlign,
+        overflow: TextOverflow.ellipsis,
+        style: style.copyWith(fontSize: size),
+      );
+    });
   }
 }
