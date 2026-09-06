@@ -1,3 +1,8 @@
+## 3.1.6
+
+- Fixed: a device with an unfinished cross-device link (typed an email that already belongs to another device, never entered the 6-digit code) now opens straight onto the code screen, before the network round-trips and regardless of the local consent flag. Previously a cached dashboard could paint first — and once the backend had echoed the shell user's consent, later opens skipped the code screen entirely and claimed on the wrong record.
+- Fixed: that code is re-sent at most once every 10 minutes across opens; "Send a new code" still always sends.
+
 ## 3.1.5
 
 - Fixed: a long physical-prize name on the Day 2+ prize card now shrinks to fit two lines (iOS `minimumScaleFactor` parity) instead of being cut off with an ellipsis.

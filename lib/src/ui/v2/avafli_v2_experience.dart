@@ -405,6 +405,23 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
 
     final storage = widget.preferencesStorage;
     final giveaway = widget.cachedGiveaway ?? await storage.getCachedGiveaway();
+
+    // A parked cross-device link OWNS this open: the code screen is the FIRST
+    // frame — never a cached dashboard that sits there for the network
+    // round-trips and reads as "day 1" to a person who then closes the sheet
+    // having seen no code prompt (while the code e-mail is already on its
+    // way). _load() re-affirms the screen and handles the cooled-down resend.
+    if ((_backendAdoptionPending ?? widget.adoptionPending) == true) {
+      if (!mounted || _phase != _V2Phase.loading) return;
+      setState(() {
+        if (giveaway != null) _giveaway = giveaway;
+        _isRestagedAdoption = true;
+        _pendingVerificationEmail = null;
+        _codeError = null;
+        _phase = _V2Phase.codeEntry;
+      });
+      return;
+    }
     if (giveaway == null) return;
 
     // Day 1 / unconsented users must land on email capture, never a dashboard.
@@ -511,7 +528,10 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       // Backend is the source of truth for email consent. If it confirms an
       // email on file, seed the local "submitted" flag so a user whose local
       // flag was lost (e.g. reinstall) isn't re-prompted for email.
-      if (response.emailConsentStatus) {
+      // ...unless a cross-device link is parked: the backend echoes the shell
+      // user's consent, and seeding the flag from it let the next open bypass
+      // the code screen into a cached dashboard (Sept 2026 field report).
+      if (response.emailConsentStatus && response.adoptionPending != true) {
         await storage.setBool(StorageKeys.emailConfirmed, true);
       }
     } catch (e) {
@@ -566,17 +586,18 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       return;
     }
 
+    // Adoption re-entry (2.9, hardened Sept 2026): the person typed an
+    // existing email last time but never entered the 6-digit code. Runs
+    // BEFORE the email gate — an earlier open may have seeded the local
+    // consent flag from the backend's echo for the shell user, and a parked
+    // link must never be bypassed into a cached dashboard or a claim.
+    if ((_backendAdoptionPending ?? widget.adoptionPending) == true) {
+      await _restageAdoption();
+      return;
+    }
+
     // Email-capture gate: shown until the user completes the consent flow.
     if (!await _hasEmailConsent) {
-      // Adoption re-entry (2.9): the person typed an existing email last
-      // time but never entered the 6-digit code. Instead of restarting at
-      // email capture, re-stage the adoption (fresh code) and pick up on the
-      // code screen. Falls back to capture when the restage fails.
-      final adoptionPending = _backendAdoptionPending ?? widget.adoptionPending;
-      if (adoptionPending == true) {
-        await _restageAdoption();
-        return;
-      }
       _setPhase(_V2Phase.emailCapture);
       return;
     }
@@ -756,6 +777,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
             _phase = _V2Phase.codeEntry;
           });
         }
+        unawaited(_markAdoptionCodeSent());
         return;
       }
 
@@ -1397,6 +1419,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       // resolved — clear every cached copy so future opens don't re-stage.
       _backendAdoptionPending = false;
       Avafli.clearAdoptionPending();
+      await widget.preferencesStorage.remove(_adoptionCodeSentAtKey);
       if (mounted) {
         setState(() {
           _pendingVerificationEmail = null;
@@ -1437,20 +1460,47 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   /// shows the code screen with the "pick up where you left off" copy. Any
   /// failure — or a backend that says nothing is pending after all — falls
   /// back to the normal email-capture screen.
+  /// Cooldown between automatic code re-sends for a parked link: every open
+  /// lands on the code screen, but the e-mail goes out at most once per
+  /// window (the code itself lives 10 minutes). "Send a new code" always sends.
+  static const Duration _adoptionCodeCooldown = Duration(minutes: 10);
+
+  String get _adoptionCodeSentAtKey =>
+      '${StorageKeys.adoptionCodeSentAt}_${widget.configuration.bundleId}';
+
+  Future<bool> _adoptionCodeIsStale() async {
+    final last =
+        await widget.preferencesStorage.getInt(_adoptionCodeSentAtKey) ?? 0;
+    return DateTime.now().millisecondsSinceEpoch - last >=
+        _adoptionCodeCooldown.inMilliseconds;
+  }
+
+  Future<void> _markAdoptionCodeSent() => widget.preferencesStorage
+      .setInt(_adoptionCodeSentAtKey, DateTime.now().millisecondsSinceEpoch);
+
   Future<void> _restageAdoption() async {
+    // Screen FIRST — the person is looking at the code prompt before any
+    // e-mail goes out, never at a cached dashboard while the send races.
+    if (mounted && _phase != _V2Phase.codeEntry) {
+      setState(() {
+        _isRestagedAdoption = true;
+        _pendingVerificationEmail = null;
+        _codeError = null;
+        _phase = _V2Phase.codeEntry;
+      });
+    }
+    if (!await _adoptionCodeIsStale()) {
+      Logger.instance.debug(
+          'Adoption re-entry: a code went out inside the cooldown — not re-sending');
+      return;
+    }
     try {
       final response =
           await widget.networkClient.send(RestageAdoptionRequest());
       if (!mounted) return;
       if (response.sent) {
-        Logger.instance
-            .info('Adoption re-staged — fresh code sent, showing code entry');
-        setState(() {
-          _isRestagedAdoption = true;
-          _pendingVerificationEmail = null;
-          _codeError = null;
-          _phase = _V2Phase.codeEntry;
-        });
+        await _markAdoptionCodeSent();
+        Logger.instance.info('Adoption re-staged — fresh code sent');
         return;
       }
       // Backend reports nothing pending after all — clear the stale flag and
@@ -1459,9 +1509,8 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       Avafli.clearAdoptionPending();
       _setPhase(_V2Phase.emailCapture);
     } catch (e) {
-      Logger.instance
-          .info('restageAdoption failed — falling back to email capture: $e');
-      _setPhase(_V2Phase.emailCapture);
+      // Stay on the code screen — "Send a new code" re-attempts the send.
+      Logger.instance.info('restageAdoption failed — code screen kept: $e');
     }
   }
 
@@ -1485,6 +1534,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       });
       try {
         await widget.networkClient.send(RestageAdoptionRequest());
+        await _markAdoptionCodeSent();
         if (mounted) setState(() => _isSubmittingEmail = false);
       } catch (e) {
         Logger.instance.error('Adoption re-stage resend failed', e);
