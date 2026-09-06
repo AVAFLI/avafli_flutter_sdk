@@ -155,5 +155,10 @@ void main() {
 
     expect(find.byType(AvafliV2DashboardView), findsOneWidget);
     expect(find.byType(AvafliV2CodeEntryView), findsNothing);
+
+    // Drain the dashboard's own timers (the rail's auto-center) so the tree
+    // tears down clean.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   });
 }
