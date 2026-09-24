@@ -1,3 +1,4 @@
+import 'avafli_auto_open.dart';
 import 'avafli_branding.dart';
 import 'avafli_options.dart';
 import 'avafli_environment.dart';
@@ -35,16 +36,26 @@ class AvafliConfiguration {
   /// Optional behavior toggles (logging, analytics, push).
   final AvafliOptions options;
 
+  /// When the SDK may open the experience on its own. Defaults to
+  /// [AvafliAutoOpen.always] — the once-a-day auto-open every prior release
+  /// shipped with. Use [AvafliAutoOpen.never] (or
+  /// [AvafliAutoOpen.returningUsersOnly]) and call [Avafli.present] yourself
+  /// to show the drawer at a moment of your choosing, e.g. after onboarding.
+  /// Registration and analytics run on [Avafli.configure] regardless.
+  final AvafliAutoOpen autoOpen;
+
   /// Creates a new [AvafliConfiguration].
   ///
   /// [apiKey], [bundleId], and [user] are required.
-  /// [options] defaults to [AvafliOptions()] if not provided.
+  /// [options] defaults to [AvafliOptions()] and [autoOpen] to
+  /// [AvafliAutoOpen.always] if not provided.
   const AvafliConfiguration({
     required this.apiKey,
     this.environment = AvafliEnvironment.production,
     required this.bundleId,
     required this.user,
     this.options = const AvafliOptions(),
+    this.autoOpen = AvafliAutoOpen.always,
   });
 
   /// Default branding (server-driven overrides are merged at runtime).

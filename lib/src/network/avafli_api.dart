@@ -75,6 +75,11 @@ class RegisterDeviceResponse {
   /// the code screen instead of email capture. Absent/null → normal flow.
   final bool? adoptionPending;
 
+  /// OPTIONAL: true when this call was the first-ever registration of this
+  /// device (drives `AvafliAutoOpen.returningUsersOnly`). Absent on older
+  /// backends → null → treated as a returning device.
+  final bool? isNewUser;
+
   const RegisterDeviceResponse({
     required this.token,
     required this.refreshToken,
@@ -88,6 +93,7 @@ class RegisterDeviceResponse {
     this.emailVerified,
     this.prizeClaim,
     this.adoptionPending,
+    this.isNewUser,
   });
 
   factory RegisterDeviceResponse.fromJson(Map<String, dynamic> json) {
@@ -107,6 +113,7 @@ class RegisterDeviceResponse {
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
           : null,
       adoptionPending: json['adoptionPending'] as bool?,
+      isNewUser: json['isNewUser'] as bool?,
     );
   }
 }
@@ -284,7 +291,7 @@ class AvafliRequestDefaults {
   AvafliRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '3.1.2';
+  static String sdkVersion = '3.1.7';
 }
 
 /// Response from claiming daily entries (mirrors iOS

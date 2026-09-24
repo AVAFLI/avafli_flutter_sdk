@@ -1,3 +1,9 @@
+## 3.1.7
+
+- Added: publisher presentation control. `AvafliConfiguration.autoOpen` (`AvafliAutoOpen.always` — the default, unchanged — / `returningUsersOnly` / `never`) decides when the drawer opens on its own; `Avafli.present()` opens it on demand (after onboarding, from a button). The server can set `sdkConfig.experience.autoOpenMode` too; the more restrictive of the two applies, and the existing `autoOpenEnabled` kill switch still wins. Device registration (the DAU/MAU heartbeat) runs on `configure()` in every mode; only presentation changes. `holdAutoOpen()` / `releaseAutoOpen()` are unchanged.
+- Fixed: cold open after days away no longer loses the day's drawer to a dead session token. The network client now refreshes a token whose JWT `exp` is past (or within 60 s) before sending, shares ONE in-flight refresh across concurrent callers instead of racing `refreshToken` with the same refresh token, and a launch whose registration / giveaway refresh died on the network is re-run on the next app-foreground (nothing is burned on the failed boot: no once-a-day mark, no impression).
+- Fixed: `Avafli.sdkVersion` (sent to the backend and in the User-Agent) reported 3.1.5 since the 3.1.6 release.
+
 ## 3.1.6
 
 - Fixed: a device with an unfinished cross-device link (typed an email that already belongs to another device, never entered the 6-digit code) now opens straight onto the code screen, before the network round-trips and regardless of the local consent flag. Previously a cached dashboard could paint first — and once the backend had echoed the shell user's consent, later opens skipped the code screen entirely and claimed on the wrong record.

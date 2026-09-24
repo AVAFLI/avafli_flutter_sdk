@@ -40,17 +40,28 @@ class NetworkClientImpl implements NetworkClient {
   String? _authToken;
   Future<String?> Function()? _refreshHandler;
 
+  /// Single-flight token refresh. Concurrent callers that all hit a dead
+  /// token (the cold-open case: 2–3 parallel authed calls after days away)
+  /// share ONE in-flight refresh instead of each racing `refreshToken` with
+  /// the same refresh token — the backend rotates it, so the losers would be
+  /// refused and the whole boot would fail. Cleared when the refresh settles.
+  Future<String?>? _refreshInFlight;
+
   /// Lazily-built pinning client. Reused across requests so we don't pay the
   /// HttpClient setup cost on every call.
   http.Client? _pinnedClient;
 
   /// Creates a new network client.
+  ///
+  /// [client] is a test seam only: production builds the GTS-pinned client
+  /// lazily on first use (see [_client]).
   NetworkClientImpl({
     required this.baseURL,
     required this.apiKey,
     this.timeout = const Duration(seconds: 30),
     this.maxRetries = 3,
-  });
+    http.Client? client,
+  }) : _pinnedClient = client;
 
   /// Builds (once) an [IOClient] over a `dart:io` [HttpClient] whose trust
   /// store is RESTRICTED to the Google Trust Services roots, with an SPKI
@@ -110,9 +121,30 @@ class NetworkClientImpl implements NetworkClient {
 
   @override
   Future<T> send<T>(ApiRequest<T> request) async {
+    // Proactive expiry pre-check: a cached ID token whose JWT `exp` is past
+    // (or within a minute) would only earn a guaranteed 401 round trip —
+    // refresh first instead. The server still validates the signature; this
+    // is a cheap client-side read only. A refresh that yields no token is the
+    // same dead session a 401 would have revealed, surfaced without the
+    // wasted request so the caller re-registers straight away.
+    if (request.requiresAuth && _refreshHandler != null) {
+      final token = _authToken;
+      if (token != null && isTokenExpiringSoon(token)) {
+        Logger.instance.debug(
+            'Session token expired (exp pre-check), refreshing before request');
+        final newToken = await _refreshAuthToken();
+        if (newToken == null) {
+          throw const AvafliException(AvafliError.authenticationFailed);
+        }
+        setAuthToken(newToken);
+      }
+    }
+
     var attempt = 0;
 
     while (attempt < maxRetries) {
+      // The token this attempt goes out with — see the 401 branch below.
+      final tokenUsed = _authToken;
       try {
         final response = await _performRequest(request);
         return request.parseResponse(response);
@@ -131,9 +163,16 @@ class NetworkClientImpl implements NetworkClient {
         if (e.error == AvafliError.authenticationFailed &&
             _refreshHandler != null &&
             request.requiresAuth) {
+          // A sibling request already rotated the token while this one was
+          // in flight — retry with it rather than refreshing a second time.
+          final current = _authToken;
+          if (current != null && current != tokenUsed) {
+            attempt++;
+            continue;
+          }
           Logger.instance
               .debug('Authentication failed, attempting token refresh');
-          final newToken = await _refreshHandler!();
+          final newToken = await _refreshAuthToken();
           if (newToken != null) {
             setAuthToken(newToken);
             // Retry the request with new token
@@ -161,6 +200,43 @@ class NetworkClientImpl implements NetworkClient {
     }
 
     throw const AvafliException(AvafliError.networkError);
+  }
+
+  /// Runs the refresh handler, sharing one in-flight refresh between every
+  /// concurrent caller (see [_refreshInFlight]).
+  Future<String?> _refreshAuthToken() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    final refresh = _refreshHandler!().whenComplete(() {
+      _refreshInFlight = null;
+    });
+    _refreshInFlight = refresh;
+    return refresh;
+  }
+
+  /// Whether [token]'s JWT `exp` claim is already past or lands within
+  /// [leeway] (default 60 s). Mirrors the Android SDK's `isJwtExpired`
+  /// pre-check: it reads the payload only — no signature check, the server
+  /// stays the source of truth. A token that isn't a three-part JWT, or
+  /// carries no numeric `exp`, returns false so the server decides (the
+  /// existing 401 → refresh path still covers it); this is purely an
+  /// optimisation that must never block a request on its own.
+  static bool isTokenExpiringSoon(String token,
+      {Duration leeway = const Duration(seconds: 60)}) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final payload = jsonDecode(
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+      if (payload is! Map<String, dynamic>) return false;
+      final exp = payload['exp'];
+      if (exp is! num) return false;
+      final expiry = DateTime.fromMillisecondsSinceEpoch((exp * 1000).toInt(),
+          isUtc: true);
+      return !DateTime.now().toUtc().add(leeway).isBefore(expiry);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Performs the actual HTTP request.

@@ -55,7 +55,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     try {
       // 1. Configure the Avafli SDK. The experience presents itself: on the
       //    first app-open of each day the V2 drawer auto-opens — provided
-      //    Avafli.navigatorKey is attached above. There is no manual launch API.
+      //    Avafli.navigatorKey is attached above. To pick the moment yourself,
+      //    set autoOpen: AvafliAutoOpen.never and call Avafli.present().
       await Avafli.configure(AvafliConfiguration(
         apiKey:
             'winr_live_50b1b3b801a843d5e1f99593fcad4d14', // demo key for this example app

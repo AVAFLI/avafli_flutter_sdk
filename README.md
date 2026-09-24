@@ -14,7 +14,7 @@ Avafli lets you add daily-entry sweepstakes and prize experiences to your app in
 **Key capabilities:**
 - **Daily entry sweepstakes** — Users earn entries every day they engage
 - **V2 auto-open experience** — The bottom-drawer experience opens itself on the first app-open of each day and grants entries automatically (requires `Avafli.navigatorKey` on your `MaterialApp`)
-- **Daily streak + auto-claim** — Entries climb a +10/day ladder; the drawer auto-opens once per day and claims that day's entries — there is no manual present API
+- **Daily streak + auto-claim** — Entries climb a +10/day ladder; the drawer auto-opens once per day and claims that day's entries (or you open it yourself with `Avafli.present()` — see [Controlling when the drawer opens](#controlling-when-the-drawer-opens))
 - **Email capture** — The SDK captures an email through its own opt-in screen, with an UNCHECKED-by-default marketing-consent tick and a publisher-configurable age gate
 - **Cross-device verified adoption** — When a typed email matches an existing account, the SDK confirms a 6-digit code before merging the streak across devices
 - **Soft email verification** — A brand-new typed email shows a persistent, dismissible "Verify your email" chip; it never blocks play, only prize-draw eligibility
@@ -110,7 +110,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.1.2
+  avafli_sdk: ^3.1.7
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
@@ -157,6 +157,7 @@ final success = await Avafli.configure(config);
 | `environment` | `AvafliEnvironment` | — | `.production` (default) |
 | `user` | `AvafliUser` | ✅ | The authenticated user |
 | `options` | `AvafliOptions?` | — | Optional behavior toggles |
+| `autoOpen` | `AvafliAutoOpen` | — | `.always` (default), `.returningUsersOnly`, or `.never` — see [Controlling when the drawer opens](#controlling-when-the-drawer-opens) |
 
 ### AvafliUser
 
@@ -196,11 +197,44 @@ changes.
 
 ## The Experience Presents Itself
 
-There is no manual launch API — the Avafli experience is exclusively SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `Avafli.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again.
+By default the Avafli experience is SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `Avafli.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again. Want to pick the moment yourself? See [Controlling when the drawer opens](#controlling-when-the-drawer-opens).
 
 Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then land straight on the same celebrating dashboard — the toast just reads "YOU'RE IN!" on Day 1.
 
 If your app boots through a splash/auth flow that clears the navigation stack, guard the auto-open with `Avafli.holdAutoOpen()` / `Avafli.releaseAutoOpen()` (see [Quick Start](#quick-start)).
+
+## Controlling when the drawer opens
+
+**The default is unchanged:** with nothing set, the drawer auto-opens once per day exactly as before. Whatever you choose below, device registration and analytics (the DAU/MAU heartbeat) still happen on `Avafli.configure()` — only the *presentation* is affected.
+
+`AvafliConfiguration.autoOpen` takes one of three `AvafliAutoOpen` modes:
+
+| Mode | Behavior |
+| ---- | -------- |
+| `AvafliAutoOpen.always` (default) | Auto-open once per calendar day when eligible — today's behavior. |
+| `AvafliAutoOpen.returningUsersOnly` | Skip the auto-open for the session in which the device registered for the first time (`isNewUser`), so it never pops over your first-run onboarding. Every later launch auto-opens as normal. |
+| `AvafliAutoOpen.never` | The SDK never auto-opens; you call `Avafli.present()`. |
+
+Your dashboard can also set a server-side mode (`experience.autoOpenMode`); the SDK applies the **more restrictive** of the server's and your app's setting, and the server kill switch (`autoOpenEnabled: false`) always wins.
+
+- **`Avafli.present()`** — opens the drawer on demand (from a button, a screen, after onboarding). Same guards as the auto-open (configured, not opted out, publisher not suspended, an active giveaway, not already open — each resolves `false` rather than throwing), waits for a registration still in flight, ignores the once-a-day mark and the unregistered impression cap, never counts an impression, and on close writes the once-a-day mark so an auto-open later that day won't double-pop. Resolves `true` once the drawer has been shown and closed.
+- **`Avafli.holdAutoOpen()` / `Avafli.releaseAutoOpen()`** — pause and resume the once-a-day auto-open around a boot flow (nothing is burned while held; `present()` still works). `releaseAutoOpen()` immediately re-runs the eligibility check with the effective mode.
+
+Show the drawer after onboarding:
+
+```dart
+await Avafli.configure(AvafliConfiguration(
+  apiKey: 'YOUR_API_KEY',
+  bundleId: 'com.example.myapp',
+  user: AvafliUser(id: 'user_123'),
+  // Never pop over onboarding; we decide when. (returningUsersOnly skips
+  // only the very first session and auto-opens from the next launch on.)
+  autoOpen: AvafliAutoOpen.never,
+));
+
+// ... later, once your onboarding flow completes:
+final shown = await Avafli.present(); // false if no giveaway is live etc.
+```
 
 ## Email Capture & Verification
 
@@ -337,7 +371,8 @@ person is erased, the proof is kept.
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `Avafli.configure(config)` | `Future<bool>` | Initialize the SDK with user and settings |
-| `Avafli.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can auto-open (required) |
+| `Avafli.navigatorKey` | `GlobalKey<NavigatorState>` | Attach to your `MaterialApp` so the experience can open (required) |
+| `Avafli.present()` | `Future<bool>` | Open the drawer on demand (pair with `autoOpen: AvafliAutoOpen.never` / `returningUsersOnly`) |
 | `Avafli.holdAutoOpen()` | `void` | Pause the once-a-day auto-open during a boot flow that clears the nav stack |
 | `Avafli.releaseAutoOpen()` | `Future<void>` | Release a `holdAutoOpen()` and open immediately if the day is due |
 | `Avafli.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |

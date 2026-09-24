@@ -1,3 +1,5 @@
+import '../avafli_auto_open.dart';
+
 /// Typed view over the server-driven `sdkConfig` payload (mirrors the iOS
 /// SDK's `SDKConfigResponse` / `ExperienceConfig` in AvafliAPI.swift).
 ///
@@ -194,8 +196,15 @@ class AvafliSdkBranding {
 /// Server-driven experience behavior flags (mirrors iOS `ExperienceConfig`).
 class AvafliExperienceConfig {
   /// Auto-present the experience on the first app-open of the day
-  /// (default true).
+  /// (default true). `false` is the hard kill switch — it wins over every
+  /// mode below and over the client's `AvafliConfiguration.autoOpen`.
   final bool? autoOpenEnabled;
+
+  /// OPTIONAL server-side presentation mode (`'always' |
+  /// 'returningUsersOnly' | 'never'`). Combined with the client's
+  /// `AvafliConfiguration.autoOpen` by taking the MORE restrictive of the
+  /// two. Absent or unrecognised → null → treated as `always`.
+  final AvafliAutoOpen? autoOpenMode;
 
   /// How many times an unregistered (no-email) user sees the auto-presented
   /// experience before it goes quiet (default 3 — MVP decision).
@@ -213,6 +222,7 @@ class AvafliExperienceConfig {
 
   const AvafliExperienceConfig({
     this.autoOpenEnabled,
+    this.autoOpenMode,
     this.unregisteredImpressionCap,
     this.requireDismissClick,
     this.winnerBannerEnabled,
@@ -221,6 +231,9 @@ class AvafliExperienceConfig {
   factory AvafliExperienceConfig.fromJson(Map<String, dynamic> json) {
     return AvafliExperienceConfig(
       autoOpenEnabled: json['autoOpenEnabled'] as bool?,
+      autoOpenMode: json['autoOpenMode'] is String
+          ? AvafliAutoOpen.fromWire(json['autoOpenMode'] as String)
+          : null,
       unregisteredImpressionCap:
           (json['unregisteredImpressionCap'] as num?)?.toInt(),
       requireDismissClick: json['requireDismissClick'] as bool?,

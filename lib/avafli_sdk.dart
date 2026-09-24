@@ -26,14 +26,18 @@
 /// ));
 ///
 /// // Attach the SDK navigator key so the experience can auto-open on the
-/// // first app-open of the day (the experience presents itself; there is
-/// // no manual launch API):
+/// // first app-open of the day:
 /// MaterialApp(navigatorKey: Avafli.navigatorKey, ...);
+///
+/// // Prefer to choose the moment yourself (e.g. after onboarding)? Set
+/// // `autoOpen: AvafliAutoOpen.never` on the configuration and call
+/// // `Avafli.present()` from your own code.
 /// ```
 library avafli_sdk;
 
 // Core SDK
 export 'src/avafli.dart';
+export 'src/avafli_auto_open.dart';
 export 'src/avafli_options.dart';
 export 'src/avafli_configuration.dart';
 export 'src/avafli_environment.dart';

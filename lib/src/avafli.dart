@@ -21,15 +21,19 @@ import 'storage/secure_storage.dart';
 import 'storage/storage.dart';
 import 'ui/v2/avafli_v2_effects.dart';
 import 'ui/v2/avafli_v2_experience.dart';
+import 'avafli_auto_open.dart';
 import 'avafli_configuration.dart';
 import 'avafli_error.dart';
 import 'avafli_user.dart';
 
 /// Main entry point for the Avafli Flutter SDK.
 ///
-/// This class provides the primary interface for initializing the SDK. The
-/// Avafli experience presents itself — the SDK auto-opens the bottom drawer at
-/// most once per calendar day; there is no manual launch API.
+/// This class provides the primary interface for initializing the SDK. By
+/// default the Avafli experience presents itself — the SDK auto-opens the
+/// bottom drawer at most once per calendar day. Publishers who want to choose
+/// the moment (e.g. after a first-run onboarding) set
+/// [AvafliConfiguration.autoOpen] and call [present] themselves; device
+/// registration runs on [configure] either way.
 ///
 /// Example usage:
 /// ```dart
@@ -43,6 +47,9 @@ import 'avafli_user.dart';
 ///
 /// // For the once-a-day auto-open, attach the SDK's navigator key:
 /// MaterialApp(navigatorKey: Avafli.navigatorKey, ...)
+///
+/// // Or open it yourself: autoOpen: AvafliAutoOpen.never, then
+/// await Avafli.present();
 /// ```
 class Avafli {
   static AvafliConfiguration? _configuration;
@@ -75,6 +82,18 @@ class Avafli {
   // Registration state
   static bool _isRegistering = false;
   static Completer<void>? _registrationCompleter;
+
+  /// True for the session in which `registerDevice` reported a brand-new
+  /// device (`isNewUser: true`); drives [AvafliAutoOpen.returningUsersOnly].
+  /// A cached session (no re-registration) is by definition returning.
+  static bool _isNewUserSession = false;
+
+  /// Set when the boot-time registration / giveaway refresh died on the
+  /// network (the Sept 2026 cold-open failure: dead token → refresh → retry
+  /// lost on a flaky link). The next app-foreground re-runs registration
+  /// before the auto-open check instead of waiting for the next cold start.
+  /// Nothing is burned on the failed boot: no once-a-day mark, no impression.
+  static bool _bootRetryPending = false;
 
   /// Set when the backend reports the publisher is suspended / its API key has
   /// been revoked (typically a billing lapse). Cached from a failed device
@@ -111,7 +130,7 @@ class Avafli {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '3.1.5';
+  static const String sdkVersion = '3.1.7';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -155,17 +174,18 @@ class Avafli {
       AvafliRequestDefaults.sdkVersion = sdkVersion;
 
       // Initialize storage
-      _secureStorage = SecureStorage();
+      _secureStorage = secureStorageForTesting ?? SecureStorage();
       _preferencesStorage = PreferencesStorage();
 
       // Initialize streak engine
       _streakEngine = StreakEngine();
 
       // Initialize network client
-      _networkClient = NetworkClientImpl(
-        baseURL: _configuration!.baseURL,
-        apiKey: config.apiKey,
-      );
+      _networkClient = networkClientForTesting ??
+          NetworkClientImpl(
+            baseURL: _configuration!.baseURL,
+            apiKey: config.apiKey,
+          );
 
       // Set up token refresh handler
       _networkClient!.setRefreshHandler(_refreshTokenIfNeeded);
@@ -216,9 +236,12 @@ class Avafli {
           : 'User set: ${_redactId(config.user.id)}');
 
       // Register device in background, then attempt the once-a-day
-      // auto-present. The launch trigger for the offline retry queue runs
-      // after that: a pending same-day claim persisted before a kill retries
-      // now that the session is (re)established.
+      // auto-present. Registration is unconditional — it is the DAU/MAU
+      // heartbeat — and runs identically in every [AvafliAutoOpen] mode; the
+      // mode is applied inside [_autoPresentIfEligible] only. The launch
+      // trigger for the offline retry queue runs after that: a pending
+      // same-day claim persisted before a kill retries now that the session
+      // is (re)established.
       unawaited(_registerDeviceIfNeeded().then((_) async {
         await _autoPresentIfEligible();
         _offlineCoordinator?.noteLaunch();
@@ -278,14 +301,17 @@ class Avafli {
   /// screen, auth gate) that ends by clearing the navigation stack
   /// (`Get.offAll`, `pushAndRemoveUntil`, …) — otherwise the drawer can
   /// present over the splash and be destroyed by that navigation a moment
-  /// later. Call [releaseAutoOpen] once your main screen is mounted.
+  /// later. Call [releaseAutoOpen] once your main screen is mounted. While
+  /// held nothing is burned (no once-a-day mark, no impression), and
+  /// [present] still works.
   static void holdAutoOpen() {
     _autoOpenHeld = true;
   }
 
   /// Releases a [holdAutoOpen] and immediately attempts the once-a-day
-  /// auto-open if it is due. Safe to call when the SDK is not configured,
-  /// and safe to call repeatedly.
+  /// auto-open if it is due (the effective [AvafliAutoOpen] mode applies).
+  /// Safe to call when the SDK is not configured, and safe to call
+  /// repeatedly.
   static Future<void> releaseAutoOpen() async {
     _autoOpenHeld = false;
     await _autoPresentIfEligible();
@@ -306,6 +332,25 @@ class Avafli {
     // Kill switch: sdkConfig.experience.autoOpenEnabled (default true).
     final experience = _cachedSdkConfig?.experience;
     if (!(experience?.autoOpenEnabled ?? true)) return;
+
+    // Presentation mode — the more restrictive of the server's
+    // `experience.autoOpenMode` and the client's `AvafliConfiguration
+    // .autoOpen` (default `always` on both, so nothing changes unless set).
+    final mode = AvafliAutoOpen.mostRestrictive(
+      config.autoOpen,
+      experience?.autoOpenMode ?? AvafliAutoOpen.always,
+    );
+    if (mode == AvafliAutoOpen.never) {
+      Logger.instance.debug(
+          'Auto-present skipped: autoOpen mode is never (present() only)');
+      return;
+    }
+    if (mode == AvafliAutoOpen.returningUsersOnly && _isNewUserSession) {
+      Logger.instance.debug(
+          'Auto-present skipped: first-ever session and autoOpen mode is '
+          'returningUsersOnly');
+      return;
+    }
     if (_cachedGiveaway == null) return;
 
     // Once per day.
@@ -388,6 +433,62 @@ class Avafli {
     _autoPresentRetries = 0;
   }
 
+  /// Opens the Avafli experience (the V2 bottom drawer) on demand — from a
+  /// button, a screen of your own, or once onboarding finishes. Pair it with
+  /// [AvafliConfiguration.autoOpen] set to [AvafliAutoOpen.never] or
+  /// [AvafliAutoOpen.returningUsersOnly].
+  ///
+  /// Same guards as the auto-open: the SDK must be configured, the person
+  /// not opted out (RTD), the publisher not suspended, an active giveaway
+  /// must exist, and the drawer must not already be on screen — each of
+  /// those resolves `false` (logged at info) rather than throwing. If device
+  /// registration is still in flight the call waits for it first. Being an
+  /// explicit request, it ignores the once-a-day mark, the unregistered
+  /// impression cap and [holdAutoOpen], and never counts an impression — but
+  /// on close it writes the once-a-day mark so an auto-open later the same
+  /// day doesn't double-pop. Requires [navigatorKey] on your `MaterialApp`.
+  ///
+  /// Resolves `true` once the drawer has been presented and closed again.
+  static Future<bool> present() async {
+    if (_configuration == null) {
+      Logger.instance.info('Avafli.present() ignored: SDK not configured');
+      return false;
+    }
+    // Never race registerDevice — it may still be establishing the session
+    // (or about to flip _isSuspended / the RTD flag).
+    await _ensureRegistrationComplete();
+    if (_isSuspended || _cachedOptedOut) {
+      Logger.instance.info(_isSuspended
+          ? 'Avafli.present() ignored: publisher suspended'
+          : 'Avafli.present() ignored: user opted out (RTD)');
+      return false;
+    }
+    if (_isPresenting) return false;
+    if (_cachedGiveaway == null) {
+      Logger.instance
+          .info('Avafli.present() ignored: no active giveaway (or registration '
+              'has not completed successfully yet)');
+      return false;
+    }
+    final context = navigatorKey.currentContext;
+    if (context == null || !context.mounted) {
+      Logger.instance.info(
+          'Avafli.present() ignored: Avafli.navigatorKey not attached to a MaterialApp');
+      return false;
+    }
+
+    _userDismissedExperience = false;
+    try {
+      await _present(context);
+    } catch (_) {
+      return false; // suspended / opted out — already logged by _present.
+    }
+    // Same mark the auto-open writes, so the day is spent either way.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastAutoPresentKey, _dayString(DateTime.now()));
+    return true;
+  }
+
   static String _dayString(DateTime date) {
     return '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
@@ -465,11 +566,10 @@ class Avafli {
 
   /// Presents the Avafli experience (the V2 bottom drawer) over the host app.
   ///
-  /// Internal-only: the experience is exclusively SDK-driven — it is opened by
-  /// the once-a-day auto-present flow ([_autoPresentIfEligible]) and cannot be
-  /// launched manually by the host app. Returns the [DailyEntryGrant] when
-  /// entries were claimed during this presentation, or `null` if the user
-  /// dismissed without a (new) claim.
+  /// Internal: shared by the once-a-day auto-present flow
+  /// ([_autoPresentIfEligible]) and the publisher-initiated [present]. Returns
+  /// the [DailyEntryGrant] when entries were claimed during this
+  /// presentation, or `null` if the user dismissed without a (new) claim.
   ///
   /// If the publisher account is suspended / its API key has been revoked,
   /// this does NOT push any screen and instead throws a [AvafliException]
@@ -593,6 +693,8 @@ class Avafli {
 
     _isRegistering = true;
     _registrationCompleter = Completer<void>();
+    // A fresh attempt — only a failure below re-arms the foreground retry.
+    _bootRetryPending = false;
 
     try {
       final config = _configuration!;
@@ -606,6 +708,8 @@ class Avafli {
       if (existingToken != null && existingUuid != null) {
         // Restore auth token on the network client before making requests
         _networkClient!.setAuthToken(existingToken);
+        // A cached session is a returning device by definition.
+        _isNewUserSession = false;
         try {
           // Try to refresh giveaway data with the cached token
           await _refreshGiveawayData();
@@ -661,6 +765,8 @@ class Avafli {
       _cachedSdkConfigRaw = response.sdkConfig;
       _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedAdoptionPending = response.adoptionPending;
+      // Older backends omit isNewUser → treated as returning (auto-open).
+      _isNewUserSession = response.isNewUser == true;
       if (response.optedOut == true) markOptedOut();
 
       // Cache streak state
@@ -694,6 +800,9 @@ class Avafli {
         OfflineState.isOnline = false;
         unawaited(_offlineCoordinator?.enqueue(PendingIntentKind.registration));
       }
+      // Any network-class failure (transport OR a mapped 429/5xx, which the
+      // offline queue deliberately ignores) gets one more go on foreground.
+      if (_isBootNetworkFailure(e)) _bootRetryPending = true;
     } finally {
       _isRegistering = false;
       _registrationCompleter?.complete();
@@ -709,6 +818,16 @@ class Avafli {
   static void _prewarmPublisherArt() {
     AvafliV2ImageWarmer.prewarm(_cachedGiveaway?.prizeImageUrl);
     AvafliV2ImageWarmer.prewarm(_cachedSdkConfig?.branding?.logoUrl);
+  }
+
+  /// Whether a boot-time failure is the kind a fresh network round-trip can
+  /// fix: a transport drop / timeout / 429 ([AvafliError.networkError]) or a
+  /// 5xx ([AvafliError.serverError]). Backend rejections are not — they'd
+  /// only be rejected again.
+  static bool _isBootNetworkFailure(Object error) {
+    return error is AvafliException &&
+        (error.error == AvafliError.networkError ||
+            error.error == AvafliError.serverError);
   }
 
   /// If [error] indicates the publisher is suspended / API key revoked, caches
@@ -766,6 +885,9 @@ class Avafli {
         rethrow;
       }
       Logger.instance.error('Failed to refresh giveaway data', e);
+      // Swallowed here so a warm launch degrades to the cache, but with no
+      // giveaway in memory the auto-open can't run — retry on foreground.
+      if (_isBootNetworkFailure(e)) _bootRetryPending = true;
     } catch (e) {
       Logger.instance.error('Failed to refresh giveaway data', e);
     }
@@ -945,6 +1067,14 @@ class Avafli {
   /// @internal — Foreground hook from the lifecycle observer.
   static Future<void> handleAppResumed() async {
     await _ensureRegistrationComplete();
+    // Boot resilience: a registration / giveaway refresh lost to the network
+    // at launch is re-run now, so the day's auto-open isn't forfeited until
+    // the next cold start.
+    if (_bootRetryPending && _configuration != null && !_isRegistering) {
+      Logger.instance.info(
+          'Boot-time registration failed on the network — retrying on foreground');
+      await _registerDeviceIfNeeded();
+    }
     await _autoPresentIfEligible();
     // Foreground trigger for the offline retry queue + buffered-analytics
     // flush (Flutter has no connectivity listener without a new dependency,
@@ -1077,6 +1207,21 @@ class Avafli {
   @visibleForTesting
   static Map<String, dynamic>? get sdkConfigForTesting => _cachedSdkConfigRaw;
 
+  /// Test seam: when set before [configure], used in place of the real
+  /// [NetworkClientImpl] (unit tests have no TLS host to pin against).
+  @visibleForTesting
+  static NetworkClient? networkClientForTesting;
+
+  /// Test seam: when set before [configure], used in place of the real
+  /// keychain-backed [SecureStorage] (no plugin host in unit tests).
+  @visibleForTesting
+  static SecureStorage? secureStorageForTesting;
+
+  /// Whether the current session registered as a brand-new device (for
+  /// testing the `returningUsersOnly` gate).
+  @visibleForTesting
+  static bool get isNewUserSessionForTesting => _isNewUserSession;
+
   /// Resets the SDK state (for testing).
   @visibleForTesting
   static void resetForTesting() {
@@ -1095,9 +1240,13 @@ class Avafli {
     _cachedOptedOut = false;
     _isRegistering = false;
     _registrationCompleter = null;
+    _isNewUserSession = false;
+    _bootRetryPending = false;
     _isSuspended = false;
     _isPresenting = false;
     _autoOpenHeld = false;
+    networkClientForTesting = null;
+    secureStorageForTesting = null;
     _userDismissedExperience = false;
     _autoPresentRetries = 0;
     _offlineCoordinator?.shutdown();
