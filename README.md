@@ -126,14 +126,13 @@ flutter pub get
 
 ## Configuration
 
-Initialize the SDK with your user and environment settings:
+Initialize the SDK with your API key and user:
 
 ```dart
 final config = AvafliConfiguration(
   apiKey: 'avafli_live_xxxxxxxxxx',
   bundleId: 'com.example.myapp',
   autoOpen: AvafliAutoOpen.always,  // or .returningUsersOnly / .never
-  environment: AvafliEnvironment.production,
   user: AvafliUser(
     id: 'user_abc123',
     firstName: 'Jane',
@@ -156,7 +155,6 @@ final success = await Avafli.configure(config);
 | --------- | ---- | -------- | ----------- |
 | `apiKey` | `String` | ✅ | Your Avafli API key from the dashboard |
 | `bundleId` | `String` | ✅ | App bundle ID (e.g., com.example.myapp) |
-| `environment` | `AvafliEnvironment` | — | `.production` (default) |
 | `user` | `AvafliUser` | ✅ | The authenticated user |
 | `options` | `AvafliOptions?` | — | Optional behavior toggles |
 | `autoOpen` | `AvafliAutoOpen` | — | `.always` (default), `.returningUsersOnly`, or `.never` — see [Controlling when the drawer opens](#controlling-when-the-drawer-opens) |
