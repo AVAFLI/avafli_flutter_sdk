@@ -33,6 +33,7 @@ import 'package:avafli_sdk/avafli_sdk.dart';
 await Avafli.configure(AvafliConfiguration(
   apiKey: 'YOUR_API_KEY', // debug builds: use your avafli_test_ sandbox key
   bundleId: 'com.example.myapp',
+  autoOpen: AvafliAutoOpen.always,  // or .returningUsersOnly / .never
   user: AvafliUser(
     id: 'user_123',             // only id is required — pass whatever identity you have
     firstName: 'Jane',
@@ -131,6 +132,7 @@ Initialize the SDK with your user and environment settings:
 final config = AvafliConfiguration(
   apiKey: 'avafli_live_xxxxxxxxxx',
   bundleId: 'com.example.myapp',
+  autoOpen: AvafliAutoOpen.always,  // or .returningUsersOnly / .never
   environment: AvafliEnvironment.production,
   user: AvafliUser(
     id: 'user_abc123',
