@@ -20,6 +20,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/claim_verification.dart';
 import '../../domain/daily_entry_grant.dart';
 import '../../domain/giveaway.dart';
 import '../../domain/sdk_config.dart';
@@ -75,7 +76,9 @@ enum _V2Phase {
 
 /// Sub-screen of the winner claim flow (`_phase == winnerClaim`). 2.9: the
 /// share step now comes AFTER submit — form → submit → share → confirmation.
-enum _WinnerClaimStep { splash, form, share, confirmation }
+/// 3.2.0: [verify] (the emailed six-digit code) sits between the splash and
+/// the form while `prizeClaim.verification.required` is true.
+enum _WinnerClaimStep { splash, verify, form, share, confirmation }
 
 /// Tiny mount-settle delay before the Day 2+ celebration fires — just enough
 /// for Flutter to render the staged "before" frame so every transition and
@@ -249,6 +252,42 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   /// load skips the winner flow and lands on the normal dashboard.
   bool _suppressWinnerClaim = false;
 
+  // ── Prize-claim email-ownership step (3.2.0) ──
+  //
+  // Everything below is in-memory screen state. The SERVER holds the step's
+  // real state and hands it back in `prizeClaim.verification`, so closing
+  // the drawer (or killing the app) leaves nothing to clean up and the next
+  // open resumes from the fresh block.
+
+  /// A `sendClaimVerificationCode` call is in flight / was a resend (so the
+  /// failed send's "Try again" repeats the same request).
+  bool _isSendingClaimCode = false;
+  bool _claimCodeSendWasResend = false;
+
+  /// Spinner state for the code screen's VERIFY pill.
+  bool _isConfirmingClaimCode = false;
+
+  /// The code screen's inline slots: error (+ whether it offers "Try
+  /// again"), information that is not an error, and the small send status.
+  String? _claimCodeError;
+  bool _claimCodeErrorRetryable = false;
+  String? _claimCodeInfo;
+  String? _claimCodeStatus;
+
+  /// When "Send a new code" unlocks, on this device's clock.
+  DateTime? _claimResendAvailableAt;
+
+  /// Bumped to clear the code field (wrong or replaced code).
+  int _claimCodeClearSignal = 0;
+
+  /// The claim form as the person left it when SUBMIT was answered with
+  /// `claim_verification_required` — handed back to the form after the code.
+  AvafliPrizeClaimForm? _preservedClaimForm;
+
+  /// Holds the "Email verified ✓" confirmation before the form opens.
+  Timer? _claimVerifiedTimer;
+  static const _claimVerifiedHold = Duration(milliseconds: 900);
+
   bool _showWinnerModal = false;
 
   /// The delete-my-data confirmation (2.9.5): presented over the drawer
@@ -322,6 +361,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   void dispose() {
     Avafli.onOfflineClaimRecovered = null;
     _dashboardNoticeTimer?.cancel();
+    _claimVerifiedTimer?.cancel();
     super.dispose();
   }
 
@@ -482,7 +522,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
 
       // RTD: an opted-out person never sees the experience content.
       if (response.optedOut == true) {
-        Avafli.markOptedOut();
+        Avafli.markOptedOut(until: response.optedOutUntil);
         _setPhase(_V2Phase.noActiveGiveaway);
         return;
       }
@@ -1118,10 +1158,290 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
     }());
   }
 
-  /// Splash CONTINUE → the claim form.
+  /// Splash CONTINUE → the claim form, by way of the emailed code while the
+  /// inbox on file is unproven (`verification.required`). No block (older
+  /// backend / flag off) or `required: false` → straight to the form.
   void _winnerClaimContinue() {
     if (_phase != _V2Phase.winnerClaim) return;
-    setState(() => _winnerClaimStep = _WinnerClaimStep.form);
+    if (_prizeClaim?.requiresVerification == true) {
+      _openClaimCodeScreen();
+      return;
+    }
+    _showClaimForm();
+  }
+
+  void _showClaimForm() {
+    _claimVerifiedTimer?.cancel();
+    _claimVerifiedTimer = null;
+    setState(() {
+      _claimCodeError = null;
+      _claimCodeErrorRetryable = false;
+      _claimCodeInfo = null;
+      _claimCodeStatus = null;
+      _winnerClaimStep = _WinnerClaimStep.form;
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Prize-claim email-ownership step (code before the claim form)
+  // -------------------------------------------------------------------------
+
+  bool get _onClaimCodeScreen =>
+      _phase == _V2Phase.winnerClaim &&
+      _winnerClaimStep == _WinnerClaimStep.verify;
+
+  /// The resend unlock moment for [verification], on this device's clock.
+  DateTime? _claimResendDeadline(ClaimVerification? verification) {
+    final now = DateTime.now();
+    final wait = verification?.resendWait(now) ?? Duration.zero;
+    return wait > Duration.zero ? now.add(wait) : null;
+  }
+
+  /// Screen FIRST — title, masked address, field and actions paint at once —
+  /// then the idempotent send: the backend mails a code only when there is
+  /// no live one, so this runs on every open.
+  void _openClaimCodeScreen() {
+    final claim = _prizeClaim;
+    if (claim == null) return;
+    setState(() {
+      _claimCodeError = null;
+      _claimCodeErrorRetryable = false;
+      _claimCodeInfo = null;
+      _claimCodeStatus = null;
+      _claimSubmitError = null;
+      _claimResendAvailableAt = _claimResendDeadline(claim.verification);
+      _winnerClaimStep = _WinnerClaimStep.verify;
+    });
+    unawaited(_sendClaimCode());
+  }
+
+  /// Back arrow on the code screen → the splash. Sends nothing and
+  /// invalidates nothing; the live code stays good.
+  void _claimCodeBack() {
+    if (!_onClaimCodeScreen) return;
+    _claimVerifiedTimer?.cancel();
+    _claimVerifiedTimer = null;
+    setState(() => _winnerClaimStep = _WinnerClaimStep.splash);
+  }
+
+  /// `resend: false` is the on-open call; `resend: true` is "Send a new
+  /// code". A failure is inline and the field stays usable — a code from an
+  /// earlier send may still be in the person's inbox.
+  Future<void> _sendClaimCode({bool resend = false}) async {
+    final claim = _prizeClaim;
+    if (claim == null || !mounted) return;
+    setState(() {
+      _claimCodeStatus = AvafliV2Strings.claimCodeSending;
+      _claimCodeError = null;
+      _claimCodeErrorRetryable = false;
+      _claimCodeInfo = null;
+    });
+    if (_isSendingClaimCode) return;
+    _isSendingClaimCode = true;
+    _claimCodeSendWasResend = resend;
+    try {
+      final response = await widget.networkClient.send(
+        SendClaimVerificationCodeRequest(
+          giveawayId: claim.giveawayId,
+          resend: resend,
+        ),
+      );
+      _isSendingClaimCode = false;
+      final verification = response.verification;
+      if (verification != null) {
+        _prizeClaim = _prizeClaim?.withVerification(verification);
+      }
+      if (!mounted) return;
+      if (verification != null && !verification.required) {
+        // The inbox was proven in the meantime — nothing left to enter.
+        if (_onClaimCodeScreen) {
+          _showClaimForm();
+        } else {
+          setState(() => _claimCodeStatus = null);
+        }
+        return;
+      }
+      setState(() {
+        // A re-used live code (`sent: false`) shows nothing extra.
+        _claimCodeStatus = response.sent ? AvafliV2Strings.claimCodeSent : null;
+        _claimResendAvailableAt = _claimResendDeadline(verification);
+      });
+    } catch (e) {
+      _isSendingClaimCode = false;
+      await _handleClaimCodeFailure(e, duringSend: true);
+    }
+  }
+
+  /// VERIFY / the sixth digit. Success → brief confirmation → the form.
+  Future<void> _confirmClaimCode(String code) async {
+    final claim = _prizeClaim;
+    if (!_onClaimCodeScreen ||
+        claim == null ||
+        _isConfirmingClaimCode ||
+        _claimVerifiedTimer != null) {
+      return;
+    }
+    setState(() {
+      _isConfirmingClaimCode = true;
+      _claimCodeError = null;
+      _claimCodeErrorRetryable = false;
+      _claimCodeInfo = null;
+      _claimCodeStatus = null;
+    });
+    try {
+      final response = await widget.networkClient.send(
+        ConfirmClaimVerificationCodeRequest(
+          giveawayId: claim.giveawayId,
+          code: code,
+        ),
+      );
+      _isConfirmingClaimCode = false;
+      if (!response.verified) {
+        // A non-throwing, unverified response (defensive) — a mismatch.
+        if (!mounted) return;
+        setState(() {
+          _claimCodeError = AvafliV2Strings.codeIncorrect;
+          _claimCodeClearSignal++;
+        });
+        return;
+      }
+      // Proven: the rest of the session must not ask again.
+      _prizeClaim = _prizeClaim
+          ?.withVerification(const ClaimVerification(required: false));
+      Logger.instance.info('Prize claim: email ownership verified');
+      if (!mounted) return;
+      setState(() => _claimCodeStatus = AvafliV2Strings.claimCodeVerified);
+      _claimVerifiedTimer = Timer(_claimVerifiedHold, () {
+        _claimVerifiedTimer = null;
+        if (mounted && _onClaimCodeScreen) _showClaimForm();
+      });
+    } catch (e) {
+      _isConfirmingClaimCode = false;
+      await _handleClaimCodeFailure(e, duringSend: false);
+    }
+  }
+
+  /// Every failure of the two claim-code calls lands here, and every branch
+  /// leaves a next action on screen. Rejections that carry a machine-readable
+  /// `reason` also carry a message written for the person (claimverify.ts).
+  Future<void> _handleClaimCodeFailure(
+    Object e, {
+    required bool duringSend,
+  }) async {
+    Logger.instance
+        .info('Claim code ${duringSend ? 'send' : 'check'} failed: $e');
+    if (!mounted) return;
+    final error = e is AvafliException ? e : null;
+    final details = error?.details;
+    final serverMessage = error?.serverMessage?.trim();
+    String say(String fallback) =>
+        (serverMessage == null || serverMessage.isEmpty)
+            ? fallback
+            : serverMessage;
+
+    final reason = error?.reason;
+    if (reason != null) {
+      switch (reason) {
+        case 'code_mismatch':
+          final left = details?['attemptsRemaining'];
+          setState(() {
+            _claimCodeStatus = null;
+            _claimCodeInfo = null;
+            _claimCodeErrorRetryable = false;
+            _claimCodeError = left is num
+                ? AvafliV2Strings.claimCodeMismatch(left.toInt())
+                : AvafliV2Strings.codeIncorrect;
+            _claimCodeClearSignal++;
+          });
+        case 'fresh_code_sent':
+          // The code was dead and its replacement is ALREADY on its way:
+          // adopt the new block and restart the resend countdown.
+          final raw = details?['verification'];
+          final verification = raw is Map<String, dynamic>
+              ? ClaimVerification.fromJson(raw)
+              : null;
+          if (verification != null) {
+            _prizeClaim = _prizeClaim?.withVerification(verification);
+          }
+          setState(() {
+            _claimCodeStatus = null;
+            _claimCodeError = null;
+            _claimCodeErrorRetryable = false;
+            _claimCodeInfo = say(AvafliV2Strings.claimCodeFreshSent);
+            _claimResendAvailableAt = _claimResendDeadline(verification);
+            _claimCodeClearSignal++;
+          });
+        case 'resend_cooldown':
+        case 'send_limit':
+          final retryAfter = details?['retryAfterSeconds'];
+          setState(() {
+            _claimCodeStatus = null;
+            _claimCodeInfo = null;
+            _claimCodeErrorRetryable = false;
+            _claimCodeError = say(reason == 'send_limit'
+                ? AvafliV2Strings.claimCodeSendLimit
+                : AvafliV2Strings.claimCodeResendCooldown);
+            if (retryAfter is num && retryAfter > 0) {
+              _claimResendAvailableAt =
+                  DateTime.now().add(Duration(seconds: retryAfter.ceil()));
+            }
+          });
+        case 'no_email_on_file':
+          // Nothing a retry can fix — the message names the contact address.
+          setState(() {
+            _claimCodeStatus = null;
+            _claimCodeInfo = null;
+            _claimCodeErrorRetryable = false;
+            _claimCodeError = say(AvafliV2Strings.claimCodeNoEmailOnFile);
+          });
+        default:
+          // send_failed, and any reason a newer backend adds.
+          setState(() {
+            _claimCodeStatus = null;
+            _claimCodeInfo = null;
+            _claimCodeErrorRetryable = duringSend;
+            _claimCodeError = say(AvafliV2Strings.claimCodeSendFailed);
+          });
+      }
+      return;
+    }
+
+    // Session expired (refresh already failed inside the network client) —
+    // the dedicated retryable state, same as during load.
+    if (error != null && error.error == AvafliError.authenticationFailed) {
+      _setPhase(_V2Phase.sessionExpired);
+      return;
+    }
+
+    final retryCanFix = error == null ||
+        error.transport ||
+        error.error == AvafliError.networkError ||
+        error.error == AvafliError.serverError;
+    if (!retryCanFix) {
+      // A reason-less backend rejection is about the claim itself: the claim
+      // window expired, the claim is no longer available or not open yet, or
+      // this is not the winner. Leave the code screen for the same fallback
+      // a rejected SUBMIT takes.
+      await _leaveUnavailableClaim();
+      return;
+    }
+    setState(() {
+      _claimCodeStatus = null;
+      _claimCodeInfo = null;
+      // The field keeps what the person typed; VERIFY re-submits it.
+      _claimCodeErrorRetryable = duringSend;
+      _claimCodeError = AvafliV2Strings.claimCodeNetworkError;
+    });
+  }
+
+  /// The claim can no longer be made from here — never trap the person in
+  /// the claim flow. Fall back to the normal dashboard.
+  Future<void> _leaveUnavailableClaim() async {
+    _claimVerifiedTimer?.cancel();
+    _claimVerifiedTimer = null;
+    _suppressWinnerClaim = true;
+    _setPhase(_V2Phase.loading);
+    await _load();
   }
 
   /// Share step CONTINUE (2.9, post-submit) → the confirmation screen.
@@ -1205,6 +1525,19 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       );
     } catch (e) {
       _isSubmittingClaim = false;
+      if (e is AvafliException && e.reason == 'claim_verification_required') {
+        // The state changed underneath us: the inbox must be proven before
+        // this claim is accepted. Keep every field the person typed (in
+        // memory only), take them through the code, then hand the form back.
+        Logger.instance
+            .info('Prize claim needs the email-ownership step first');
+        if (!mounted) return;
+        _preservedClaimForm = form;
+        _prizeClaim =
+            claim.withVerification(const ClaimVerification(required: true));
+        _openClaimCodeScreen();
+        return;
+      }
       final message =
           e is AvafliException ? (e.serverMessage ?? e.toString()) : '$e';
       if (message.contains('Not the winner') ||
@@ -1213,9 +1546,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         // flow. Fall back to the normal dashboard silently.
         Logger.instance.info(
             'Prize claim rejected ($message) — falling back to dashboard');
-        _suppressWinnerClaim = true;
-        _setPhase(_V2Phase.loading);
-        await _load();
+        await _leaveUnavailableClaim();
         return;
       }
       Logger.instance.error('Prize claim submit failed', e);
@@ -1850,7 +2181,37 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
           onContinue: _winnerClaimContinue,
           onClose: _requestDismiss,
         );
+      case _WinnerClaimStep.verify:
+        // Reuses the SAME 6-digit code widget as adoption and the soft
+        // verification — the copy, the callables and the claim-only extras
+        // (send status, resend countdown, contact line) differ.
+        step = AvafliV2CodeEntryView(
+          key: const ValueKey('winner-verify'),
+          accent: _accent,
+          logoUrl: _logoUrl,
+          rulesUrl: _rulesUrl,
+          email: '',
+          isVerifying: _isConfirmingClaimCode,
+          errorText: _claimCodeError,
+          onErrorRetry: _claimCodeErrorRetryable
+              ? () => unawaited(_sendClaimCode(resend: _claimCodeSendWasResend))
+              : null,
+          infoText: _claimCodeInfo,
+          statusText: _claimCodeStatus,
+          // The backend-masked address — the SDK never holds the raw one.
+          subtitle: AvafliV2Strings.claimCodeSubtitle(claim.maskedEmail),
+          resendAvailableAt: _claimResendAvailableAt,
+          showsContactHelp: true,
+          clearSignal: _claimCodeClearSignal,
+          showsBack: true,
+          onBack: _claimCodeBack,
+          onSubmit: (code) => unawaited(_confirmClaimCode(code)),
+          onResend: () => unawaited(_sendClaimCode(resend: true)),
+          onInfo: _showHowItWorks,
+          onClose: _requestDismiss,
+        );
       case _WinnerClaimStep.form:
+        final preserved = _preservedClaimForm;
         step = AvafliV2ClaimStepsFlow(
           key: const ValueKey('winner-form'),
           accent: _accent,
@@ -1859,7 +2220,11 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
           // share line).
           appName: widget.sdkConfig?.appName,
           maskedEmail: claim.maskedEmail,
-          initialForm: _claimFormPrefill,
+          // Back from the email-ownership step → the review screen they
+          // left, with everything they typed.
+          initialForm: preserved ?? _claimFormPrefill,
+          initialStep:
+              preserved == null ? 1 : AvafliV2ClaimStepsFlow.reviewStep,
           // Present → the street field offers Google Places address
           // autocomplete; absent → plain typing (current prod behavior).
           placesApiKey: widget.sdkConfig?.placesApiKey,

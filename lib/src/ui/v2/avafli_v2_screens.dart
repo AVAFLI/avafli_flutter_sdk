@@ -5,8 +5,12 @@
 //
 // Mirrors the iOS SDK's AvafliV2Screens.swift.
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/giveaway.dart';
 import 'avafli_v2_components.dart';
@@ -1298,6 +1302,11 @@ class AvafliV2HowItWorksView extends StatelessWidget {
 
 /// Verification code entry — shown when the typed email matches an EXISTING
 /// account and the OTP gate is on. One numeric field, auto-submits at 6 digits.
+///
+/// 3.2.0: also the prize-claim email-ownership step, which adds the optional
+/// pieces below (inline status/info, a retry beside a failed send, the resend
+/// countdown, the contact line). Every one of them defaults to off, so the
+/// adoption and soft-verification screens are unchanged.
 class AvafliV2CodeEntryView extends StatefulWidget {
   const AvafliV2CodeEntryView({
     super.key,
@@ -1315,6 +1324,12 @@ class AvafliV2CodeEntryView extends StatefulWidget {
     this.subtitle,
     this.showsBack = false,
     this.onBack,
+    this.onErrorRetry,
+    this.infoText,
+    this.statusText,
+    this.resendAvailableAt,
+    this.showsContactHelp = false,
+    this.clearSignal = 0,
   });
 
   final Color accent;
@@ -1342,6 +1357,28 @@ class AvafliV2CodeEntryView extends StatefulWidget {
   final bool showsBack;
   final VoidCallback? onBack;
 
+  /// Non-null → a "Try again" action sits under [errorText] (a failed code
+  /// send). The field stays usable either way.
+  final VoidCallback? onErrorRetry;
+
+  /// Inline information in the error slot's place, NOT styled as an error
+  /// (e.g. "that code expired, so we sent you a new one").
+  final String? infoText;
+
+  /// Small inline status ("Sending your code…", "Code sent").
+  final String? statusText;
+
+  /// When "Send a new code" unlocks, on this device's clock. While it is in
+  /// the future the action is disabled and shows a live countdown. Null →
+  /// always enabled (the adoption / soft-verification behaviour).
+  final DateTime? resendAvailableAt;
+
+  /// Shows the "Can't get to this email? Contact info@avafli.com" line.
+  final bool showsContactHelp;
+
+  /// Bump to clear the field and keep it focused (a wrong or replaced code).
+  final int clearSignal;
+
   @override
   State<AvafliV2CodeEntryView> createState() => _AvafliV2CodeEntryViewState();
 }
@@ -1350,11 +1387,74 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
   final TextEditingController _code = TextEditingController();
   final FocusNode _codeFocus = FocusNode();
 
+  /// Time left before "Send a new code" unlocks; zero = unlocked.
+  Duration _resendRemaining = Duration.zero;
+  Timer? _resendTicker;
+
+  static const Color _linkBlue = Color(0xFF7FB0FF);
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendCountdown();
+  }
+
+  @override
+  void didUpdateWidget(AvafliV2CodeEntryView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.resendAvailableAt != oldWidget.resendAvailableAt) {
+      _startResendCountdown();
+    }
+    if (widget.clearSignal != oldWidget.clearSignal) {
+      _code.clear();
+      _codeFocus.requestFocus();
+    }
+  }
+
   @override
   void dispose() {
+    _resendTicker?.cancel();
     _code.dispose();
     _codeFocus.dispose();
     super.dispose();
+  }
+
+  void _startResendCountdown() {
+    _resendTicker?.cancel();
+    _resendTicker = null;
+    final remaining = widget.resendAvailableAt?.difference(DateTime.now());
+    _resendRemaining =
+        (remaining == null || remaining.isNegative) ? Duration.zero : remaining;
+    if (_resendRemaining > Duration.zero) {
+      _resendTicker =
+          Timer.periodic(const Duration(seconds: 1), (_) => _tickResend());
+    }
+  }
+
+  void _tickResend() {
+    // One second off the last reading, or what the wall clock says is left —
+    // whichever is shorter (the ticker does not run while the app is
+    // suspended, so the clock catches the countdown up on return).
+    var next = _resendRemaining - const Duration(seconds: 1);
+    final wall = widget.resendAvailableAt?.difference(DateTime.now());
+    if (wall != null && wall < next) next = wall;
+    if (next <= Duration.zero) {
+      next = Duration.zero;
+      _resendTicker?.cancel();
+      _resendTicker = null;
+    }
+    if (mounted) setState(() => _resendRemaining = next);
+  }
+
+  void _openContactEmail() {
+    unawaited(() async {
+      try {
+        await launchUrl(
+            Uri(scheme: 'mailto', path: AvafliV2Strings.supportEmail));
+      } catch (_) {
+        // No mail app — the address is on screen to copy by hand.
+      }
+    }());
   }
 
   @override
@@ -1420,6 +1520,11 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
                           focusNode: _codeFocus,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
+                          // Digits only, applied BEFORE the length limit, so
+                          // a pasted "123 456" lands as the full code.
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           autofillHints: const [AutofillHints.oneTimeCode],
                           textAlign: TextAlign.center,
                           style: AvafliV2Font.inter(22,
@@ -1455,6 +1560,40 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
                         style: AvafliV2Font.inter(13,
                             color: AvafliV2Colors.errorRed),
                       ),
+                      if (widget.onErrorRetry != null) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          key: const ValueKey('code-error-retry'),
+                          onTap: widget.onErrorRetry,
+                          behavior: HitTestBehavior.opaque,
+                          child: Text(
+                            AvafliV2Strings.claimCodeRetry,
+                            style: AvafliV2Font.inter(13,
+                                    weight: FontWeight.w700, color: _linkBlue)
+                                .copyWith(
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: _linkBlue),
+                          ),
+                        ),
+                      ],
+                    ],
+                    if (widget.infoText != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.infoText!,
+                        textAlign: TextAlign.center,
+                        style: AvafliV2Font.inter(13,
+                            color: Colors.white.withValues(alpha: 0.75)),
+                      ),
+                    ],
+                    if (widget.statusText != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.statusText!,
+                        textAlign: TextAlign.center,
+                        style: AvafliV2Font.inter(13,
+                            color: Colors.white.withValues(alpha: 0.65)),
+                      ),
                     ],
                     const SizedBox(height: 16),
                     AvafliV2PillButton(
@@ -1469,7 +1608,11 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
-                      onTap: widget.onResend,
+                      key: const ValueKey('code-resend'),
+                      // Locked while the resend cooldown counts down.
+                      onTap: _resendRemaining > Duration.zero
+                          ? null
+                          : widget.onResend,
                       // Two-tone: the question reads as copy, the underlined
                       // action reads as a control.
                       child: Text.rich(TextSpan(children: [
@@ -1478,17 +1621,52 @@ class _AvafliV2CodeEntryViewState extends State<AvafliV2CodeEntryView> {
                           style: AvafliV2Font.inter(14,
                               color: Colors.white.withValues(alpha: 0.65)),
                         ),
-                        TextSpan(
-                          text: 'Send a new code',
-                          style: AvafliV2Font.inter(14,
-                                  weight: FontWeight.w700,
-                                  color: const Color(0xFF7FB0FF))
-                              .copyWith(
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: const Color(0xFF7FB0FF)),
-                        ),
+                        if (_resendRemaining > Duration.zero)
+                          TextSpan(
+                            text: AvafliV2Strings.claimCodeResendIn(Duration(
+                                seconds:
+                                    (_resendRemaining.inMilliseconds / 1000)
+                                        .ceil())),
+                            style: AvafliV2Font.inter(14,
+                                weight: FontWeight.w700,
+                                color: Colors.white.withValues(alpha: 0.45)),
+                          )
+                        else
+                          TextSpan(
+                            text: 'Send a new code',
+                            style: AvafliV2Font.inter(14,
+                                    weight: FontWeight.w700, color: _linkBlue)
+                                .copyWith(
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: _linkBlue),
+                          ),
                       ])),
                     ),
+                    if (widget.showsContactHelp) ...[
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        key: const ValueKey('code-contact-help'),
+                        onTap: _openContactEmail,
+                        child: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: AvafliV2Strings.claimCodeHelp,
+                              style: AvafliV2Font.inter(14,
+                                  color: Colors.white.withValues(alpha: 0.65)),
+                            ),
+                            TextSpan(
+                              text: AvafliV2Strings.claimCodeHelpLink,
+                              style: AvafliV2Font.inter(14,
+                                      weight: FontWeight.w700, color: _linkBlue)
+                                  .copyWith(
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: _linkBlue),
+                            ),
+                          ]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

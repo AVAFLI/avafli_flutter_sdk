@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'api_request.dart';
+import '../domain/claim_verification.dart';
 import '../domain/giveaway.dart';
 import '../domain/daily_entry_grant.dart';
 
@@ -58,6 +59,10 @@ class RegisterDeviceResponse {
   /// True when this device/person has opted out (RTD) — never auto-present.
   final bool? optedOut;
 
+  /// The moment the opt-out block lifts (3.2.0: 24 hours after the deletion).
+  /// Sent alongside `optedOut: true`; absent on older backends.
+  final DateTime? optedOutUntil;
+
   /// Soft email-verification signal. Explicit `false` means the person typed a
   /// brand-new email that hasn't been confirmed yet — drive the "Verify your
   /// email" nudge. ABSENT/null for verified, partner-passed, adoption-verified,
@@ -90,6 +95,7 @@ class RegisterDeviceResponse {
     this.totalEntries = 0,
     this.sdkConfig,
     this.optedOut,
+    this.optedOutUntil,
     this.emailVerified,
     this.prizeClaim,
     this.adoptionPending,
@@ -108,6 +114,7 @@ class RegisterDeviceResponse {
       totalEntries: json['totalEntries'] ?? 0,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
+      optedOutUntil: parseOptedOutUntil(json['optedOutUntil']),
       emailVerified: json['emailVerified'] as bool?,
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
@@ -117,6 +124,11 @@ class RegisterDeviceResponse {
     );
   }
 }
+
+/// Lenient decode of the ISO `optedOutUntil` field: anything that is not a
+/// parseable date reads as absent.
+DateTime? parseOptedOutUntil(Object? value) =>
+    value is String ? DateTime.tryParse(value) : null;
 
 /// Token refresh request.
 class RefreshTokenRequest extends PostRequest<RefreshTokenResponse> {
@@ -203,6 +215,9 @@ class GetActiveGiveawayResponse {
   /// auto-present.
   final bool? optedOut;
 
+  /// See [RegisterDeviceResponse.optedOutUntil].
+  final DateTime? optedOutUntil;
+
   /// Present only when this person is the drawn winner of one of this
   /// publisher's giveaways and the winner record is still claimable.
   /// `status == "pending"` drives the winner splash → claim form flow;
@@ -228,6 +243,7 @@ class GetActiveGiveawayResponse {
     this.emailVerified,
     this.sdkConfig,
     this.optedOut,
+    this.optedOutUntil,
     this.prizeClaim,
     this.adoptionPending,
   });
@@ -246,6 +262,7 @@ class GetActiveGiveawayResponse {
       emailVerified: json['emailVerified'] as bool?,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
+      optedOutUntil: parseOptedOutUntil(json['optedOutUntil']),
       prizeClaim: json['prizeClaim'] is Map<String, dynamic>
           ? PrizeClaimBlock.fromJson(json['prizeClaim'])
           : null,
@@ -291,7 +308,7 @@ class AvafliRequestDefaults {
   AvafliRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '3.1.7';
+  static String sdkVersion = '3.2.0';
 }
 
 /// Response from claiming daily entries (mirrors iOS
@@ -396,6 +413,11 @@ class PrizeClaimBlock {
   /// ISO date, when submitted.
   final String? submittedAt;
 
+  /// The email-ownership step (3.2.0), sent while the claim is pending.
+  /// Absent (older backend, or the platform flag is off) → the claim button
+  /// opens the form directly, exactly as before.
+  final ClaimVerification? verification;
+
   const PrizeClaimBlock({
     required this.status,
     required this.giveawayId,
@@ -404,9 +426,27 @@ class PrizeClaimBlock {
     this.maskedEmail,
     this.claimNumber,
     this.submittedAt,
+    this.verification,
   });
 
   bool get isPending => status == 'pending';
+
+  /// Whether the winner must enter the emailed code before the claim form.
+  bool get requiresVerification => verification?.required == true;
+
+  /// The same block carrying a fresher [verification] state.
+  PrizeClaimBlock withVerification(ClaimVerification verification) {
+    return PrizeClaimBlock(
+      status: status,
+      giveawayId: giveawayId,
+      prizeDescription: prizeDescription,
+      prizeValue: prizeValue,
+      maskedEmail: maskedEmail,
+      claimNumber: claimNumber,
+      submittedAt: submittedAt,
+      verification: verification,
+    );
+  }
 
   /// Lenient decode: a malformed block (null/missing prize fields from an
   /// older winner doc) must degrade gracefully, never fail the whole
@@ -420,6 +460,115 @@ class PrizeClaimBlock {
       maskedEmail: json['maskedEmail'] as String?,
       claimNumber: json['claimNumber'] as String?,
       submittedAt: json['submittedAt'] as String?,
+      verification: json['verification'] is Map<String, dynamic>
+          ? ClaimVerification.fromJson(json['verification'])
+          : null,
+    );
+  }
+}
+
+/// Sends (or re-uses) the six-digit claim code for the email-ownership step.
+/// Idempotent without [resend]: the backend sends only when there is no live
+/// code, so the SDK calls it every time the code screen opens. `resend: true`
+/// is the "Send a new code" button — always sends, subject to the cooldown
+/// and the hourly limit. Failures carry a machine-readable
+/// `AvafliException.reason` (`resend_cooldown`, `send_limit`, `send_failed`,
+/// `no_email_on_file`).
+class SendClaimVerificationCodeRequest
+    extends PostRequest<SendClaimVerificationCodeResponse> {
+  final String giveawayId;
+  final bool resend;
+
+  SendClaimVerificationCodeRequest({
+    required this.giveawayId,
+    this.resend = false,
+  });
+
+  @override
+  String get endpoint => '/sendClaimVerificationCode';
+
+  @override
+  Map<String, dynamic> get body => {
+        'giveawayId': giveawayId,
+        if (resend) 'resend': true,
+      };
+
+  @override
+  SendClaimVerificationCodeResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return SendClaimVerificationCodeResponse.fromJson(data);
+  }
+}
+
+/// Response from [SendClaimVerificationCodeRequest].
+class SendClaimVerificationCodeResponse {
+  /// True when this call mailed a code; false when a live code was re-used.
+  final bool sent;
+  final ClaimVerification? verification;
+
+  const SendClaimVerificationCodeResponse({
+    this.sent = false,
+    this.verification,
+  });
+
+  factory SendClaimVerificationCodeResponse.fromJson(
+      Map<String, dynamic> json) {
+    return SendClaimVerificationCodeResponse(
+      sent: json['sent'] == true,
+      verification: json['verification'] is Map<String, dynamic>
+          ? ClaimVerification.fromJson(json['verification'])
+          : null,
+    );
+  }
+}
+
+/// Checks the six-digit claim code. Failures carry a machine-readable
+/// `AvafliException.reason`: `code_mismatch` (with `attemptsRemaining`) or
+/// `fresh_code_sent` (the code was dead and the backend has ALREADY mailed a
+/// new one; `details.verification` is the new block).
+class ConfirmClaimVerificationCodeRequest
+    extends PostRequest<ConfirmClaimVerificationCodeResponse> {
+  final String giveawayId;
+  final String code;
+
+  ConfirmClaimVerificationCodeRequest({
+    required this.giveawayId,
+    required this.code,
+  });
+
+  @override
+  String get endpoint => '/confirmClaimVerificationCode';
+
+  @override
+  Map<String, dynamic> get body => {
+        'giveawayId': giveawayId,
+        'code': code,
+      };
+
+  @override
+  ConfirmClaimVerificationCodeResponse parseResponse(http.Response response) {
+    final data = parseJsonResponse(response);
+    return ConfirmClaimVerificationCodeResponse.fromJson(data);
+  }
+}
+
+/// Response from [ConfirmClaimVerificationCodeRequest].
+class ConfirmClaimVerificationCodeResponse {
+  final bool verified;
+  final ClaimVerification? verification;
+
+  const ConfirmClaimVerificationCodeResponse({
+    this.verified = false,
+    this.verification,
+  });
+
+  factory ConfirmClaimVerificationCodeResponse.fromJson(
+      Map<String, dynamic> json) {
+    return ConfirmClaimVerificationCodeResponse(
+      verified: json['verified'] == true,
+      verification: json['verification'] is Map<String, dynamic>
+          ? ClaimVerification.fromJson(json['verification'])
+          : null,
     );
   }
 }
@@ -476,6 +625,10 @@ class SubmitPrizeClaimRequest extends PostRequest<SubmitPrizeClaimResponse> {
         'zip': zip,
         'country': country,
         'promoConsentGranted': promoConsentGranted,
+        // 3.2.0: tells the backend this build knows the email-ownership
+        // step, so an unproven inbox is answered with
+        // `claim_verification_required` instead of a legacy-client claim.
+        'supportsClaimVerification': true,
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
         if (apt != null && apt!.isNotEmpty) 'apt': apt,
         if (photoBase64 != null) 'photoBase64': photoBase64,
@@ -821,7 +974,8 @@ class RegisterPushTokenRequest extends PostRequest<SuccessResponse> {
 
 /// Delete user data request (GDPR).
 /// Opt-out request (RTD — Right To Delete). Tombstones the person on the
-/// backend and permanently silences the experience on this device.
+/// backend and silences the experience on this device for 24 hours, after
+/// which they may join again as a new participant.
 class OptOutRequest extends PostRequest<SuccessResponse> {
   @override
   String get endpoint => '/optOut';

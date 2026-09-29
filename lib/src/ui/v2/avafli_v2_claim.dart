@@ -772,7 +772,9 @@ class AvafliV2ClaimStepsFlow extends StatefulWidget {
   /// older backends → generic locked copy.
   final String? maskedEmail;
 
-  /// Host-app-provided identity prefill (first/last name, phone).
+  /// Host-app-provided identity prefill (first/last name, phone) — or, when
+  /// the person is returning from the email-ownership step, everything they
+  /// had already typed (photo included).
   final AvafliPrizeClaimForm initialForm;
 
   /// Google Places (New) API key from `sdkConfig.placesApiKey`. Non-empty →
@@ -789,10 +791,13 @@ class AvafliV2ClaimStepsFlow extends StatefulWidget {
   @visibleForTesting
   final AvafliClaimPhotoPick? pickPhoto;
 
-  /// Test/preview seam: the step the flow mounts on (1..3 form steps,
-  /// 4 = review). Production always starts at 1.
-  @visibleForTesting
+  /// The step the flow mounts on (1..3 form steps, 4 = review). 1, except
+  /// when the person is sent back from SUBMIT to the email-ownership step:
+  /// they return to the review screen they left.
   final int initialStep;
+
+  /// The review step, for [initialStep].
+  static const int reviewStep = _kClaimReviewStep;
 
   final bool isSubmitting;
 
@@ -894,6 +899,16 @@ class _AvafliV2ClaimStepsFlowState extends State<AvafliV2ClaimStepsFlow> {
     _zip = TextEditingController(text: form.zip);
     _state = form.state;
     _promoConsent = form.promoConsentGranted;
+    // A form handed back after the email-ownership step carries its photo.
+    final photo = form.photoBase64;
+    if (photo != null) {
+      try {
+        _photoBytes = base64Decode(photo);
+        _photoBase64 = photo;
+      } on FormatException {
+        // Unreadable payload — the person can simply attach it again.
+      }
+    }
     for (final c in [
       _firstName,
       _lastName,

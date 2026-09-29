@@ -330,11 +330,14 @@ class NetworkClientImpl implements NetworkClient {
     // `data['error'] as String?` always silently failed, leaving every error
     // unlabelled and every 400 mislabelled as "invalid API key".
     String? errorMessage;
+    Map<String, dynamic>? details;
     try {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
         final err = data['error'];
         if (err is Map<String, dynamic>) {
+          final rawDetails = err['details'];
+          if (rawDetails is Map<String, dynamic>) details = rawDetails;
           errorMessage = err['message'] as String?;
         } else if (err is String) {
           errorMessage = err;
@@ -342,6 +345,18 @@ class NetworkClientImpl implements NetworkClient {
       }
     } catch (_) {
       // Ignore JSON parsing errors
+    }
+
+    // A structured rejection: the backend put a machine-readable reason in
+    // error.details (today only the prize-claim email-ownership step does —
+    // code_mismatch, fresh_code_sent, resend_cooldown, …). Surface it as-is,
+    // ahead of the status/message mapping below: a wrong code is a 403 and a
+    // resend cooldown a 429, and mapping those to authenticationFailed /
+    // networkError would put them through the token-refresh and backoff
+    // retries — re-submitting the code and burning the person's tries.
+    final reason = details?['reason'];
+    if (reason is String && reason.isNotEmpty) {
+      throw AvafliException(AvafliError.unknown, errorMessage, false, details);
     }
 
     final lower = errorMessage?.toLowerCase();

@@ -7,6 +7,11 @@
 // Rule of the house: users NEVER see raw backend text. Anything thrown as a
 // `AvafliException` keeps its `serverMessage` for logs only; what renders is
 // always one of the strings below (or the quiet empty state).
+//
+// One exception (3.2.0): the prize-claim email-ownership step. Its backend
+// rejections carry a machine-readable `reason` and a message WRITTEN for the
+// person (claimverify.ts), so the claim code screen shows that message — with
+// the matching constant below as the fallback when none arrives.
 
 /// User-facing copy for the V2 experience's error and notice states.
 abstract final class AvafliV2Strings {
@@ -63,6 +68,81 @@ abstract final class AvafliV2Strings {
       "Let's pick up where you left off. We just sent a fresh 6-digit code "
       'to your email — enter it below to continue.';
 
+  // ── Prize-claim email-ownership step (code before the claim form) ──
+
+  /// Subtitle on the claim code screen. [maskedEmail] is the backend-masked
+  /// address from the `prizeClaim` block — the SDK never holds the raw one.
+  /// No trailing period: it would read as part of the address.
+  static String claimCodeSubtitle(String? maskedEmail) {
+    final address = maskedEmail?.trim();
+    return 'Enter the 6-digit code we sent to '
+        '${address == null || address.isEmpty ? 'your email' : address}';
+  }
+
+  /// Small inline status while the send is in flight.
+  static const String claimCodeSending = 'Sending your code…';
+
+  /// Small inline status once a send went out (`sent: true`). A re-used live
+  /// code (`sent: false`) shows nothing extra.
+  static const String claimCodeSent = 'Code sent';
+
+  /// Wrong digits (`code_mismatch`) with the tries left on this code.
+  static String claimCodeMismatch(int attemptsRemaining) =>
+      "That code didn't match. $attemptsRemaining "
+      "${attemptsRemaining == 1 ? 'try' : 'tries'} left.";
+
+  /// Fallback for `fresh_code_sent` when the backend sent no message: the
+  /// code was dead and a new one is ALREADY on its way. Informational — not
+  /// styled as an error.
+  static const String claimCodeFreshSent =
+      'That code expired, so we sent you a new one. Check your email.';
+
+  /// Fallback for `resend_cooldown`; the button's countdown carries the time.
+  static const String claimCodeResendCooldown =
+      'Please wait a moment before requesting another code.';
+
+  /// Fallback for `send_limit` (5 sends per hour).
+  static const String claimCodeSendLimit =
+      "You've requested several codes. Please try again in a little while, "
+      'or contact info@avafli.com.';
+
+  /// Fallback for `send_failed` — shown with [claimCodeRetry].
+  static const String claimCodeSendFailed =
+      "We couldn't send your code just now. Please try again in a minute.";
+
+  /// Fallback for `no_email_on_file`.
+  static const String claimCodeNoEmailOnFile =
+      "We don't have an email on file for this account. Contact "
+      'info@avafli.com to claim your prize.';
+
+  /// A send or a code check never reached the backend. What the person typed
+  /// is kept.
+  static const String claimCodeNetworkError =
+      "We couldn't reach the server. Check your connection and try again.";
+
+  /// The retry affordance beside a failed send.
+  static const String claimCodeRetry = 'Try again';
+
+  /// "Send a new code" while it is locked, with the live countdown.
+  static String claimCodeResendIn(Duration remaining) {
+    final seconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
+    final minutes = seconds ~/ 60;
+    return 'Send a new code in '
+        "$minutes:${(seconds % 60).toString().padLeft(2, '0')}";
+  }
+
+  /// Help line under the code screen's actions (copy half).
+  static const String claimCodeHelp = "Can't get to this email? ";
+
+  /// Help line (link half) — opens a mailto: to [supportEmail].
+  static const String claimCodeHelpLink = 'Contact info@avafli.com';
+
+  /// The contact address every dead end points at.
+  static const String supportEmail = 'info@avafli.com';
+
+  /// Brief confirmation after the code is accepted, before the claim form.
+  static const String claimCodeVerified = 'Email verified ✓';
+
   // ── Soft email verification (persistent dashboard chip → code screen) ──
 
   /// The persistent, tappable chip on the streak dashboard shown while the
@@ -116,11 +196,12 @@ abstract final class AvafliV2Strings {
   /// The destructive confirmation's title.
   static const String optOutTitle = 'Delete my data & stop participating';
 
-  /// The destructive confirmation's body.
+  /// The destructive confirmation's body (3.2.0: deletion blocks this email
+  /// and device for 24 hours, not forever).
   static const String optOutBody =
-      'This permanently deletes your Avafli data, ends your giveaway '
-      'participation, and cannot be undone. You can also email '
-      'info@avafli.com.';
+      'This permanently erases your information and ends your participation. '
+      'Entries and streaks are forfeited and cannot be restored. You can join '
+      'again as a new participant after 24 hours.';
 
   /// The destructive confirm button.
   static const String optOutConfirm = 'DELETE MY DATA';

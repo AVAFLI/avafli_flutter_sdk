@@ -46,8 +46,9 @@ enum AvafliError {
   /// due to a billing lapse). Surfaced from a failed device registration.
   serviceUnavailable('The Avafli experience is no longer available.'),
 
-  /// The user opted out (RTD — Right To Delete). The experience is
-  /// permanently silenced on this device: it is never auto-presented again.
+  /// The user opted out (RTD — Right To Delete). The experience is silenced
+  /// on this device for 24 hours; after that the person may join again as a
+  /// brand-new participant.
   optedOut('User has opted out of the Avafli experience.'),
 
   /// Unknown or unexpected error
@@ -74,7 +75,7 @@ enum AvafliError {
 /// be caught with a try-catch block.
 class AvafliException implements Exception {
   const AvafliException(this.error,
-      [this.serverMessage, this.transport = false]);
+      [this.serverMessage, this.transport = false, this.details]);
 
   final AvafliError error;
 
@@ -89,6 +90,18 @@ class AvafliException implements Exception {
   /// surface what really went wrong instead of a generic enum description —
   /// e.g. a `failed-precondition` from the claim consent gate.
   final String? serverMessage;
+
+  /// The backend's structured error payload (`error.details` of the callable
+  /// envelope), when one was returned — e.g. `{reason: "code_mismatch",
+  /// attemptsRemaining: 4}` from the prize-claim email-ownership step. Null
+  /// for every error that carries none.
+  final Map<String, dynamic>? details;
+
+  /// The machine-readable rejection reason from [details], if any.
+  String? get reason {
+    final value = details?['reason'];
+    return value is String && value.isNotEmpty ? value : null;
+  }
 
   /// The best human-readable message: the server's text when present, else the
   /// enum's default description.

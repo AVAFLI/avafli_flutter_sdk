@@ -75,9 +75,22 @@ class Avafli {
   /// instead of showing email capture. Null-safe against current prod.
   static bool? _cachedAdoptionPending;
 
-  /// RTD opt-out — from the backend or the local persisted flag. Once true
-  /// the experience is never auto-presented.
+  /// RTD opt-out — from the backend or the local persisted flag. While true
+  /// the experience is never presented.
   static bool _cachedOptedOut = false;
+
+  /// The moment the opt-out block lifts (24 hours after the deletion). At or
+  /// after it, the next [configure] / app-foreground clears the old session
+  /// and registers this device as a brand-new participant.
+  static DateTime? _cachedOptedOutUntil;
+
+  /// How long "Delete my data" blocks this email and device.
+  static const Duration _optOutBlock = Duration(hours: 24);
+
+  /// The wait before asking again when the backend still reports the block
+  /// after this device's clock says it has passed (clock skew, sweep lag) and
+  /// gives no later moment of its own.
+  static const Duration _optOutRecheck = Duration(minutes: 15);
 
   // Registration state
   static bool _isRegistering = false;
@@ -130,7 +143,7 @@ class Avafli {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '3.1.7';
+  static const String sdkVersion = '3.2.0';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -146,6 +159,9 @@ class Avafli {
       'winr_unregistered_impressions_${_configuration?.bundleId ?? ''}';
   static String get _optedOutKey =>
       'winr_opted_out_${_configuration?.bundleId ?? ''}';
+  // Epoch milliseconds — see [_cachedOptedOutUntil].
+  static String get _optedOutUntilKey =>
+      'winr_opted_out_until_${_configuration?.bundleId ?? ''}';
 
   /// Configures the Avafli SDK with the provided configuration.
   ///
@@ -216,6 +232,22 @@ class Avafli {
       // even before (or without) a network round-trip.
       final prefs = await SharedPreferences.getInstance();
       _cachedOptedOut = prefs.getBool(_optedOutKey) ?? false;
+      _cachedOptedOutUntil = null;
+      if (_cachedOptedOut) {
+        final untilMs = prefs.getInt(_optedOutUntilKey);
+        if (untilMs != null) {
+          _cachedOptedOutUntil = DateTime.fromMillisecondsSinceEpoch(untilMs);
+        } else {
+          // An opt-out cached by a pre-3.2.0 build carries no time: the 24
+          // hours count from now, the first time this build sees it.
+          final until = _now().add(_optOutBlock);
+          _cachedOptedOutUntil = until;
+          await prefs.setInt(_optedOutUntilKey, until.millisecondsSinceEpoch);
+        }
+        // Block over → forget the old session; the registration below then
+        // runs as it does for any brand-new install.
+        await _liftOptOutIfLapsed();
+      }
 
       // Initialize push notification manager
       if (config.options.enablePushReminders) {
@@ -521,28 +553,106 @@ class Avafli {
 
   // MARK: - RTD Opt-out
 
-  /// Right-To-Delete opt-out: tombstones the person on the backend
-  /// (identity-wide, PII anonymized, email suppressed) and permanently
-  /// silences the experience on this device. Wire this to the opt-out action
-  /// in your privacy-policy flow.
+  /// Right-To-Delete opt-out: erases the person on the backend
+  /// (identity-wide, PII anonymized) and forfeits their entries and streaks.
+  /// For 24 hours that email and this device cannot register and the
+  /// experience stays silent; after that the person may join again as a
+  /// brand-new participant with no connection to the old profile. Wire this
+  /// to the opt-out action in your privacy-policy flow.
   static Future<void> optOut() async {
     final networkClient = _networkClient;
     if (networkClient == null) {
       throw const AvafliException(AvafliError.notConfigured);
     }
     await networkClient.send(OptOutRequest());
-    markOptedOut();
+    markOptedOut(until: _now().add(_optOutBlock));
     Logger.instance.info(
-        'User opted out of Avafli (RTD) — experience permanently silenced');
+        'User opted out of Avafli (RTD) — experience silenced for 24 hours');
   }
 
-  /// @internal — Records the RTD flag (from the backend or [optOut]) so the
-  /// suppression holds on future launches even offline.
-  static void markOptedOut() {
+  /// @internal — Records the RTD flag (from the backend or [optOut]) and the
+  /// moment it lifts, so the suppression holds on future launches even
+  /// offline. [until] is the opt-out call's moment + 24 hours, or the
+  /// backend's `optedOutUntil`.
+  static void markOptedOut({DateTime? until}) {
+    final now = _now();
+    final known = _cachedOptedOutUntil;
+    final DateTime resolved;
+    if (until != null && until.isAfter(now)) {
+      resolved = until;
+    } else if (known != null && known.isAfter(now)) {
+      // Nothing newer to adopt — the time already on record stands.
+      resolved = known;
+    } else if (until != null) {
+      // The backend still reports the block although, by this device's
+      // clock, its own time has passed (clock skew, sweep lag). Ask again
+      // later — once, on a later launch/foreground; never in a loop.
+      resolved = now.add(_optOutRecheck);
+    } else {
+      // No time known at all: 24 hours from this first sighting.
+      resolved = now.add(_optOutBlock);
+    }
     _cachedOptedOut = true;
-    unawaited(SharedPreferences.getInstance()
-        .then((prefs) => prefs.setBool(_optedOutKey, true)));
+    _cachedOptedOutUntil = resolved;
+    final optedOutKey = _optedOutKey;
+    final untilKey = _optedOutUntilKey;
+    unawaited(SharedPreferences.getInstance().then((prefs) async {
+      await prefs.setBool(optedOutKey, true);
+      await prefs.setInt(untilKey, resolved.millisecondsSinceEpoch);
+    }));
   }
+
+  /// The 24-hour rejoin: once the opt-out block has passed, clears the local
+  /// opt-out AND every piece of the old session, so the registration that
+  /// follows mints a brand-new participant who sees the normal email-capture
+  /// flow. The device identity is kept. Returns whether anything was lifted;
+  /// before the moment this is a no-op.
+  static Future<bool> _liftOptOutIfLapsed() async {
+    final until = _cachedOptedOutUntil;
+    if (!_cachedOptedOut || until == null || _now().isBefore(until)) {
+      return false;
+    }
+    final bundleId = _configuration?.bundleId ?? '';
+    Logger.instance.info(
+        'Opt-out block has passed — clearing the old session to rejoin as a '
+        'new participant');
+
+    // Session credentials + user id.
+    _networkClient?.setAuthToken(null);
+    await _secureStorage?.deleteAuthData();
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in [
+      _optedOutKey,
+      _optedOutUntilKey,
+      StorageKeys.emailConfirmed,
+      StorageKeys.cachedGiveaway,
+      StorageKeys.streakState,
+      StorageKeys.lastClaimedDate,
+      StorageKeys.claimedTodayDate,
+      _lastAutoPresentKey,
+      _unregisteredImpressionsKey,
+      '${StorageKeys.adoptionCodeSentAt}_$bundleId',
+    ]) {
+      await prefs.remove(key);
+    }
+    // Retries queued for the erased account must not replay as the new one.
+    await _offlineCoordinator?.clear(PendingIntentKind.registration);
+    await _offlineCoordinator?.clear(PendingIntentKind.claim);
+
+    _cachedOptedOut = false;
+    _cachedOptedOutUntil = null;
+    _cachedGiveaway = null;
+    _cachedClaimedToday = null;
+    _cachedStreakDay = null;
+    _cachedEmailConsent = null;
+    _cachedAdoptionPending = null;
+    _isNewUserSession = false;
+    return true;
+  }
+
+  /// Wall clock for the opt-out block (test seam: [clockForTesting]).
+  static DateTime _now() => clockForTesting?.call() ?? DateTime.now();
 
   /// @internal — Records that the person just completed email capture.
   ///
@@ -590,7 +700,8 @@ class Avafli {
       throw const AvafliException(AvafliError.serviceUnavailable);
     }
 
-    // RTD: an opted-out person never sees the experience again.
+    // RTD: an opted-out person never sees the experience while the block
+    // holds.
     if (_cachedOptedOut) {
       Logger.instance.info('Avafli present suppressed: user opted out (RTD)');
       throw const AvafliException(AvafliError.optedOut);
@@ -676,7 +787,7 @@ class Avafli {
   ///
   /// Use [optOut] instead. It is the correct erasure: identity-wide, PII scrubbed
   /// everywhere including prize claims, tombstoned so it survives a reinstall, and
-  /// the experience stays permanently silenced on the device.
+  /// the experience stays silenced on the device for the 24-hour block.
 
   // MARK: - Private Methods
 
@@ -767,7 +878,9 @@ class Avafli {
       _cachedAdoptionPending = response.adoptionPending;
       // Older backends omit isNewUser → treated as returning (auto-open).
       _isNewUserSession = response.isNewUser == true;
-      if (response.optedOut == true) markOptedOut();
+      if (response.optedOut == true) {
+        markOptedOut(until: response.optedOutUntil);
+      }
 
       // Cache streak state
       if (response.giveaway != null) {
@@ -855,7 +968,9 @@ class Avafli {
       _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedEmailConsent = response.emailConsentStatus;
       _cachedAdoptionPending = response.adoptionPending;
-      if (response.optedOut == true) markOptedOut();
+      if (response.optedOut == true) {
+        markOptedOut(until: response.optedOutUntil);
+      }
 
       // Update cached data
       if (response.giveaway != null) {
@@ -1067,10 +1182,17 @@ class Avafli {
   /// @internal — Foreground hook from the lifecycle observer.
   static Future<void> handleAppResumed() async {
     await _ensureRegistrationComplete();
+    // 24-hour rejoin: the opt-out block passed while the app sat in memory —
+    // clear the old session and register as a brand-new participant.
+    if (_configuration != null &&
+        !_isRegistering &&
+        await _liftOptOutIfLapsed()) {
+      await _registerDeviceIfNeeded();
+    }
     // Boot resilience: a registration / giveaway refresh lost to the network
     // at launch is re-run now, so the day's auto-open isn't forfeited until
     // the next cold start.
-    if (_bootRetryPending && _configuration != null && !_isRegistering) {
+    else if (_bootRetryPending && _configuration != null && !_isRegistering) {
       Logger.instance.info(
           'Boot-time registration failed on the network — retrying on foreground');
       await _registerDeviceIfNeeded();
@@ -1217,6 +1339,10 @@ class Avafli {
   @visibleForTesting
   static SecureStorage? secureStorageForTesting;
 
+  /// Test seam: the wall clock the 24-hour opt-out block is measured on.
+  @visibleForTesting
+  static DateTime Function()? clockForTesting;
+
   /// Whether the current session registered as a brand-new device (for
   /// testing the `returningUsersOnly` gate).
   @visibleForTesting
@@ -1238,6 +1364,8 @@ class Avafli {
     _cachedEmailConsent = null;
     _cachedAdoptionPending = null;
     _cachedOptedOut = false;
+    _cachedOptedOutUntil = null;
+    clockForTesting = null;
     _isRegistering = false;
     _registrationCompleter = null;
     _isNewUserSession = false;

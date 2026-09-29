@@ -111,7 +111,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.1.7
+  avafli_sdk: ^3.2.0
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
@@ -197,7 +197,7 @@ changes.
 
 ## The Experience Presents Itself
 
-By default the Avafli experience is SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `Avafli.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — an opted-out user never sees the experience again. Want to pick the moment yourself? See [Controlling when the drawer opens](#controlling-when-the-drawer-opens).
+By default the Avafli experience is SDK-driven. The V2 bottom-drawer experience presents itself automatically at most once per calendar day (first app-open of the day) when `Avafli.navigatorKey` is attached to your `MaterialApp`. Auto-open respects the server-side kill switch (`sdkConfig.experience.autoOpenEnabled`), an unregistered-impression cap (default 3 impressions until the user confirms their email), and the RTD opt-out — a user who deleted their data sees nothing for 24 hours, after which they may join again as a new participant (see [Account deletion in your app](#account-deletion-in-your-app)). Want to pick the moment yourself? See [Controlling when the drawer opens](#controlling-when-the-drawer-opens).
 
 Entries are claimed automatically when the drawer opens, and the celebration is the first thing the user sees: the dashboard opens with today's grant already showing — the day tile checks off with a confetti burst, the total counts up and pops, and the bar leads with a "YOU'RE ON A ROLL!" toast before settling into the come-back message. There is no button to tap to collect entries; the pill just reads GOT IT and closes. Brand-new users first submit their email, then land straight on the same celebrating dashboard — the toast just reads "YOU'RE IN!" on Day 1.
 
@@ -248,6 +248,8 @@ Two verification paths run from that screen:
 ## Winner Experience
 
 When one of your users is drawn as a giveaway winner, the drawer automatically opens on a winner splash instead of the dashboard, then walks them through a prize-claim form (name, shipping address) and a confirmation with their claim number. This requires no integration work — the flow appears only for the drawn winner and disappears once their claim is submitted.
+
+**Prize claims (3.2.0+).** Before the claim form opens, a winner enters a **6-digit code** emailed to the address their account registered with — proof that they control that inbox. People who proved it earlier skip the step. The state lives on the server, so a winner who closes the drawer, restarts the app or switches device picks up exactly where they left off. Nothing for the host app to do.
 
 ## Push Notifications
 
@@ -358,11 +360,19 @@ experience — no integration required.
 await Avafli.optOut();
 ```
 
-The erasure is identity-wide (one call covers all of the person's devices),
-includes prize-claim records, and permanently silences the experience on the
-device — it survives a reinstall. De-identified entry records are retained as
-the legally required evidence that drawings were fair (GDPR Art. 17(3)): the
-person is erased, the proof is kept.
+The erasure is identity-wide (one call covers all of the person's devices)
+and includes prize-claim records. Entries and streaks are forfeited and cannot
+be restored. De-identified entry records are retained as the legally required
+evidence that drawings were fair (GDPR Art. 17(3)): the person is erased, the
+proof is kept.
+
+**Delete my data — 24-hour rejoin.** For 24 hours after a deletion, that email
+and that device cannot register and the experience stays silent (`present()`
+resolves `false`). After 24 hours the SDK clears what is left of the old
+session on the next `configure()` or app-foreground and registers the device
+again: the person joins as a brand-new participant, with no connection to the
+old profile, and sees the normal email-capture flow. Nothing for the host app
+to do.
 
 ## API Reference
 
@@ -375,7 +385,7 @@ person is erased, the proof is kept.
 | `Avafli.present()` | `Future<bool>` | Open the drawer on demand (pair with `autoOpen: AvafliAutoOpen.never` / `returningUsersOnly`) |
 | `Avafli.holdAutoOpen()` | `void` | Pause the once-a-day auto-open during a boot flow that clears the nav stack |
 | `Avafli.releaseAutoOpen()` | `Future<void>` | Release a `holdAutoOpen()` and open immediately if the day is due |
-| `Avafli.optOut()` | `Future<void>` | RTD opt-out — permanently silence the experience |
+| `Avafli.optOut()` | `Future<void>` | RTD opt-out — erase the person's data; they may rejoin as a new participant after 24 hours |
 
 ### Push Notifications
 
