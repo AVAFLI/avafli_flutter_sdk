@@ -251,7 +251,7 @@ When one of your users is drawn as a giveaway winner, the drawer automatically o
 
 **Prize claims (3.2.0+).** Before the claim form opens, a winner enters a **6-digit code** emailed to the address their account registered with — proof that they control that inbox. People who proved it earlier skip the step. The state lives on the server, so a winner who closes the drawer, restarts the app or switches device picks up exactly where they left off. Nothing for the host app to do.
 
-A winner can always get back to an unfinished claim: while a claim is pending the drawer re-opens on every app launch, and on a return to the foreground at most once every 30 minutes — regardless of the once-a-day rule, the unregistered-impression cap and `returningUsersOnly`. `holdAutoOpen()`, the opt-out, the kill switch and `autoOpen: AvafliAutoOpen.never` still apply; on `never`, call `Avafli.present()` and it opens on the winner splash.
+A winner can always get back to an unfinished claim: while a claim is pending the drawer re-opens on every app launch, and on a return to the foreground at most once every 30 minutes — regardless of the once-a-day rule, the unregistered-impression cap and `returningUsersOnly`. `holdAutoOpen()`, the opt-out, the kill switch and `autoOpen: AvafliAutoOpen.never` still apply; on `never`, call `Avafli.present()` and it opens on the winner splash. This holds when no giveaway is active, too — the usual case, since a giveaway has ended by the time its winner is drawn: `present()` resolves `true` for a winner even though it resolves `false` for everyone else.
 
 ## Push Notifications
 

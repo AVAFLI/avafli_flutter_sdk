@@ -103,6 +103,13 @@ class AvafliV2Experience extends StatefulWidget {
   /// Null-safe against current prod (absent → null → normal flow).
   final bool? adoptionPending;
 
+  /// True when the SDK's latest register/status response carried a pending
+  /// prize claim. The winner flow owns this open, so the drawer waits for
+  /// its own status call instead of painting a cached dashboard first — a
+  /// winner usually arrives with NO active giveaway (it ended before the
+  /// draw), and the cache would be the ended one.
+  final bool prizeClaimPending;
+
   const AvafliV2Experience({
     super.key,
     required this.configuration,
@@ -115,6 +122,7 @@ class AvafliV2Experience extends StatefulWidget {
     this.cachedStreakDay,
     this.sdkConfig,
     this.adoptionPending,
+    this.prizeClaimPending = false,
   });
 
   @override
@@ -443,6 +451,10 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   Future<void> _hydrateFromCache() async {
     if (_phase != _V2Phase.loading) return;
 
+    // A pending prize claim OWNS this open (it is routed first in [_load]):
+    // the skeleton stays up until the status call lands on the winner splash.
+    if (widget.prizeClaimPending) return;
+
     final storage = widget.preferencesStorage;
     final giveaway = widget.cachedGiveaway ?? await storage.getCachedGiveaway();
 
@@ -552,6 +564,12 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         await storage.cacheGiveaway(response.giveaway!);
         // Keep the prize art warm across prize changes mid-session.
         AvafliV2ImageWarmer.prewarm(response.giveaway!.prizeImageUrl);
+      } else {
+        // A winner with no active giveaway (it ended before the draw): the
+        // winner flow runs on the prizeClaim block alone, and leaving it
+        // closes the drawer — there is no dashboard to fall back to.
+        _giveaway = null;
+        await storage.remove(StorageKeys.cachedGiveaway);
       }
       backendClaimedToday = response.claimedToday;
       backendStreakDay = response.streakDay;
@@ -618,7 +636,7 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         'avafli_winner_claim_shown',
         {'giveaway_id': pendingPrizeClaim.giveawayId},
       );
-      if (backendClaimedToday != true && hasConsent) {
+      if (backendClaimedToday != true && hasConsent && _giveaway != null) {
         _silentDailyClaim();
       }
       return;
@@ -1438,13 +1456,34 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
   }
 
   /// The claim can no longer be made from here — never trap the person in
-  /// the claim flow. Fall back to the normal dashboard.
+  /// the claim flow. Fall back to the normal dashboard; with no active
+  /// giveaway there is none, so the drawer closes instead (never a dashboard
+  /// or an empty state behind the winner flow).
   Future<void> _leaveUnavailableClaim() async {
     _claimVerifiedTimer?.cancel();
     _claimVerifiedTimer = null;
     _suppressWinnerClaim = true;
+    // Not pending any more, whatever a stale boot-time response said — the
+    // auto-open goes back to its once-a-day rule.
+    Avafli.syncPrizeClaimPending(false);
+    if (_giveaway == null) {
+      await _requestDismiss();
+      return;
+    }
     _setPhase(_V2Phase.loading);
     await _load();
+  }
+
+  /// A SUBMIT rejected because the claim itself is gone: the backend's
+  /// claim-state failures (prizeclaim.ts / claimverify.ts) — window expired,
+  /// no longer available, not open yet.
+  static bool _isClaimGoneRejection(Object e) {
+    if (e is! AvafliException || e.transport || e.reason != null) return false;
+    final message = e.serverMessage?.toLowerCase() ?? '';
+    return message.contains('claim window') ||
+        message.contains('has expired') ||
+        message.contains('no longer available') ||
+        message.contains('not open yet');
   }
 
   /// Share step CONTINUE (2.9, post-submit) → the confirmation screen.
@@ -1546,9 +1585,10 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       final message =
           e is AvafliException ? (e.serverMessage ?? e.toString()) : '$e';
       if (message.contains('Not the winner') ||
-          message.contains('Already submitted')) {
-        // Stale/duplicate winner state — never trap the user in the claim
-        // flow. Fall back to the normal dashboard silently.
+          message.contains('Already submitted') ||
+          _isClaimGoneRejection(e)) {
+        // Stale/duplicate/expired winner state — never trap the user in the
+        // claim flow. Fall back to the normal dashboard silently.
         Logger.instance.info(
             'Prize claim rejected ($message) — falling back to dashboard');
         await _leaveUnavailableClaim();

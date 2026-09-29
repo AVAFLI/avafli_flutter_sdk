@@ -428,6 +428,8 @@ class Avafli {
     if (claimPending) {
       // Every cold start; a foreground only once the throttle has passed.
       if (!coldStart && claimMarkBefore != null) {
+        // A stamp from the future (the device clock was moved back) counts
+        // as expired — it must never block the winner.
         final since = _now().millisecondsSinceEpoch - claimMarkBefore;
         if (since >= 0 && since < _claimAutoPresentThrottle.inMilliseconds) {
           return;
@@ -824,6 +826,7 @@ class Avafli {
             cachedStreakDay: _cachedStreakDay,
             sdkConfig: _cachedSdkConfig,
             adoptionPending: _cachedAdoptionPending,
+            prizeClaimPending: _cachedPrizeClaimPending,
           ),
         ),
       );
