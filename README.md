@@ -17,7 +17,7 @@ Avafli lets you add daily-entry sweepstakes and prize experiences to your app in
 - **Daily streak + auto-claim** — Entries climb a +10/day ladder; the drawer auto-opens once per day and claims that day's entries (or you open it yourself with `Avafli.present()` — see [Controlling when the drawer opens](#controlling-when-the-drawer-opens))
 - **Email capture** — The SDK captures an email through its own opt-in screen, with an UNCHECKED-by-default marketing-consent tick and a publisher-configurable age gate
 - **Cross-device verified adoption** — When a typed email matches an existing account, the SDK confirms a 6-digit code before merging the streak across devices
-- **Soft email verification** — A brand-new typed email shows a persistent, dismissible "Verify your email" chip; it never blocks play, only prize-draw eligibility
+- **Soft email verification** — A brand-new typed email shows a persistent, dismissible "Verify your email" chip; it never blocks play or the prize draw; confirming early means no code step if they win
 - **Winner claim flow** — "WE HAVE A WINNER!" splash and an in-drawer prize-claim flow (name, shipping address incl. DC, claim number)
 - **Visit mode** — A never-resetting streak variant for low-frequency apps
 - **Push reminders** — Drive re-engagement with daily nudges (FCM)
@@ -243,7 +243,7 @@ Email is captured inside the SDK's own opt-in screen (see the identity section a
 Two verification paths run from that screen:
 
 - **Cross-device verified adoption.** When the typed email matches an existing Avafli account (from another device or install), the SDK asks for a **6-digit code** emailed to that address before the two identities are merged — so a streak follows the person across devices without letting anyone attach to someone else's record.
-- **Soft email verification (2.7.0+).** A brand-new, never-before-seen typed email surfaces a persistent, dismissible **"Verify your email"** chip on the dashboard. It **never blocks play** — the user keeps earning entries — it only affects prize-draw eligibility until the address is confirmed.
+- **Soft email verification (2.7.0+).** A brand-new, never-before-seen typed email surfaces a persistent, dismissible **"Verify your email"** chip on the dashboard. It **never blocks play or the prize draw** — every active account is eligible. Confirming early just means the person skips the code step if they win.
 
 ## Winner Experience
 
