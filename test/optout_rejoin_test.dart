@@ -114,6 +114,7 @@ const _bundleId = 'com.example.test';
 const _optedOutKey = 'winr_opted_out_$_bundleId';
 const _optedOutUntilKey = 'winr_opted_out_until_$_bundleId';
 const _lastAutoPresentKey = 'winr_last_auto_present_$_bundleId';
+const _lastClaimAutoPresentKey = 'winr_last_claim_auto_present_$_bundleId';
 const _impressionsKey = 'winr_unregistered_impressions_$_bundleId';
 const _adoptionStampKey = '${StorageKeys.adoptionCodeSentAt}_$_bundleId';
 const _guestIdKey = 'winr_guest_id';
@@ -128,6 +129,7 @@ const _oldSessionKeys = [
   StorageKeys.lastClaimedDate,
   StorageKeys.claimedTodayDate,
   _lastAutoPresentKey,
+  _lastClaimAutoPresentKey,
   _impressionsKey,
   _adoptionStampKey,
   StorageKeys.offlinePendingIntents,
@@ -155,6 +157,7 @@ Map<String, Object> _oldSession({required DateTime? until}) {
     StorageKeys.lastClaimedDate: now.toIso8601String(),
     StorageKeys.claimedTodayDate: _day(now),
     _lastAutoPresentKey: _day(now),
+    _lastClaimAutoPresentKey: now.millisecondsSinceEpoch,
     _impressionsKey: 3,
     _adoptionStampKey: now.millisecondsSinceEpoch,
     StorageKeys.offlinePendingIntents: jsonEncode([

@@ -565,6 +565,29 @@ void main() {
     await _teardown(tester);
   });
 
+  testWidgets(
+      'the sixth digit submits by itself — no VERIFY tap; five digits do '
+      'not', (tester) async {
+    backend.block = _block(verification: _liveCode());
+    backend.onSend = (_) => SendClaimVerificationCodeResponse(
+        sent: false, verification: _liveCode());
+    backend.onConfirm = (_) => Completer<Object>().future;
+    await _openToSplash(tester, backend, prefs);
+    await _tapClaim(tester);
+    await _settle(tester);
+
+    await tester.enterText(find.byType(TextField), '12345');
+    await tester.pump();
+    expect(backend.confirms, isEmpty);
+
+    await tester.enterText(find.byType(TextField), '123456');
+    await tester.pump();
+    expect(backend.confirms, hasLength(1));
+    expect(backend.confirms.single.code, '123456');
+    expect(_codeView(tester).isVerifying, isTrue);
+    await _teardown(tester);
+  });
+
   testWidgets('a pasted code with a space lands whole and submits',
       (tester) async {
     backend.block = _block(verification: _liveCode());

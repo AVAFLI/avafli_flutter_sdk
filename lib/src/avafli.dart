@@ -65,6 +65,17 @@ class Avafli {
   static bool? _cachedClaimedToday;
   static int? _cachedStreakDay;
 
+  /// True when the latest register/status response carried a `prizeClaim`
+  /// with `status == "pending"` — this person has a prize to claim. While it
+  /// holds, the auto-open is not limited to once a day (a winner who closed
+  /// the drawer must be able to get back to their claim); see
+  /// [_autoPresentIfEligible]. Cleared by any later response without one.
+  static bool _cachedPrizeClaimPending = false;
+
+  /// A cold-start auto-open was deferred by [holdAutoOpen]; the release
+  /// completes it as the cold-start attempt it was.
+  static bool _coldStartAutoPresentDeferred = false;
+
   /// Backend truth for whether this person has confirmed email + consent
   /// (drives the unregistered impression cap for auto-present).
   static bool? _cachedEmailConsent;
@@ -157,6 +168,14 @@ class Avafli {
       'winr_last_auto_present_${_configuration?.bundleId ?? ''}';
   static String get _unregisteredImpressionsKey =>
       'winr_unregistered_impressions_${_configuration?.bundleId ?? ''}';
+  // Epoch milliseconds of the last auto-open made FOR a pending prize claim —
+  // the 30-minute foreground throttle. Deliberately not the daily mark.
+  static String get _lastClaimAutoPresentKey =>
+      'winr_last_claim_auto_present_${_configuration?.bundleId ?? ''}';
+
+  /// A pending prize claim re-opens on app-foreground at most this often.
+  /// (Every cold start opens it.)
+  static const Duration _claimAutoPresentThrottle = Duration(minutes: 30);
   static String get _optedOutKey =>
       'winr_opted_out_${_configuration?.bundleId ?? ''}';
   // Epoch milliseconds — see [_cachedOptedOutUntil].
@@ -275,7 +294,7 @@ class Avafli {
       // same-day claim persisted before a kill retries now that the session
       // is (re)established.
       unawaited(_registerDeviceIfNeeded().then((_) async {
-        await _autoPresentIfEligible();
+        await _autoPresentIfEligible(coldStart: true);
         _offlineCoordinator?.noteLaunch();
       }));
 
@@ -346,20 +365,33 @@ class Avafli {
   /// repeatedly.
   static Future<void> releaseAutoOpen() async {
     _autoOpenHeld = false;
-    await _autoPresentIfEligible();
+    final coldStart = _coldStartAutoPresentDeferred;
+    _coldStartAutoPresentDeferred = false;
+    await _autoPresentIfEligible(coldStart: coldStart);
   }
 
   /// Presents the experience automatically, at most once per calendar day,
   /// when all conditions allow. Called after registration completes and on
   /// each app foreground. All short-circuits are silent by design.
-  static Future<void> _autoPresentIfEligible() async {
+  ///
+  /// A PENDING PRIZE CLAIM changes the limits, not the guards: the winner
+  /// must always be able to get back to their claim, so the once-a-day mark,
+  /// the unregistered impression cap and the `returningUsersOnly` mode are
+  /// bypassed (and no impression is counted). The hold, the opt-out, a
+  /// suspended publisher, the server kill switch and mode `never` still
+  /// apply. So it is not a nag, it opens on every cold start ([coldStart])
+  /// and on a foreground only when [_claimAutoPresentThrottle] has passed
+  /// since the last such open.
+  static Future<void> _autoPresentIfEligible({bool coldStart = false}) async {
     if (_autoOpenHeld) {
       Logger.instance
           .debug('Auto-present deferred: host is holding auto-open (boot)');
+      if (coldStart) _coldStartAutoPresentDeferred = true;
       return;
     }
     final config = _configuration;
     if (config == null || _isSuspended || _cachedOptedOut) return;
+    final claimPending = _cachedPrizeClaimPending;
 
     // Kill switch: sdkConfig.experience.autoOpenEnabled (default true).
     final experience = _cachedSdkConfig?.experience;
@@ -377,24 +409,40 @@ class Avafli {
           'Auto-present skipped: autoOpen mode is never (present() only)');
       return;
     }
-    if (mode == AvafliAutoOpen.returningUsersOnly && _isNewUserSession) {
+    if (!claimPending &&
+        mode == AvafliAutoOpen.returningUsersOnly &&
+        _isNewUserSession) {
       Logger.instance.debug(
           'Auto-present skipped: first-ever session and autoOpen mode is '
           'returningUsersOnly');
       return;
     }
-    if (_cachedGiveaway == null) return;
+    // (A pending prize claim can outlive its giveaway — the winner flow
+    // still shows.)
+    if (_cachedGiveaway == null && !claimPending) return;
 
-    // Once per day.
     final today = _dayString(DateTime.now());
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString(_lastAutoPresentKey) == today) return;
+    final dailyMarkBefore = prefs.getString(_lastAutoPresentKey);
+    final claimMarkBefore = prefs.getInt(_lastClaimAutoPresentKey);
+    if (claimPending) {
+      // Every cold start; a foreground only once the throttle has passed.
+      if (!coldStart && claimMarkBefore != null) {
+        final since = _now().millisecondsSinceEpoch - claimMarkBefore;
+        if (since >= 0 && since < _claimAutoPresentThrottle.inMilliseconds) {
+          return;
+        }
+      }
+    } else {
+      // Once per day.
+      if (dailyMarkBefore == today) return;
+    }
 
     // Unregistered users (no confirmed email) see the auto-open at most N
     // times (default 3 per the MVP decision), then the SDK goes quiet until
     // they register or the publisher opens it manually.
     var pendingImpressionCount = false;
-    if (_cachedEmailConsent != true) {
+    if (!claimPending && _cachedEmailConsent != true) {
       final cap = experience?.unregisteredImpressionCap ?? 3;
       final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
       if (seen >= cap) {
@@ -420,9 +468,16 @@ class Avafli {
       await prefs.setInt(_unregisteredImpressionsKey,
           (prefs.getInt(_unregisteredImpressionsKey) ?? 0) + 1);
     }
+    // The day is spent either way (same as [present]); the claim throttle
+    // has its own stamp.
     await prefs.setString(_lastAutoPresentKey, today);
-    Logger.instance
-        .info('Auto-presenting Avafli experience (first open of the day)');
+    if (claimPending) {
+      await prefs.setInt(
+          _lastClaimAutoPresentKey, _now().millisecondsSinceEpoch);
+    }
+    Logger.instance.info(claimPending
+        ? 'Auto-presenting Avafli experience (pending prize claim)'
+        : 'Auto-presenting Avafli experience (first open of the day)');
     // Re-fetch the navigator context after the awaits above.
     final presentContext = navigatorKey.currentContext;
     if (presentContext == null || !presentContext.mounted) return;
@@ -451,15 +506,31 @@ class Avafli {
               'If your app boots through a splash screen that clears the '
               'navigation stack, call Avafli.holdAutoOpen() during boot and '
               'Avafli.releaseAutoOpen() once your main screen is mounted.');
-      await prefs.remove(_lastAutoPresentKey);
+      if (claimPending) {
+        // Put both stamps back as they were: the daily mark may be an
+        // earlier, genuine open of today's, and the retry below must not
+        // meet its own throttle.
+        if (dailyMarkBefore == null) {
+          await prefs.remove(_lastAutoPresentKey);
+        } else {
+          await prefs.setString(_lastAutoPresentKey, dailyMarkBefore);
+        }
+        if (claimMarkBefore == null) {
+          await prefs.remove(_lastClaimAutoPresentKey);
+        } else {
+          await prefs.setInt(_lastClaimAutoPresentKey, claimMarkBefore);
+        }
+      } else {
+        await prefs.remove(_lastAutoPresentKey);
+      }
       if (pendingImpressionCount) {
         final seen = prefs.getInt(_unregisteredImpressionsKey) ?? 0;
         if (seen > 0) {
           await prefs.setInt(_unregisteredImpressionsKey, seen - 1);
         }
       }
-      unawaited(Future<void>.delayed(
-          const Duration(seconds: 2), _autoPresentIfEligible));
+      unawaited(Future<void>.delayed(const Duration(seconds: 2),
+          () => _autoPresentIfEligible(coldStart: coldStart)));
       return;
     }
     _autoPresentRetries = 0;
@@ -496,7 +567,9 @@ class Avafli {
       return false;
     }
     if (_isPresenting) return false;
-    if (_cachedGiveaway == null) {
+    // (A pending prize claim can outlive its giveaway — the winner flow
+    // still shows.)
+    if (_cachedGiveaway == null && !_cachedPrizeClaimPending) {
       Logger.instance
           .info('Avafli.present() ignored: no active giveaway (or registration '
               'has not completed successfully yet)');
@@ -631,6 +704,7 @@ class Avafli {
       StorageKeys.lastClaimedDate,
       StorageKeys.claimedTodayDate,
       _lastAutoPresentKey,
+      _lastClaimAutoPresentKey,
       _unregisteredImpressionsKey,
       '${StorageKeys.adoptionCodeSentAt}_$bundleId',
     ]) {
@@ -647,6 +721,7 @@ class Avafli {
     _cachedStreakDay = null;
     _cachedEmailConsent = null;
     _cachedAdoptionPending = null;
+    _cachedPrizeClaimPending = false;
     _isNewUserSession = false;
     return true;
   }
@@ -665,6 +740,13 @@ class Avafli {
   /// leaving it dependent on the order of two unrelated guards.
   static void markEmailConsentGranted() {
     _cachedEmailConsent = true;
+  }
+
+  /// @internal — The experience's own status call (or a submitted / rejected
+  /// claim) knows better than the boot-time response whether a prize claim
+  /// is still pending.
+  static void syncPrizeClaimPending(bool pending) {
+    _cachedPrizeClaimPending = pending;
   }
 
   /// @internal — Clears the cached pending-adoption flag once the person
@@ -876,6 +958,7 @@ class Avafli {
       _cachedSdkConfigRaw = response.sdkConfig;
       _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedAdoptionPending = response.adoptionPending;
+      _cachedPrizeClaimPending = response.prizeClaim?.isPending == true;
       // Older backends omit isNewUser → treated as returning (auto-open).
       _isNewUserSession = response.isNewUser == true;
       if (response.optedOut == true) {
@@ -968,6 +1051,7 @@ class Avafli {
       _cachedSdkConfig = AvafliSdkConfig.tryParse(response.sdkConfig);
       _cachedEmailConsent = response.emailConsentStatus;
       _cachedAdoptionPending = response.adoptionPending;
+      _cachedPrizeClaimPending = response.prizeClaim?.isPending == true;
       if (response.optedOut == true) {
         markOptedOut(until: response.optedOutUntil);
       }
@@ -1182,6 +1266,7 @@ class Avafli {
   /// @internal — Foreground hook from the lifecycle observer.
   static Future<void> handleAppResumed() async {
     await _ensureRegistrationComplete();
+    var completesColdStart = false;
     // 24-hour rejoin: the opt-out block passed while the app sat in memory —
     // clear the old session and register as a brand-new participant.
     if (_configuration != null &&
@@ -1196,8 +1281,10 @@ class Avafli {
       Logger.instance.info(
           'Boot-time registration failed on the network — retrying on foreground');
       await _registerDeviceIfNeeded();
+      // This IS the cold start's auto-open, arriving late.
+      completesColdStart = true;
     }
-    await _autoPresentIfEligible();
+    await _autoPresentIfEligible(coldStart: completesColdStart);
     // Foreground trigger for the offline retry queue + buffered-analytics
     // flush (Flutter has no connectivity listener without a new dependency,
     // so resume + capped backoff stand in for connectivity regain).
@@ -1363,6 +1450,8 @@ class Avafli {
     _cachedStreakDay = null;
     _cachedEmailConsent = null;
     _cachedAdoptionPending = null;
+    _cachedPrizeClaimPending = false;
+    _coldStartAutoPresentDeferred = false;
     _cachedOptedOut = false;
     _cachedOptedOutUntil = null;
     clockForTesting = null;

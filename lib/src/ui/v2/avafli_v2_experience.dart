@@ -534,6 +534,9 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
       if (claim != null && claim.isPending && !_suppressWinnerClaim) {
         pendingPrizeClaim = claim;
       }
+      // Keeps the facade's "a claim is pending" flag (which lets a winner
+      // re-open the drawer the same day) in step with the freshest answer.
+      Avafli.syncPrizeClaimPending(pendingPrizeClaim != null);
 
       // Check if backend returned no active giveaway. (A pending prize claim
       // can outlive its giveaway — the winner flow still shows.)
@@ -1516,6 +1519,8 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         // 2.9: celebrate/share AFTER the claim is banked.
         _winnerClaimStep = _WinnerClaimStep.share;
       });
+      // Submitted — the normal once-a-day auto-open rules apply again.
+      Avafli.syncPrizeClaimPending(false);
       _analytics?.track(
         'avafli_prize_claim_submitted',
         {
