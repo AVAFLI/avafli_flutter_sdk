@@ -14,8 +14,13 @@ class Logger {
   /// Current logging level
   LoggingLevel level = LoggingLevel.error;
 
+  /// Test seam: sees every message at every level, before the [level] gate.
+  /// Null in production.
+  void Function(LoggingLevel level, String message)? listener;
+
   /// Logs a message at the error level.
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
+    listener?.call(LoggingLevel.error, message);
     if (_shouldLog(LoggingLevel.error)) {
       developer.log(
         message,
@@ -29,6 +34,7 @@ class Logger {
 
   /// Logs a message at the info level.
   void info(String message) {
+    listener?.call(LoggingLevel.info, message);
     if (_shouldLog(LoggingLevel.info)) {
       developer.log(
         message,
@@ -40,6 +46,7 @@ class Logger {
 
   /// Logs a message at the debug level.
   void debug(String message) {
+    listener?.call(LoggingLevel.debug, message);
     if (_shouldLog(LoggingLevel.debug)) {
       developer.log(
         message,

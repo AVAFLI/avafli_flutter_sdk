@@ -308,7 +308,7 @@ class AvafliRequestDefaults {
   AvafliRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '3.2.0';
+  static String sdkVersion = '3.2.1';
 }
 
 /// Response from claiming daily entries (mirrors iOS

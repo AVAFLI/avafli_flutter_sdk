@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -37,6 +38,29 @@ class NetworkClientImpl implements NetworkClient {
   final Duration timeout;
   final int maxRetries;
 
+  /// Sleeps between retries. Injectable so tests can run the schedule
+  /// without wall-clock waits (and record what was asked for).
+  final Future<void> Function(Duration) _delayFn;
+  final Random _random;
+
+  /// Base delays for infrastructure refusals (429/5xx with a non-callable
+  /// body — Cloud Run turning away the overflow while instances warm up,
+  /// typically 10–30 s). Four retries, ≈15 s worst case. Each actual delay
+  /// is `random(0, base)` + [infraRetryFloor] (full jitter), unless the
+  /// server sent `Retry-After`, which is honoured up to [infraRetryAfterCap].
+  static const List<Duration> infraRetryBaseDelays = [
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+    Duration(seconds: 8),
+  ];
+
+  /// Jitter floor: no retry fires sooner than this.
+  static const Duration infraRetryFloor = Duration(milliseconds: 250);
+
+  /// Longest wait a `Retry-After` header can ask for.
+  static const Duration infraRetryAfterCap = Duration(seconds: 10);
+
   String? _authToken;
   Future<String?> Function()? _refreshHandler;
 
@@ -53,15 +77,20 @@ class NetworkClientImpl implements NetworkClient {
 
   /// Creates a new network client.
   ///
-  /// [client] is a test seam only: production builds the GTS-pinned client
-  /// lazily on first use (see [_client]).
+  /// [client], [delayFn] and [random] are test seams only: production builds
+  /// the GTS-pinned client lazily on first use (see [_client]) and sleeps
+  /// for real.
   NetworkClientImpl({
     required this.baseURL,
     required this.apiKey,
     this.timeout = const Duration(seconds: 30),
     this.maxRetries = 3,
     http.Client? client,
-  }) : _pinnedClient = client;
+    Future<void> Function(Duration)? delayFn,
+    Random? random,
+  })  : _pinnedClient = client,
+        _delayFn = delayFn ?? ((d) => Future<void>.delayed(d)),
+        _random = random ?? Random();
 
   /// Builds (once) an [IOClient] over a `dart:io` [HttpClient] whose trust
   /// store is RESTRICTED to the Google Trust Services roots, with an SPKI
@@ -141,6 +170,9 @@ class NetworkClientImpl implements NetworkClient {
     }
 
     var attempt = 0;
+    // Infrastructure-refusal retries run on their own bounded counter — they
+    // are not transport failures and must not eat into [maxRetries].
+    var infraRetries = 0;
 
     while (attempt < maxRetries) {
       // The token this attempt goes out with — see the 401 branch below.
@@ -155,6 +187,22 @@ class NetworkClientImpl implements NetworkClient {
             e.error == AvafliError.ineligibleToday ||
             e.error == AvafliError.serviceUnavailable) {
           rethrow;
+        }
+
+        // Infrastructure refusal (429/5xx, non-callable body): the platform
+        // turned the request away before any function ran. Retrying as-is is
+        // safe (claims dedup server-side per day; reads are pure). Bounded
+        // jittered backoff, then surface the serverError as-is.
+        if (e.retryable) {
+          if (infraRetries >= infraRetryBaseDelays.length) rethrow;
+          final delay = _infraRetryDelay(infraRetries, e.retryAfter);
+          infraRetries++;
+          Logger.instance.debug(
+              'Infrastructure refusal (HTTP ${e.statusCode}), retry '
+              '$infraRetries/${infraRetryBaseDelays.length} in '
+              '${delay.inMilliseconds} ms');
+          await _delayFn(delay);
+          continue;
         }
 
         // Handle 401 with token refresh — but NOT for requests that don't
@@ -200,6 +248,21 @@ class NetworkClientImpl implements NetworkClient {
     }
 
     throw const AvafliException(AvafliError.networkError);
+  }
+
+  /// The wait before infrastructure-refusal retry number `index + 1`:
+  /// `random(0, base)` + [infraRetryFloor] (full jitter), or the server's
+  /// [retryAfter] when it sent one — clamped to the floor and
+  /// [infraRetryAfterCap].
+  Duration _infraRetryDelay(int index, Duration? retryAfter) {
+    if (retryAfter != null) {
+      if (retryAfter > infraRetryAfterCap) return infraRetryAfterCap;
+      if (retryAfter < infraRetryFloor) return infraRetryFloor;
+      return retryAfter;
+    }
+    final base = infraRetryBaseDelays[index];
+    final jitterMs = _random.nextInt(base.inMilliseconds + 1);
+    return infraRetryFloor + Duration(milliseconds: jitterMs);
   }
 
   /// Runs the refresh handler, sharing one in-flight refresh between every
@@ -299,7 +362,7 @@ class NetworkClientImpl implements NetworkClient {
     } on SocketException {
       // transport: true — the request never completed (offline/DNS/reset).
       // The offline retry queue only ever replays these; HTTP responses
-      // mapped to networkError (e.g. 429) stay non-transport.
+      // (including retryable infrastructure refusals) stay non-transport.
       throw const AvafliException(AvafliError.networkError, null, true);
     } on HttpException {
       throw const AvafliException(AvafliError.networkError, null, true);
@@ -331,20 +394,40 @@ class NetworkClientImpl implements NetworkClient {
     // unlabelled and every 400 mislabelled as "invalid API key".
     String? errorMessage;
     Map<String, dynamic>? details;
+    // Whether the body is a callable error at all. When it is NOT (plain
+    // text, HTML, empty) and the status is 429/5xx, no function ran: the
+    // platform itself refused the request — an infrastructure refusal.
+    var callableError = false;
     try {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
         final err = data['error'];
         if (err is Map<String, dynamic>) {
+          callableError = true;
           final rawDetails = err['details'];
           if (rawDetails is Map<String, dynamic>) details = rawDetails;
           errorMessage = err['message'] as String?;
         } else if (err is String) {
+          callableError = true;
           errorMessage = err;
         }
       }
     } catch (_) {
       // Ignore JSON parsing errors
+    }
+
+    if (!callableError && isInfraRefusalStatus(statusCode)) {
+      // Cloud Run's "The request was aborted because there was no available
+      // instance." (429 or 500, plain text) while instances warm up, a load
+      // balancer's HTML 502/503/504, an empty body. The request loop retries
+      // these on the jittered schedule; only an exhausted run reaches the
+      // host app, as the same serverError a 5xx has always been.
+      throw AvafliException.infraRefusal(
+        AvafliError.serverError,
+        statusCode: statusCode,
+        serverMessage: response.body.trim().isEmpty ? null : response.body,
+        retryAfter: parseRetryAfter(response.headers['retry-after']),
+      );
     }
 
     // A structured rejection: the backend put a machine-readable reason in
@@ -422,17 +505,44 @@ class NetworkClientImpl implements NetworkClient {
         // already-exists — the daily entry was already claimed.
         throw AvafliException(AvafliError.ineligibleToday, errorMessage);
       case 429:
-        throw const AvafliException(AvafliError.networkError); // Rate limited
+        // A callable RESOURCE_EXHAUSTED: one of OUR rate limiters ("Too many
+        // requests…"), not the platform. The app error it is — surfaced at
+        // once with the backend's text, never retried (a mapped networkError
+        // used to put it through the backoff loop and show "check your
+        // connection"). The infrastructure 429 is handled above.
+        throw AvafliException(AvafliError.unknown, errorMessage, false, details);
       case 500:
       case 502:
       case 503:
       case 504:
+        // A callable INTERNAL/UNAVAILABLE: the function ran and failed.
+        // Not retried — the infrastructure 5xx is handled above.
         throw AvafliException(AvafliError.serverError, errorMessage);
       default:
         Logger.instance
             .error('Unexpected HTTP status: $statusCode — $errorMessage');
         throw AvafliException(AvafliError.unknown, errorMessage);
     }
+  }
+
+  /// The statuses the platform uses to refuse a request before any function
+  /// runs (429/500 from Cloud Run with no available instance, 502/503/504
+  /// from the load balancer). Only an infrastructure refusal when the body is
+  /// not a callable error — see [_handleHttpError].
+  static bool isInfraRefusalStatus(int statusCode) =>
+      statusCode == 429 ||
+      statusCode == 500 ||
+      statusCode == 502 ||
+      statusCode == 503 ||
+      statusCode == 504;
+
+  /// Parses a `Retry-After` header given in seconds. The HTTP-date form and
+  /// anything unparsable yield null (the jittered schedule applies).
+  static Duration? parseRetryAfter(String? header) {
+    if (header == null) return null;
+    final seconds = int.tryParse(header.trim());
+    if (seconds == null || seconds < 0) return null;
+    return Duration(seconds: seconds);
   }
 
   /// Detects the backend "publisher suspended / API key revoked" error from

@@ -36,8 +36,11 @@ import '../storage/storage.dart';
 ///
 /// Relies on the `transport` flag [NetworkClientImpl] stamps on
 /// SocketException / HttpException / TimeoutException failures: a PLAIN
-/// [AvafliError.networkError] can also be a mapped HTTP 429 or an unknown
-/// response, which must NOT auto-retry (matching iOS: transport-only).
+/// [AvafliError.networkError] can also be an unknown response, which must
+/// NOT auto-retry (matching iOS: transport-only). An infrastructure refusal
+/// (429/5xx with no callable body, `retryable: true`) is retried by the
+/// network client itself; once exhausted it reaches here as a plain
+/// serverError and is NOT queued — the server answered, it was just busy.
 class OfflineErrorClassifier {
   OfflineErrorClassifier._();
 

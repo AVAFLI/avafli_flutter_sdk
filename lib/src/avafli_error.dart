@@ -75,16 +75,49 @@ enum AvafliError {
 /// be caught with a try-catch block.
 class AvafliException implements Exception {
   const AvafliException(this.error,
-      [this.serverMessage, this.transport = false, this.details]);
+      [this.serverMessage,
+      this.transport = false,
+      this.details,
+      this.retryable = false])
+      : statusCode = null,
+        retryAfter = null;
+
+  /// An infrastructure refusal: the platform answered 429/5xx WITHOUT a
+  /// callable error body (plain text, HTML, empty — e.g. Cloud Run's "no
+  /// available instance" while instances warm up). Not a transport failure
+  /// (the server did answer) and not an app error (no function ran), so the
+  /// network client's bounded jittered backoff retries it before anything
+  /// is surfaced. [retryAfter] carries a `Retry-After` header when present.
+  const AvafliException.infraRefusal(this.error,
+      {required this.statusCode, this.serverMessage, this.retryAfter})
+      : transport = false,
+        details = null,
+        retryable = true;
 
   final AvafliError error;
 
   /// True when the request never completed — a genuine transport failure
   /// (offline, DNS, socket timeout), as opposed to an HTTP response that was
-  /// merely MAPPED to [AvafliError.networkError] (e.g. a 429). The offline
-  /// retry queue keys off this: only transport failures are safe to retry
-  /// automatically. Stamped by the network client's transport catch blocks.
+  /// merely MAPPED to [AvafliError.networkError]. The offline retry queue
+  /// keys off this: only transport failures are safe to retry automatically.
+  /// Stamped by the network client's transport catch blocks.
   final bool transport;
+
+  /// True when the request may safely be re-sent as-is: an infrastructure
+  /// refusal (429/5xx with a non-callable body — see
+  /// [AvafliException.infraRefusal]). The network client's request loop
+  /// retries these on a jittered backoff (1 s, 2 s, 4 s, 8 s base) and only
+  /// surfaces the error once that schedule is exhausted — at which point
+  /// `retryable` is still true, but the offline queue does NOT enqueue it
+  /// (the server answered; it was just busy). Always false for app errors
+  /// (a parsable callable error body) and for transport failures.
+  final bool retryable;
+
+  /// The HTTP status of an infrastructure refusal; null otherwise.
+  final int? statusCode;
+
+  /// The server's `Retry-After` hint on an infrastructure refusal, if any.
+  final Duration? retryAfter;
 
   /// The backend's actual error message, when one was returned. Lets the SDK
   /// surface what really went wrong instead of a generic enum description —

@@ -154,7 +154,7 @@ class Avafli {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '3.2.0';
+  static const String sdkVersion = '3.2.1';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -1020,9 +1020,9 @@ class Avafli {
   }
 
   /// Whether a boot-time failure is the kind a fresh network round-trip can
-  /// fix: a transport drop / timeout / 429 ([AvafliError.networkError]) or a
-  /// 5xx ([AvafliError.serverError]). Backend rejections are not — they'd
-  /// only be rejected again.
+  /// fix: a transport drop / timeout ([AvafliError.networkError]) or a 5xx /
+  /// exhausted infrastructure refusal ([AvafliError.serverError]). Backend
+  /// rejections are not — they'd only be rejected again.
   static bool _isBootNetworkFailure(Object error) {
     return error is AvafliException &&
         (error.error == AvafliError.networkError ||
