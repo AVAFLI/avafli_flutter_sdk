@@ -154,7 +154,7 @@ class Avafli {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '3.2.1';
+  static const String sdkVersion = '3.2.2';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -744,6 +744,80 @@ class Avafli {
     _cachedEmailConsent = true;
   }
 
+  /// @internal — The backend refused a claim because this account has no
+  /// email on file (`AvafliError.emailRequired`): the local "email
+  /// submitted" flag was stale. Drops it so the next open — and the drawer
+  /// right now — lands on email capture instead of a claim the server will
+  /// keep refusing. Also discards any queued claim retry for the same reason.
+  static Future<void> markEmailConsentRevoked(PreferencesStorage storage) async {
+    _cachedEmailConsent = false;
+    await storage.remove(StorageKeys.emailConfirmed);
+    clearOfflineClaimRetry();
+  }
+
+  /// Reconciles identity-scoped local state with what the server just said
+  /// about THIS account (3.2.2).
+  ///
+  /// Why: the "email submitted" flag, the streak snapshot and the
+  /// claimed-today stamp are all cached locally and were only ever written,
+  /// never re-checked. When the account they describe is deleted or reset
+  /// server-side (data erasure, a database reset, a device re-registering
+  /// after its record went away) the next `registerDevice` mints a FRESH
+  /// user — and the SDK kept believing the old flags: it skipped email
+  /// capture, auto-claimed, the backend refused with "email required", and
+  /// the person was stuck on a Day-1 dashboard that never advanced (Skape,
+  /// Oct 2026). Mirrors web 3.1.10 / 3.1.11.
+  ///
+  /// Rules — every one of them from a CURRENT backend only; older backends
+  /// omit these fields and local state is left alone:
+  ///  * `isNewUser == true` → the server has no history for this device:
+  ///    drop the email flag, the streak snapshot, the claim stamps, the
+  ///    adoption-code stamp and any queued claim retry. A genuine first
+  ///    install has nothing to drop, so this is a no-op there.
+  ///  * `emailConsentStatus == false` and no parked adoption → no email on
+  ///    file for this account: drop the email flag only (streak history is
+  ///    the server's and is reconciled by the status call as usual). A
+  ///    parked adoption also reports `false`, but that state is routed to
+  ///    the code screen by the experience and must keep its stamp.
+  ///  * An opted-out account is left alone: the 24-hour rejoin clears the
+  ///    whole session itself once the block lifts, and until then the local
+  ///    state is deliberately frozen (see [_rejoinIfOptOutLifted]).
+  static Future<void> _reconcileLocalIdentity(
+    PreferencesStorage storage, {
+    required bool? isNewUser,
+    required bool? emailConsentStatus,
+    required bool? adoptionPending,
+    required bool? optedOut,
+  }) async {
+    if (optedOut == true) return;
+    if (isNewUser == true) {
+      final bundleId = _configuration?.bundleId ?? '';
+      for (final key in [
+        StorageKeys.emailConfirmed,
+        StorageKeys.streakState,
+        StorageKeys.lastClaimedDate,
+        StorageKeys.claimedTodayDate,
+        '${StorageKeys.adoptionCodeSentAt}_$bundleId',
+      ]) {
+        await storage.remove(key);
+      }
+      await _offlineCoordinator?.clear(PendingIntentKind.claim);
+      _cachedEmailConsent = emailConsentStatus ?? false;
+      _cachedClaimedToday = false;
+      Logger.instance.info(
+          'Fresh account from the server — stale local identity state dropped');
+      return;
+    }
+    if (emailConsentStatus == false && adoptionPending != true) {
+      if (await storage.getBool(StorageKeys.emailConfirmed) == true) {
+        Logger.instance.info(
+            'Server reports no email on file — stale local email flag dropped');
+      }
+      await storage.remove(StorageKeys.emailConfirmed);
+      _cachedEmailConsent = false;
+    }
+  }
+
   /// @internal — The experience's own status call (or a submitted / rejected
   /// claim) knows better than the boot-time response whether a prize claim
   /// is still pending.
@@ -967,6 +1041,17 @@ class Avafli {
       if (response.optedOut == true) {
         markOptedOut(until: response.optedOutUntil);
       }
+      // 3.2.2: the server's identity answer outranks anything cached here —
+      // see [_reconcileLocalIdentity]. Runs BEFORE the "trust local
+      // claimed-today" fallback below so a dead account's claim stamp can't
+      // leak into the fresh one.
+      await _reconcileLocalIdentity(
+        preferencesStorage,
+        isNewUser: response.isNewUser,
+        emailConsentStatus: response.emailConsentStatus,
+        adoptionPending: response.adoptionPending,
+        optedOut: response.optedOut,
+      );
 
       // Cache streak state
       if (response.giveaway != null) {
@@ -1058,6 +1143,17 @@ class Avafli {
       if (response.optedOut == true) {
         markOptedOut(until: response.optedOutUntil);
       }
+      // 3.2.2: a cached session whose account no longer has an email on
+      // file (server-side reset) drops the stale local flag — see
+      // [_reconcileLocalIdentity]. The status call never mints a user, so
+      // `isNewUser` is not a question here.
+      await _reconcileLocalIdentity(
+        _preferencesStorage!,
+        isNewUser: null,
+        emailConsentStatus: response.emailConsentStatusReported,
+        adoptionPending: response.adoptionPending,
+        optedOut: response.optedOut,
+      );
 
       // Update cached data
       if (response.giveaway != null) {

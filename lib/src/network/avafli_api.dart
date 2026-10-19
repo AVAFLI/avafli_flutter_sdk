@@ -85,6 +85,12 @@ class RegisterDeviceResponse {
   /// backends → null → treated as a returning device.
   final bool? isNewUser;
 
+  /// OPTIONAL (3.2.2): whether the backend has an email on file for this
+  /// user (and no adoption is parked). `false` from a current backend means
+  /// the local "email submitted" flag is stale and must be dropped; absent
+  /// (older backend) leaves local state alone.
+  final bool? emailConsentStatus;
+
   const RegisterDeviceResponse({
     required this.token,
     required this.refreshToken,
@@ -100,6 +106,7 @@ class RegisterDeviceResponse {
     this.prizeClaim,
     this.adoptionPending,
     this.isNewUser,
+    this.emailConsentStatus,
   });
 
   factory RegisterDeviceResponse.fromJson(Map<String, dynamic> json) {
@@ -121,6 +128,7 @@ class RegisterDeviceResponse {
           : null,
       adoptionPending: json['adoptionPending'] as bool?,
       isNewUser: json['isNewUser'] as bool?,
+      emailConsentStatus: json['emailConsentStatus'] as bool?,
     );
   }
 }
@@ -205,6 +213,12 @@ class GetActiveGiveawayResponse {
   /// the backend consent gate.
   final bool emailConsentStatus;
 
+  /// 3.2.2: the same answer, tri-state — `null` when the backend did not send
+  /// the field at all (older backend), so "absent" and "false" can be told
+  /// apart where it matters (dropping a stale local flag must only happen on
+  /// an explicit `false`). [emailConsentStatus] keeps its `false` default.
+  final bool? emailConsentStatusReported;
+
   /// Soft email-verification signal (see [RegisterDeviceResponse.emailVerified]).
   /// Explicit `false` → the person typed a new, unconfirmed email; show the
   /// "Verify your email" nudge. ABSENT/null otherwise. NEVER gates play.
@@ -240,6 +254,7 @@ class GetActiveGiveawayResponse {
     this.monthlyCurrent = 0,
     this.lifetimeCount = 0,
     this.emailConsentStatus = false,
+    this.emailConsentStatusReported,
     this.emailVerified,
     this.sdkConfig,
     this.optedOut,
@@ -259,6 +274,7 @@ class GetActiveGiveawayResponse {
       monthlyCurrent: json['monthlyCurrent'] ?? 0,
       lifetimeCount: json['lifetimeCount'] ?? 0,
       emailConsentStatus: json['emailConsentStatus'] ?? false,
+      emailConsentStatusReported: json['emailConsentStatus'] as bool?,
       emailVerified: json['emailVerified'] as bool?,
       sdkConfig: json['sdkConfig'] as Map<String, dynamic>?,
       optedOut: json['optedOut'] as bool?,
@@ -308,7 +324,7 @@ class AvafliRequestDefaults {
   AvafliRequestDefaults._();
 
   static String platformOS = 'iOS';
-  static String sdkVersion = '3.2.1';
+  static String sdkVersion = '3.2.2';
 }
 
 /// Response from claiming daily entries (mirrors iOS

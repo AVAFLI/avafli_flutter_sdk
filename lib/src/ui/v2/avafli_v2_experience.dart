@@ -1057,6 +1057,25 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
         _setPhase(_V2Phase.geoBlocked);
         return;
       }
+      // 3.2.2: the backend has no email on file for this account — the local
+      // "email submitted" flag was stale (the account was reset server-side).
+      // Settling to an unclaimed Day-1 dashboard here left the person stuck
+      // forever (every open: auto-claim → refused → Day 1). Drop the flag and
+      // go to email capture; its Day-1 path claims right after the submit.
+      if (e is AvafliException && e.error == AvafliError.emailRequired) {
+        Logger.instance.info(
+            'Claim refused: no email on file — routing to email capture');
+        await Avafli.markEmailConsentRevoked(widget.preferencesStorage);
+        if (!mounted) return;
+        setState(() {
+          _pendingRevealGrant = null;
+          _preClaimTotalEntries = null;
+          _claimRevealed = false;
+          _claimedToday = false;
+          _phase = _V2Phase.emailCapture;
+        });
+        return;
+      }
 
       final isAlreadyClaimed =
           (e is AvafliException && e.error == AvafliError.ineligibleToday) ||
