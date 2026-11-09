@@ -533,7 +533,7 @@ class AvafliV2WinnerSplashView extends StatefulWidget {
   final VoidCallback onContinue;
   final VoidCallback onClose;
 
-  /// Network giveaway sponsor line under the prize headline. Null → nothing,
+  /// Shared giveaway sponsor line under the prize headline. Null → nothing,
   /// layout unchanged (3.3.0).
   final String? sponsorDisclosure;
 
@@ -661,7 +661,7 @@ class _AvafliV2WinnerSplashViewState extends State<AvafliV2WinnerSplashView> {
                     ),
                   ),
                 ),
-                // Network giveaway only — the sponsor-of-record line (3.3.0).
+                // Shared giveaway only — the sponsor-of-record line (3.3.0).
                 AvafliV2SponsorDisclosure(
                   widget.sponsorDisclosure,
                   onLight: true,

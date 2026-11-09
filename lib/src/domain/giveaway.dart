@@ -49,20 +49,20 @@ class Giveaway {
   /// "WE HAVE A WINNER!" banner + winners dialog. Absent → no banner.
   final GiveawayWinner? latestWinner;
 
-  /// "network" when this is a network giveaway (one shared prize pool across
+  /// "network" when this is a shared giveaway (one shared prize pool across
   /// many publisher apps, Avafli LLC as Sponsor of Record); absent or
   /// "publisher" for a normal exclusive giveaway (3.3.0).
   final String? scope;
 
   /// Sponsor-of-record line ("Sponsored by Avafli LLC") that MUST be shown
-  /// wherever the prize is presented. Only sent for network giveaways;
+  /// wherever the prize is presented. Only sent for shared giveaways;
   /// absent → nothing renders and the layout is unchanged (3.3.0).
   final String? sponsorDisclosure;
 
   /// Whether this giveaway runs in visit mode (streak never resets).
   bool get isVisitMode => streakMode == 'visit';
 
-  /// Whether this is a network giveaway ([scope] == "network").
+  /// Whether this is a shared giveaway ([scope] == "network").
   bool get isNetworkGiveaway => scope == 'network';
 
   /// Creates a new giveaway instance.

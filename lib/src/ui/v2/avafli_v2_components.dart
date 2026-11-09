@@ -354,7 +354,7 @@ String avafliV2StripHeadline(String description, int value) =>
 
 /// Sponsor-of-record line for a NETWORK giveaway ("Sponsored by Avafli LLC"),
 /// rendered as one small muted line directly beneath the prize wherever the
-/// prize is presented (3.3.0). Legally required for network giveaways. A
+/// prize is presented (3.3.0). Legally required for shared giveaways. A
 /// null/blank [text] builds [SizedBox.shrink] — an exclusive giveaway's layout
 /// is byte-for-byte what it was before.
 ///
@@ -415,7 +415,7 @@ class AvafliV2PrizeCard extends StatelessWidget {
   final String prizeDescription;
   final bool visitMode;
 
-  /// Network giveaway sponsor line, rendered under the headline lockup.
+  /// Shared giveaway sponsor line, rendered under the headline lockup.
   /// Null → nothing, layout unchanged (3.3.0).
   final String? sponsorDisclosure;
 
@@ -635,7 +635,7 @@ class AvafliV2PrizeCard extends StatelessWidget {
             ],
           ),
         ),
-        // Network giveaway only — follows the lockup's right alignment.
+        // Shared giveaway only — follows the lockup's right alignment.
         AvafliV2SponsorDisclosure(sponsorDisclosure, textAlign: TextAlign.right),
       ],
     );
@@ -671,7 +671,7 @@ class AvafliV2PrizeCard extends StatelessWidget {
               color: accent,
             ),
           ),
-        // Network giveaway only.
+        // Shared giveaway only.
         AvafliV2SponsorDisclosure(sponsorDisclosure),
       ],
     );

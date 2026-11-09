@@ -1,4 +1,4 @@
-// 3.3.0: network giveaway sponsor disclosure.
+// 3.3.0: shared giveaway sponsor disclosure.
 //
 // The giveaway payload may carry `scope: "network"` and `sponsorDisclosure`
 // ("Sponsored by Avafli LLC"). The SDK must (a) parse both as nullable and
@@ -7,7 +7,7 @@
 // NOTHING — same widget tree, same geometry — when the field is absent, so an
 // exclusive giveaway looks exactly as it did in 3.2.2.
 //
-// The `prizeClaim` block carries the same two fields for a network-giveaway
+// The `prizeClaim` block carries the same two fields for a shared-giveaway
 // winner. The winner splash must read the line from THERE: the draw clears
 // the network pointer, so a winner usually opens the app with no served
 // giveaway at all, and a served-giveaway match would find nothing.
@@ -204,7 +204,7 @@ void main() {
       expect(g.toJson().containsKey('sponsorDisclosure'), isFalse);
     });
 
-    test('an explicit "publisher" scope is not a network giveaway', () {
+    test('an explicit "publisher" scope is not a shared giveaway', () {
       final g = Giveaway.fromJson({..._giveawayJson(), 'scope': 'publisher'});
       expect(g.scope, 'publisher');
       expect(g.isNetworkGiveaway, isFalse);
@@ -372,7 +372,7 @@ void main() {
           ),
         );
 
-    testWidgets('network giveaway → sponsor line on the white strip',
+    testWidgets('shared giveaway → sponsor line on the white strip',
         (tester) async {
       await tester.pumpWidget(
         capture(Giveaway.fromJson(_giveawayJson(network: true))),
