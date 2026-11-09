@@ -49,8 +49,21 @@ class Giveaway {
   /// "WE HAVE A WINNER!" banner + winners dialog. Absent → no banner.
   final GiveawayWinner? latestWinner;
 
+  /// "network" when this is a network giveaway (one shared prize pool across
+  /// many publisher apps, Avafli LLC as Sponsor of Record); absent or
+  /// "publisher" for a normal exclusive giveaway (3.3.0).
+  final String? scope;
+
+  /// Sponsor-of-record line ("Sponsored by Avafli LLC") that MUST be shown
+  /// wherever the prize is presented. Only sent for network giveaways;
+  /// absent → nothing renders and the layout is unchanged (3.3.0).
+  final String? sponsorDisclosure;
+
   /// Whether this giveaway runs in visit mode (streak never resets).
   bool get isVisitMode => streakMode == 'visit';
+
+  /// Whether this is a network giveaway ([scope] == "network").
+  bool get isNetworkGiveaway => scope == 'network';
 
   /// Creates a new giveaway instance.
   const Giveaway({
@@ -68,6 +81,8 @@ class Giveaway {
     this.prizeImageUrl,
     this.streakMode,
     this.latestWinner,
+    this.scope,
+    this.sponsorDisclosure,
   });
 
   /// Creates from JSON data received from the backend.
@@ -96,7 +111,16 @@ class Giveaway {
       latestWinner: json['latestWinner'] is Map<String, dynamic>
           ? GiveawayWinner.fromJson(json['latestWinner'])
           : null,
+      scope: json['scope'] as String?,
+      sponsorDisclosure: _nonEmpty(json['sponsorDisclosure'] as String?),
     );
+  }
+
+  /// A blank disclosure is the same as none — nothing renders.
+  static String? _nonEmpty(String? s) {
+    if (s == null) return null;
+    final t = s.trim();
+    return t.isEmpty ? null : t;
   }
 
   /// Converts to JSON for transmission/caching.
@@ -116,6 +140,8 @@ class Giveaway {
       if (prizeImageUrl != null) 'prizeImageUrl': prizeImageUrl,
       if (streakMode != null) 'streakMode': streakMode,
       if (latestWinner != null) 'latestWinner': latestWinner!.toJson(),
+      if (scope != null) 'scope': scope,
+      if (sponsorDisclosure != null) 'sponsorDisclosure': sponsorDisclosure,
     };
   }
 

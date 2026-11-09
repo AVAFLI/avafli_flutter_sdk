@@ -352,6 +352,55 @@ String avafliV2StripHeadline(String description, int value) =>
         ? '\$${avafliV2FormatInt(value)}.00 CASH PRIZE'
         : 'Win ${avafliV2Article(description)} $description';
 
+/// Sponsor-of-record line for a NETWORK giveaway ("Sponsored by Avafli LLC"),
+/// rendered as one small muted line directly beneath the prize wherever the
+/// prize is presented (3.3.0). Legally required for network giveaways. A
+/// null/blank [text] builds [SizedBox.shrink] — an exclusive giveaway's layout
+/// is byte-for-byte what it was before.
+///
+/// [onLight] picks the ink: false (default) is the secondary white used on the
+/// dark prize card, true is the muted gunmetal used on the white prize strips
+/// (Day-1 capture, winner splash). 11pt Inter medium — the smallest size the
+/// SDK ships, still legible — with a top gap of [gap].
+class AvafliV2SponsorDisclosure extends StatelessWidget {
+  final String? text;
+  final bool onLight;
+  final double gap;
+  final TextAlign textAlign;
+
+  const AvafliV2SponsorDisclosure(
+    this.text, {
+    super.key,
+    this.onLight = false,
+    this.gap = 4,
+    this.textAlign = TextAlign.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = text?.trim();
+    if (t == null || t.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(top: gap),
+      child: Text(
+        t,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: textAlign,
+        style: AvafliV2Font.inter(
+          11,
+          weight: FontWeight.w500,
+          color: onLight
+              ? AvafliV2Colors.gunmetal.withValues(alpha: 0.7)
+              : AvafliV2Colors.textSecondary,
+          letterSpacing: 0.1,
+          height: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
 /// Day 2+ prize card (Joe's Aug-2026 dark full-bleed revision): the prize art
 /// fills the WHOLE card, a solid black stats strip (streak + total entries)
 /// sits inside the top edge, and the prize-derived headline rides the bottom
@@ -366,6 +415,10 @@ class AvafliV2PrizeCard extends StatelessWidget {
   final String prizeDescription;
   final bool visitMode;
 
+  /// Network giveaway sponsor line, rendered under the headline lockup.
+  /// Null → nothing, layout unchanged (3.3.0).
+  final String? sponsorDisclosure;
+
   const AvafliV2PrizeCard({
     super.key,
     required this.accent,
@@ -375,6 +428,7 @@ class AvafliV2PrizeCard extends StatelessWidget {
     required this.prizeValue,
     required this.prizeDescription,
     this.visitMode = false,
+    this.sponsorDisclosure,
   });
 
   /// Cash prizes render Joe's right-aligned "WIN $1,000 / CASH PRIZE" lockup;
@@ -581,6 +635,8 @@ class AvafliV2PrizeCard extends StatelessWidget {
             ],
           ),
         ),
+        // Network giveaway only — follows the lockup's right alignment.
+        AvafliV2SponsorDisclosure(sponsorDisclosure, textAlign: TextAlign.right),
       ],
     );
   }
@@ -615,6 +671,8 @@ class AvafliV2PrizeCard extends StatelessWidget {
               color: accent,
             ),
           ),
+        // Network giveaway only.
+        AvafliV2SponsorDisclosure(sponsorDisclosure),
       ],
     );
   }

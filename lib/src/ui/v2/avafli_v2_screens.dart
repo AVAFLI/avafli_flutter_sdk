@@ -754,6 +754,16 @@ class _AvafliV2CaptureViewState extends State<AvafliV2CaptureView> {
                 style: AvafliV2Font.inter(16, color: AvafliV2Colors.gunmetal),
               ),
           ],
+          // Network giveaway only — the sponsor-of-record line (3.3.0).
+          if (widget.giveaway?.sponsorDisclosure != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: AvafliV2SponsorDisclosure(
+                widget.giveaway!.sponsorDisclosure,
+                onLight: true,
+                gap: 3,
+              ),
+            ),
         ],
       ),
     );
@@ -1094,6 +1104,7 @@ class AvafliV2DashboardView extends StatelessWidget {
                       prizeValue: (giveaway?.prizeValue ?? 0).toInt(),
                       prizeDescription: giveaway?.prizeDescription ?? '',
                       visitMode: _visitMode,
+                      sponsorDisclosure: giveaway?.sponsorDisclosure,
                     ),
                   ),
                   const SizedBox(height: 15),

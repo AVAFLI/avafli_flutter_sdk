@@ -533,6 +533,10 @@ class AvafliV2WinnerSplashView extends StatefulWidget {
   final VoidCallback onContinue;
   final VoidCallback onClose;
 
+  /// Network giveaway sponsor line under the prize headline. Null → nothing,
+  /// layout unchanged (3.3.0).
+  final String? sponsorDisclosure;
+
   const AvafliV2WinnerSplashView({
     super.key,
     required this.accent,
@@ -540,6 +544,7 @@ class AvafliV2WinnerSplashView extends StatefulWidget {
     required this.prizeHeadline,
     required this.onContinue,
     required this.onClose,
+    this.sponsorDisclosure,
   });
 
   @override
@@ -634,20 +639,34 @@ class _AvafliV2WinnerSplashViewState extends State<AvafliV2WinnerSplashView> {
             width: double.infinity,
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                prizeHeadline,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                style: AvafliV2Font.inter(
-                  28,
-                  weight: FontWeight.w900,
-                  color: AvafliV2Colors.gunmetal,
-                  letterSpacing: -0.8,
-                  height: 1.1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              // Stretch so the FittedBox keeps the tight width it had when it
+              // was the strip's only child — the strip renders identically
+              // without a disclosure.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    prizeHeadline,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    style: AvafliV2Font.inter(
+                      28,
+                      weight: FontWeight.w900,
+                      color: AvafliV2Colors.gunmetal,
+                      letterSpacing: -0.8,
+                      height: 1.1,
+                    ),
+                  ),
                 ),
-              ),
+                // Network giveaway only — the sponsor-of-record line (3.3.0).
+                AvafliV2SponsorDisclosure(
+                  widget.sponsorDisclosure,
+                  onLight: true,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),

@@ -2242,6 +2242,11 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
             claim.prizeDescription,
             claim.prizeValue.toInt(),
           ),
+          // The claim block carries no sponsor line of its own; the served
+          // giveaway's applies when it is the one the prize belongs to.
+          sponsorDisclosure: _giveaway?.id == claim.giveawayId
+              ? _giveaway?.sponsorDisclosure
+              : null,
           onContinue: _winnerClaimContinue,
           onClose: _requestDismiss,
         );
