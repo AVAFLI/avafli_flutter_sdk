@@ -2242,11 +2242,16 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
             claim.prizeDescription,
             claim.prizeValue.toInt(),
           ),
-          // The claim block carries no sponsor line of its own; the served
-          // giveaway's applies when it is the one the prize belongs to.
-          sponsorDisclosure: _giveaway?.id == claim.giveawayId
-              ? _giveaway?.sponsorDisclosure
-              : null,
+          // The claim block carries the sponsor line itself (3.3.0): the
+          // draw clears the network pointer, so by the time the winner opens
+          // the app there is usually no served giveaway to borrow it from.
+          // The served giveaway's line is only a fallback for an older
+          // backend whose block has none, and only when it is the giveaway
+          // the prize belongs to.
+          sponsorDisclosure: claim.sponsorDisclosure ??
+              (_giveaway?.id == claim.giveawayId
+                  ? _giveaway?.sponsorDisclosure
+                  : null),
           onContinue: _winnerClaimContinue,
           onClose: _requestDismiss,
         );

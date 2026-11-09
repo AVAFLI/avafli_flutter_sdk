@@ -434,6 +434,17 @@ class PrizeClaimBlock {
   /// opens the form directly, exactly as before.
   final ClaimVerification? verification;
 
+  /// Network giveaway only (3.3.0): `"network"`. Absent for an exclusive
+  /// giveaway.
+  final String? scope;
+
+  /// Network giveaway only (3.3.0): the sponsor-of-record line
+  /// ("Sponsored by Avafli LLC"). Carried on the claim itself because the
+  /// draw clears the network pointer — by the time the winner opens the app
+  /// there is usually no served giveaway to borrow it from. Absent for an
+  /// exclusive giveaway.
+  final String? sponsorDisclosure;
+
   const PrizeClaimBlock({
     required this.status,
     required this.giveawayId,
@@ -443,9 +454,14 @@ class PrizeClaimBlock {
     this.claimNumber,
     this.submittedAt,
     this.verification,
+    this.scope,
+    this.sponsorDisclosure,
   });
 
   bool get isPending => status == 'pending';
+
+  /// Whether this prize was won in the network giveaway.
+  bool get isNetworkGiveaway => scope == 'network';
 
   /// Whether the winner must enter the emailed code before the claim form.
   bool get requiresVerification => verification?.required == true;
@@ -461,6 +477,8 @@ class PrizeClaimBlock {
       claimNumber: claimNumber,
       submittedAt: submittedAt,
       verification: verification,
+      scope: scope,
+      sponsorDisclosure: sponsorDisclosure,
     );
   }
 
@@ -479,7 +497,17 @@ class PrizeClaimBlock {
       verification: json['verification'] is Map<String, dynamic>
           ? ClaimVerification.fromJson(json['verification'])
           : null,
+      scope: _nonEmpty(json['scope'] as String?),
+      sponsorDisclosure: _nonEmpty(json['sponsorDisclosure'] as String?),
     );
+  }
+
+  /// A blank disclosure is the same as none — nothing renders (same rule as
+  /// `Giveaway`).
+  static String? _nonEmpty(String? s) {
+    if (s == null) return null;
+    final t = s.trim();
+    return t.isEmpty ? null : t;
   }
 }
 
