@@ -42,8 +42,10 @@
 /// `autoOpen: AvafliAutoOpen.never` and call [Avafli.present].
 library avafli_sdk;
 
-// Core SDK
-export 'src/avafli.dart';
+// Core SDK. performOptOut is the in-experience "Delete my data" erasure and
+// is deliberately NOT public: a host app must not be able to erase a
+// person's Avafli data (3.3.3).
+export 'src/avafli.dart' hide performOptOut;
 export 'src/avafli_auto_open.dart';
 export 'src/avafli_options.dart';
 export 'src/avafli_configuration.dart';

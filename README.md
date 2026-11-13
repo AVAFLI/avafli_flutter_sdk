@@ -13,7 +13,6 @@
 - [What the user sees](#what-the-user-sees)
 - [Controlling presentation](#controlling-presentation)
 - [Push reminders](#push-reminders)
-- [Account deletion](#account-deletion)
 - [Testing checklist](#testing-checklist)
 - [API reference](#api-reference)
 
@@ -38,7 +37,7 @@ The SDK ships its own fonts, icons and images; nothing else to add to `pubspec.y
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.3.2
+  avafli_sdk: ^3.3.3
 ```
 
 ```bash
@@ -216,6 +215,8 @@ Everything below is built into the drawer. There is no host-app code for any of 
 
 **Branding.** The drawer design is fixed. From the dashboard you set the **logo**, the **prize image** and the **primary colour** (CTAs, tiles, highlights); the age-gate sentence and marketing-consent line are also server copy. Changes apply on the next open without an app update.
 
+**Delete my data.** Users delete their Avafli data themselves from the Privacy Policy screen inside the experience ("Delete my data & stop participating"): the erasure is identity-wide, the drawer stays silent on that device for 24 hours, and after that they may join again as a brand-new participant. There is nothing for the host app to do, and no host-app call for it — only the person can erase their own data.
+
 **Busy backend.** An HTTP 429/5xx that is the platform refusing the request (no structured error — instances warming up) is retried automatically four times on a jittered backoff (≈15 s worst case, `Retry-After` honoured up to 10 s) before `AvafliError.serverError` surfaces. Real backend answers (rate limit, cooldown, geo, consent, already claimed) are never retried.
 
 ## Controlling presentation
@@ -270,25 +271,6 @@ Streak reminders are sent through **your** Firebase project. The SDK never links
 
 `AvafliOptions.enablePushReminders` defaults to `true`; set it to `false` to keep the SDK from registering tokens at all. `Avafli.registerForPushNotifications()` exists for source compatibility only — it writes a debug log and does nothing else; you do not need to call it.
 
-## Account deletion
-
-Users can delete their Avafli data themselves: the in-app Privacy Policy page has a "Delete my data" section that raises the SDK's confirmation ("Delete my data & stop participating") and performs the erasure. No integration required.
-
-If your app has its own delete-account flow, call the same erasure from it:
-
-```dart
-try {
-  await Avafli.optOut();
-} on AvafliException catch (e) {
-  // e.error == AvafliError.notConfigured if configure() never ran;
-  // otherwise the backend call failed — tell the user and let them retry.
-}
-```
-
-`optOut()` is identity-wide (one call covers all of the person's devices) and includes prize-claim records. Entries and streaks are forfeited and cannot be restored; de-identified entry records are kept as the legally required evidence that drawings were fair (GDPR Art. 17(3)) — the person is erased, the proof is kept.
-
-**24-hour rejoin.** For 24 hours after a deletion that email and that device cannot register, the drawer stays silent and `present()` resolves `false`. On the first `configure()` or app-foreground after that, the SDK clears what is left of the old session and registers the device again: the person is a brand-new participant with no link to the old profile and sees the normal email-capture flow. Nothing for the host app to do.
-
 ## Testing checklist
 
 Run every item with your `avafli_test_…` key and `logging: LoggingLevel.debug`.
@@ -299,7 +281,7 @@ Run every item with your `avafli_test_…` key and `logging: LoggingLevel.debug`
 4. **Next day** (or the device clock moved forward a day, then a cold start) — the drawer auto-opens and claims Day 2.
 5. **Splash / boot navigation** — if you use `holdAutoOpen()`, confirm the log reads `Auto-present deferred: host is holding auto-open` during boot and the drawer appears over your home screen after `releaseAutoOpen()`. A log line `Auto-presented experience was removed by host navigation — retrying` means the hold is missing or released too early.
 6. **`autoOpen: AvafliAutoOpen.never`** — nothing opens on its own; `await Avafli.present()` resolves `true`.
-7. **Delete my data** — Privacy Policy → Delete my data (or `Avafli.optOut()`): the drawer dismisses and stays silent; after 24 hours a relaunch shows email capture again.
+7. **Delete my data** — Privacy Policy → Delete my data: the drawer dismisses and stays silent; after 24 hours a relaunch shows email capture again.
 8. **Push** — after forwarding a token there is no `registerPushToken failed:` line in the log (through the manager you also get `Push token registered with backend`).
 9. **Platform setup** — iOS `Info.plist` has both usage strings; Android main manifest has `INTERNET`; a release build uses the `avafli_live_…` key.
 
@@ -321,8 +303,7 @@ Everything below is exported by `package:avafli_sdk/avafli_sdk.dart`. Members do
 | `Avafli.isAvailable` | `bool` | `false` before `configure()` or while the publisher is suspended / key revoked. |
 | `Avafli.registerPushToken(token)` | `Future<void>` | Forward an FCM token. No-op before `configure()` or for an empty token; failures are logged. |
 | `Avafli.registerForPushNotifications()` | `Future<void>` | Source-compatibility shim: logs at debug level, nothing else. Throws `AvafliError.notConfigured` before `configure()`. |
-| `Avafli.optOut()` | `Future<void>` | Erase the person and silence the drawer for 24 hours; they may rejoin as a new participant after that. Throws `AvafliException` on failure / when not configured. |
-| `Avafli.sdkVersion` | `String` | `'3.3.1'` — sent to the backend and in the User-Agent. |
+| `Avafli.sdkVersion` | `String` | `'3.3.3'` — sent to the backend and in the User-Agent. |
 | `Avafli.platformOS` | `String` | `'iOS'`, `'Android'` or `'Web'` at runtime. |
 
 ### `AvafliConfiguration`
@@ -359,7 +340,7 @@ Everything below is exported by `package:avafli_sdk/avafli_sdk.dart`. Members do
 
 ### Errors
 
-`AvafliException` (`implements Exception`) wraps an `AvafliError` and carries `serverMessage`, `displayMessage`, `details` / `reason` (the backend's structured payload, e.g. `claim_expired`), `transport` (the request never completed), `retryable` / `statusCode` / `retryAfter` (an infrastructure 429/5xx). Only `optOut()` and `registerForPushNotifications()` throw it to the host app; `configure()` and `present()` log and return `false` instead.
+`AvafliException` (`implements Exception`) wraps an `AvafliError` and carries `serverMessage`, `displayMessage`, `details` / `reason` (the backend's structured payload, e.g. `claim_expired`), `transport` (the request never completed), `retryable` / `statusCode` / `retryAfter` (an infrastructure 429/5xx). Only `registerForPushNotifications()` throws it to the host app; `configure()` and `present()` log and return `false` instead.
 
 `AvafliError`: `notConfigured`, `noUser`, `ineligibleToday`, `invalidApiKey`, `networkError`, `authenticationFailed`, `underage`, `invalidEmail`, `emailRequired`, `giveawayNotAvailable`, `geographyNotAllowed`, `serverError`, `serviceUnavailable` (publisher suspended / key revoked), `optedOut`, `unknown`, `invalidState`, `noPresentingViewController`. Each has a `message`.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.3.3
+
+- Removed (**breaking** for any app that called it): `Avafli.optOut()`. A host app can no longer erase a person's Avafli data on their behalf. The only deletion path is the person's own "Delete my data and stop participating" action on the Privacy Policy screen inside the experience, which still performs the same identity-wide erasure, silences the drawer on that device, and allows a rejoin as a brand-new participant after 24 hours (`optedOutUntil` handling unchanged). If your app called `optOut()` from its own delete-account flow, remove the call; there is nothing to replace it with and nothing else for the host app to do.
+
 ## 3.3.2
 
 - Docs only: README rewritten against the current API — complete runnable configure example with `MaterialApp(navigatorKey: Avafli.navigatorKey)`, the existing-navigator-key / GetX / GoRouter / auto_route variants, hold/release, requirements, push, analytics events as emitted, claim window, error reference. The package no longer ships the stray `ios/` Runner project. No code changes.

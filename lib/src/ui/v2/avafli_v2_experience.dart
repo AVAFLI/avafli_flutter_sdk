@@ -1760,14 +1760,14 @@ class _AvafliV2ExperienceState extends State<AvafliV2Experience> {
                     ),
                   // The delete-my-data confirmation (2.9.5): presents over
                   // the whole drawer once the privacy webview has closed.
-                  // Avafli.optOut throws on failure, so the confirmation can
-                  // show an honest error instead of pretending success; on
-                  // success it holds the deleted copy, then the entire
-                  // experience dismisses.
+                  // performOptOut (internal; the only deletion path) throws
+                  // on failure, so the confirmation can show an honest error
+                  // instead of pretending success; on success it holds the
+                  // deleted copy, then the entire experience dismisses.
                   if (_showsOptOutFlow)
                     Positioned.fill(
                       child: AvafliV2OptOutFlow(
-                        optOutAction: Avafli.optOut,
+                        optOutAction: performOptOut,
                         onCancel: () =>
                             setState(() => _showsOptOutFlow = false),
                         onDeleted: () {

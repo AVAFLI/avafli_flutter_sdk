@@ -26,6 +26,10 @@ import 'avafli_configuration.dart';
 import 'avafli_error.dart';
 import 'avafli_user.dart';
 
+// The in-experience "Delete my data" erasure (performOptOut). A part so it
+// can reach the private client/clock; hidden from the public barrel.
+part 'avafli_opt_out.dart';
+
 /// Main entry point for the Avafli Flutter SDK.
 ///
 /// This class provides the primary interface for initializing the SDK. By
@@ -158,7 +162,7 @@ class Avafli {
   /// Keep in sync with pubspec.yaml `version:`. Sent to the backend WITHOUT a
   /// leading `v`, matching the iOS/Android/web SDKs (the min-version parser
   /// strips a leading `v`, so the bare number is the canonical form).
-  static const String sdkVersion = '3.3.2';
+  static const String sdkVersion = '3.3.3';
 
   /// Real platform OS for the platform_os field (spec enum: iOS / Android /
   /// Web). Derived at runtime.
@@ -631,25 +635,14 @@ class Avafli {
   }
 
   // MARK: - RTD Opt-out
+  //
+  // There is deliberately NO public opt-out / delete call (3.3.3). The only
+  // way a person's Avafli data is erased is their own "Delete my data and
+  // stop participating" action on the Privacy Policy screen inside the
+  // experience, which runs [performOptOut] (avafli_opt_out.dart, hidden from
+  // the public barrel). A host app must not be able to erase someone's data.
 
-  /// Right-To-Delete opt-out: erases the person on the backend
-  /// (identity-wide, PII anonymized) and forfeits their entries and streaks.
-  /// For 24 hours that email and this device cannot register and the
-  /// experience stays silent; after that the person may join again as a
-  /// brand-new participant with no connection to the old profile. Wire this
-  /// to the opt-out action in your privacy-policy flow.
-  static Future<void> optOut() async {
-    final networkClient = _networkClient;
-    if (networkClient == null) {
-      throw const AvafliException(AvafliError.notConfigured);
-    }
-    await networkClient.send(OptOutRequest());
-    markOptedOut(until: _now().add(_optOutBlock));
-    Logger.instance.info(
-        'User opted out of Avafli (RTD) — experience silenced for 24 hours');
-  }
-
-  /// @internal — Records the RTD flag (from the backend or [optOut]) and the
+  /// @internal — Records the RTD flag (from the backend or [performOptOut]) and the
   /// moment it lifts, so the suppression holds on future launches even
   /// offline. [until] is the opt-out call's moment + 24 hours, or the
   /// backend's `optedOutUntil`.
@@ -952,9 +945,11 @@ class Avafli {
   /// the same day farmed unlimited entries. It also destroyed the records proving the
   /// drawing was fair, and left prize-claim PII orphaned.
   ///
-  /// Use [optOut] instead. It is the correct erasure: identity-wide, PII scrubbed
-  /// everywhere including prize claims, tombstoned so it survives a reinstall, and
-  /// the experience stays silenced on the device for the 24-hour block.
+  /// The in-experience "Delete my data" action ([performOptOut]) is the one
+  /// erasure: identity-wide, PII scrubbed everywhere including prize claims,
+  /// tombstoned so it survives a reinstall, and the experience stays silenced
+  /// on the device for the 24-hour block. 3.3.3 removed the public `optOut()`
+  /// as well: a host app cannot erase a person's data on their behalf.
 
   // MARK: - Private Methods
 

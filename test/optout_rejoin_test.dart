@@ -11,6 +11,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// performOptOut is hidden from the public barrel (3.3.3): the in-experience
+// "Delete my data" confirmation is the only caller.
+import 'package:avafli_sdk/src/avafli.dart' show performOptOut;
 import 'package:avafli_sdk/src/network/api_request.dart';
 import 'package:avafli_sdk/src/network/avafli_api.dart';
 import 'package:avafli_sdk/src/network/network_client.dart';
@@ -535,14 +538,17 @@ void main() {
     await _teardown(tester);
   });
 
-  testWidgets('optOut() stores the moment the block lifts: now + 24 hours',
+  testWidgets(
+      'the in-experience delete (performOptOut) stores the moment the block lifts: now + 24 hours',
       (tester) async {
     await _pumpHost(tester);
     await Avafli.configure(_config(autoOpen: AvafliAutoOpen.never));
     await _settle(tester);
     expect(client.registerCalls, 1);
 
-    await Avafli.optOut();
+    // The internal erasure the Privacy Policy screen's DELETE MY DATA runs
+    // (AvafliV2OptOutFlow.optOutAction). There is no public optOut() (3.3.3).
+    await performOptOut();
     await _settle(tester);
 
     final prefs = await SharedPreferences.getInstance();

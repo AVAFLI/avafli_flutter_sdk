@@ -8,7 +8,7 @@
 // generation), which the webview intercepts
 // (NavigationDecision.prevent), then — matching iOS/web (2.9.5) — the
 // webview CLOSES FIRST and the SDK's existing destructive opt-out
-// confirmation ([AvafliV2OptOutFlow] → `Avafli.optOut`) presents over the
+// confirmation ([AvafliV2OptOutFlow] → internal `performOptOut`) presents over the
 // experience, so cancel returns the user to the SDK screen they came from.
 // The native "Privacy choices" screen that used to list the delete action
 // is gone — the webview is now the one legal surface.
@@ -86,7 +86,7 @@ AvafliV2LegalNav avafliV2LegalNavDecision(String url) {
 /// the webview.
 class AvafliV2ExperienceScope extends InheritedWidget {
   /// Presents [AvafliV2OptOutFlow] over the drawer. The experience wires the
-  /// erasure (`Avafli.optOut`) and the post-success drawer dismissal itself.
+  /// erasure (internal `performOptOut`) and the post-success drawer dismissal itself.
   final VoidCallback presentDeleteConfirmation;
 
   /// The publisher accent (branding.primaryColor), so surfaces pushed OUTSIDE
@@ -372,7 +372,8 @@ enum AvafliV2OptOutPhase { confirming, inFlight, failed, done }
 /// the webview (iOS/web parity). Owns the confirm → erase → done/failed
 /// machine.
 class AvafliV2OptOutFlow extends StatefulWidget {
-  /// The authenticated erasure (`Avafli.optOut`). MUST throw on failure so the
+  /// The authenticated erasure (internal `performOptOut`, the only deletion
+  /// path — there is no public call). MUST throw on failure so the
   /// confirmation can show an honest error instead of pretending the
   /// deletion succeeded. Null (previews/tests, or a scope-less host) treats
   /// a confirm as a failure.

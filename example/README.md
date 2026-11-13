@@ -2,14 +2,15 @@
 
 Minimal host app for the Avafli SDK (`avafli_sdk`): `MaterialApp(navigatorKey:
 Avafli.navigatorKey, …)`, one `Avafli.configure(...)` call with a demo key, and
-the drawer auto-opens once per day. The screen has two demo-only buttons:
+the drawer auto-opens once per day. The screen has one demo-only button:
 
 - **Reset demo state** — clears the SDK's once-per-day auto-open mark and the
   unregistered-impression counter so you can see the auto-open again today
   (kill and relaunch the app after tapping).
-- **Erase My Data** — calls `Avafli.optOut()`, the same erasure the in-app
-  Privacy Policy's "Delete my data" performs; the drawer stays silent for 24
-  hours, then the device rejoins as a new participant.
+
+Deleting one's data is the user's own action: Privacy Policy → "Delete my
+data" inside the drawer. There is no host-app call for it, so the example has
+no button for it either.
 
 Platform setup the SDK needs is already in place here: `NSCameraUsageDescription`
 and `NSPhotoLibraryUsageDescription` in `ios/Runner/Info.plist` (prize-claim

@@ -303,19 +303,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _optOut(),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Erase My Data (GDPR)'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: Colors.red,
-            ),
-          ),
-        ),
+        // Deleting one's data is the user's own action on the Privacy Policy
+        // screen inside the experience; there is no host-app call for it.
       ],
     );
   }
@@ -336,30 +325,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
           backgroundColor: Colors.blue,
         ),
       );
-    }
-  }
-
-  Future<void> _optOut() async {
-    HapticFeedback.mediumImpact();
-    try {
-      await Avafli.optOut();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data erased and experience silenced'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 }
