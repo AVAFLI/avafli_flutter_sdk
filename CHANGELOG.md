@@ -1,3 +1,7 @@
+## 3.3.1
+
+- Changed: `registerDevice` now sends `sdkPlatform: "flutter"` alongside `platformOS`, so Avafli's admin counts Flutter installs as "Flutter (iOS)" / "Flutter (Android)" and compares them with the pub.dev release instead of the native SDK tags. No behaviour change in the app; nothing for the host app to do.
+
 ## 3.3.0
 
 - Added: shared giveaway sponsor disclosure. The giveaway payload (`registerDevice` → `giveaway`, `getActiveGiveaway`) may now carry `scope: "network"` and `sponsorDisclosure` (e.g. "Sponsored by Avafli LLC") when the publisher has opted into the shared giveaway — one shared prize pool across many apps with Avafli LLC as Sponsor of Record. The SDK shows the sponsor line as a small muted line directly under the prize wherever the prize is presented: the Day-1 email-capture prize strip, the dashboard prize card (auto-open and `Avafli.present()`), and the winner splash. Both fields are exposed on `Giveaway` (`scope`, `sponsorDisclosure`, `isNetworkGiveaway`). No change for exclusive giveaways — with the field absent nothing renders and the layout is identical to 3.2.2. Nothing for the host app to do.

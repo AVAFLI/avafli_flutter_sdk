@@ -36,6 +36,9 @@ class RegisterDeviceRequest extends PostRequest<RegisterDeviceResponse> {
         'timezone': timezone,
         'platformOS': platformOS,
         'sdkVersion': sdkVersion,
+        // 3.3.1: tells the backend this is the Flutter SDK (platformOS stays the real OS),
+        // so the admin compares it with the pub.dev release and labels it "Flutter (iOS)".
+        'sdkPlatform': 'flutter',
       };
 
   @override

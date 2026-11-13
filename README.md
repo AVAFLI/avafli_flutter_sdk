@@ -112,7 +112,7 @@ Add the SDK to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.3.0
+  avafli_sdk: ^3.3.1
 ```
 
 > Published on [pub.dev](https://pub.dev/packages/avafli_sdk). A git dependency on this repo also works if you need an unreleased revision.
