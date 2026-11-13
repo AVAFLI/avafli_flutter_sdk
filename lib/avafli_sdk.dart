@@ -1,38 +1,45 @@
-/// Avafli Flutter SDK
+/// Avafli SDK for Flutter — daily-streak sweepstakes in a self-presenting
+/// bottom drawer.
 ///
-/// A sweepstakes and engagement SDK for Flutter applications.
+/// The SDK registers the device on [Avafli.configure], opens its drawer at
+/// most once per calendar day through [Avafli.navigatorKey], captures the
+/// email, grants the day's entries and runs the winner's prize claim.
+/// Branding, prize and ladder come from the Avafli dashboard.
 ///
-/// This SDK provides:
-/// - Daily streak engagement system (V2 auto-open bottom-drawer experience)
-/// - Email capture and age verification
-/// - Push notification support
-/// - Analytics integration
-/// - GDPR / RTD compliance features
-///
-/// Example usage:
+/// Complete integration:
 /// ```dart
 /// import 'package:avafli_sdk/avafli_sdk.dart';
+/// import 'package:flutter/material.dart';
 ///
-/// // Configure the SDK with user (call once at app launch)
-/// await Avafli.configure(AvafliConfiguration(
-///   apiKey: 'YOUR_API_KEY',
-///   environment: AvafliEnvironment.production,
-///   bundleId: 'com.example.myapp',
-///   user: AvafliUser(
-///     id: 'user_123',
-///     firstName: 'Jane',
-///     lastName: 'Doe',
-///   ),
-/// ));
+/// Future<void> main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   runApp(const MyApp()); // mount the navigator first, then configure
+///   await Avafli.configure(AvafliConfiguration(
+///     apiKey: 'avafli_test_…', // avafli_live_… in release builds
+///     bundleId: 'com.example.myapp',
+///     user: AvafliUser(id: 'user_123'), // or AvafliUser.guest
+///   ));
+/// }
 ///
-/// // Attach the SDK navigator key so the experience can auto-open on the
-/// // first app-open of the day:
-/// MaterialApp(navigatorKey: Avafli.navigatorKey, ...);
+/// class MyApp extends StatelessWidget {
+///   const MyApp({super.key});
 ///
-/// // Prefer to choose the moment yourself (e.g. after onboarding)? Set
-/// // `autoOpen: AvafliAutoOpen.never` on the configuration and call
-/// // `Avafli.present()` from your own code.
+///   @override
+///   Widget build(BuildContext context) {
+///     return MaterialApp(
+///       navigatorKey: Avafli.navigatorKey, // REQUIRED: the drawer opens here
+///       home: const HomeScreen(),
+///     );
+///   }
+/// }
 /// ```
+///
+/// Already have a root navigator key? Assign it before configuring:
+/// `Avafli.navigatorKey = myRootKey;`. Boot flow that clears the stack
+/// (`Get.offAll`, `pushAndRemoveUntil`)? Call [Avafli.holdAutoOpen] before
+/// [Avafli.configure] and [Avafli.releaseAutoOpen] once your main screen is
+/// mounted. Want to pick the moment yourself? Set
+/// `autoOpen: AvafliAutoOpen.never` and call [Avafli.present].
 library avafli_sdk;
 
 // Core SDK

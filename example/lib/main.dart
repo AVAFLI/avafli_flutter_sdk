@@ -19,8 +19,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Avafli Flutter SDK Example',
       debugShowCheckedModeBanner: false,
-      // REQUIRED for the V2 auto-open flow: the SDK presents the experience
-      // through this navigator on the first app-open of the day.
+      // REQUIRED: the SDK pushes its drawer through this (root) navigator on
+      // the first app-open of the day. An app with its own root key can
+      // assign it instead: `Avafli.navigatorKey = myRootKey;` before
+      // Avafli.configure().
       navigatorKey: Avafli.navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -54,14 +56,21 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   Future<void> _initializeSDK() async {
     try {
       // 1. Configure the Avafli SDK. The experience presents itself: on the
-      //    first app-open of each day the V2 drawer auto-opens — provided
-      //    Avafli.navigatorKey is attached above. To pick the moment yourself,
-      //    set autoOpen: AvafliAutoOpen.never and call Avafli.present().
+      //    first app-open of each day the drawer auto-opens — provided
+      //    Avafli.navigatorKey is attached to the MaterialApp above (it is,
+      //    and this runs from the home screen's initState, so the navigator
+      //    already exists). To pick the moment yourself, set
+      //    autoOpen: AvafliAutoOpen.never and call Avafli.present().
+      //
+      //    Boot flow that clears the navigation stack (Get.offAll,
+      //    pushAndRemoveUntil)? Call Avafli.holdAutoOpen() before configure
+      //    and Avafli.releaseAutoOpen() once your main screen is mounted.
       await Avafli.configure(AvafliConfiguration(
-        apiKey:
-            'winr_live_50b1b3b801a843d5e1f99593fcad4d14', // demo key for this example app
+        // Demo publisher key for this example app. Keys minted before the
+        // Avafli rename keep their older prefix and stay valid; your own
+        // dashboard shows avafli_live_… (release) and avafli_test_… (debug).
+        apiKey: 'winr_live_50b1b3b801a843d5e1f99593fcad4d14',
         bundleId: kBundleId,
-        environment: AvafliEnvironment.production,
         user: const AvafliUser(
           id: 'user_123',
           firstName: 'Jane',

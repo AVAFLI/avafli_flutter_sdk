@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The Avafli SDK talks to its backend over HTTPS. Flutter's template only
+         grants INTERNET in the debug/profile manifests, so release builds need
+         it here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Avafli Example"
         android:name="${applicationName}"

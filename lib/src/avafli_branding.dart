@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Defines the visual branding and theme for the Avafli SDK.
+/// The SDK's fallback palette for the drawer.
 ///
-/// This class allows customization of colors, typography, and imagery
-/// to match your app's brand identity and provide a cohesive user experience.
+/// Not a host-app customization surface: the drawer design is fixed, and the
+/// publisher's logo, prize image and primary colour come from the Avafli
+/// dashboard (`sdkConfig.branding`) and override these values at runtime via
+/// [applyingServerBranding]. [AvafliConfiguration.branding] always returns
+/// [AvafliBranding.defaultBranding].
 class AvafliBranding {
   /// Primary text color
   final Color primaryColor;

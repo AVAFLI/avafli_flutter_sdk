@@ -12,8 +12,7 @@ import 'avafli_user.dart';
 /// Example:
 /// ```dart
 /// final config = AvafliConfiguration(
-///   apiKey: 'YOUR_API_KEY',
-///   environment: AvafliEnvironment.production,
+///   apiKey: 'avafli_test_…', // avafli_live_… in release builds
 ///   bundleId: 'com.example.myapp',
 ///   user: AvafliUser(id: 'user_123'),
 /// );
@@ -22,9 +21,12 @@ import 'avafli_user.dart';
 /// ```
 class AvafliConfiguration {
   /// Your Avafli API key from the publisher dashboard. Required.
+  /// `avafli_live_…` for release builds; `avafli_test_…` for debug builds
+  /// and CI (same backend, isolated sandbox tenant, never bills).
   final String apiKey;
 
-  /// Target environment. Defaults to production.
+  /// Target environment. [AvafliEnvironment.production] is the only value;
+  /// sandboxing is selected by the API key, not by this field.
   final AvafliEnvironment environment;
 
   /// The authenticated user. Required.

@@ -37,19 +37,21 @@ import 'avafli_user.dart';
 ///
 /// Example usage:
 /// ```dart
-/// // Configure the SDK with user (call once at app launch)
-/// await Avafli.configure(AvafliConfiguration(
-///   apiKey: 'YOUR_API_KEY',
-///   environment: AvafliEnvironment.production,
-///   bundleId: 'com.example.myapp',
-///   user: AvafliUser(id: 'user_123', firstName: 'Jane', lastName: 'Doe'),
-/// ));
+/// Future<void> main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   runApp(const MyApp()); // MaterialApp(navigatorKey: Avafli.navigatorKey)
+///   await Avafli.configure(AvafliConfiguration(
+///     apiKey: 'avafli_test_…', // avafli_live_… in release builds
+///     bundleId: 'com.example.myapp',
+///     user: AvafliUser(id: 'user_123'),
+///   ));
+/// }
 ///
-/// // For the once-a-day auto-open, attach the SDK's navigator key:
-/// MaterialApp(navigatorKey: Avafli.navigatorKey, ...)
-///
-/// // Or open it yourself: autoOpen: AvafliAutoOpen.never, then
-/// await Avafli.present();
+/// // Existing root key? `Avafli.navigatorKey = myRootKey;` before configure.
+/// // Splash that clears the stack? holdAutoOpen() before configure,
+/// // releaseAutoOpen() once the main screen is mounted.
+/// // Choose the moment yourself? autoOpen: AvafliAutoOpen.never, then
+/// // `await Avafli.present();`
 /// ```
 class Avafli {
   static AvafliConfiguration? _configuration;
@@ -140,14 +142,16 @@ class Avafli {
   /// (no new UI). Cleared in the experience's dispose.
   static void Function()? onOfflineClaimRecovered;
 
-  /// Navigator key for the V2 auto-open flow. Attach it to your app's
-  /// `MaterialApp(navigatorKey: Avafli.navigatorKey)` so the SDK can present the
-  /// experience on the first app-open of the day. Without it, auto-open is
-  /// silently skipped and the experience never appears.
+  /// The ROOT navigator the drawer is pushed through. Attach it to your app's
+  /// `MaterialApp(navigatorKey: Avafli.navigatorKey)` (or `GetMaterialApp`,
+  /// or your `GoRouter` / auto_route router's `navigatorKey`). Without it the
+  /// auto-open and [present] are skipped with a log line and the experience
+  /// never appears.
   ///
-  /// Apps that already have their own navigator key can hand it to the SDK
-  /// instead (before the first auto-open opportunity):
-  /// `Avafli.navigatorKey = myExistingKey;`
+  /// Apps that already have their own root navigator key hand it to the SDK
+  /// instead, before [configure]: `Avafli.navigatorKey = myExistingKey;`.
+  /// The push uses `rootNavigator: true`, so a nested navigator's key (a tab
+  /// shell, a `ShellRoute`) is not enough.
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   /// Package version and constants.
@@ -918,10 +922,14 @@ class Avafli {
     }
   }
 
-  /// Registers for push notifications.
+  /// Source-compatibility shim — does nothing beyond a debug log.
   ///
-  /// Requests permission and sets up FCM token registration for streak
-  /// reminders.
+  /// The SDK never requests push permission or talks to Firebase itself; the
+  /// host app obtains the FCM token and forwards it with [registerPushToken]
+  /// (or `AvafliPushNotificationManager.instance.didReceiveRegistrationToken`).
+  /// You do not need to call this. Throws [AvafliError.notConfigured] before
+  /// [configure]; returns silently when
+  /// [AvafliOptions.enablePushReminders] is false.
   static Future<void> registerForPushNotifications() async {
     final config = _configuration;
     if (config == null) {

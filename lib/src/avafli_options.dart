@@ -16,10 +16,13 @@ class AvafliOptions {
   /// Logging level for SDK debug output.
   final LoggingLevel logging;
 
-  /// Custom analytics adapter for tracking events.
+  /// Custom analytics adapter for tracking events (see
+  /// [AvafliAnalyticsEvents] for what the SDK emits).
   final AnalyticsAdapter? analyticsAdapter;
 
-  /// Whether to enable push notification reminders.
+  /// Whether the SDK registers forwarded FCM tokens for streak reminders
+  /// (default true). Reminders are sent through the publisher's own Firebase
+  /// project, configured in the Avafli dashboard.
   final bool enablePushReminders;
 
   /// Creates a new [AvafliOptions] instance with optional behavior toggles.
