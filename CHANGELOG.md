@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.3.2
+
+- Docs only: README rewritten against the current API — complete runnable configure example with `MaterialApp(navigatorKey: Avafli.navigatorKey)`, the existing-navigator-key / GetX / GoRouter / auto_route variants, hold/release, requirements, push, analytics events as emitted, claim window, error reference. The package no longer ships the stray `ios/` Runner project. No code changes.
+
 ## 3.3.1
 
 - Changed: `registerDevice` now sends `sdkPlatform: "flutter"` alongside `platformOS`, so Avafli's admin counts Flutter installs as "Flutter (iOS)" / "Flutter (Android)" and compares them with the pub.dev release instead of the native SDK tags. No behaviour change in the app; nothing for the host app to do.

@@ -38,7 +38,7 @@ The SDK ships its own fonts, icons and images; nothing else to add to `pubspec.y
 
 ```yaml
 dependencies:
-  avafli_sdk: ^3.3.1
+  avafli_sdk: ^3.3.2
 ```
 
 ```bash
